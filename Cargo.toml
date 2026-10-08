@@ -1,0 +1,75 @@
+[workspace]
+members = [
+    "crates/core",
+    "crates/ai",
+    "crates/providers",
+    "crates/audio",
+    "crates/screen",
+    "crates/accessibility",
+    "crates/computer",
+    "crates/agents",
+    "crates/memory",
+    "crates/files",
+    "crates/database",
+    "crates/permissions",
+    "crates/ipc",
+    "crates/security",
+    "crates/common",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "LicenseRef-Proprietary"
+publish = false
+rust-version = "1.99"
+
+[workspace.dependencies]
+wisp-common = { path = "crates/common" }
+wisp-ipc = { path = "crates/ipc" }
+wisp-security = { path = "crates/security" }
+wisp-database = { path = "crates/database" }
+wisp-permissions = { path = "crates/permissions" }
+wisp-ai = { path = "crates/ai" }
+wisp-providers = { path = "crates/providers" }
+wisp-audio = { path = "crates/audio" }
+wisp-screen = { path = "crates/screen" }
+wisp-accessibility = { path = "crates/accessibility" }
+wisp-computer = { path = "crates/computer" }
+wisp-agents = { path = "crates/agents" }
+wisp-memory = { path = "crates/memory" }
+wisp-files = { path = "crates/files" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "1"
+thiserror = "2"
+anyhow = "1"
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+time = { version = "0.3", features = ["serde", "formatting", "parsing"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "io-util", "io-std", "time", "process", "fs", "signal"] }
+tokio-util = "0.7"
+futures = "0.3"
+async-trait = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+tempfile = "3"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+dbg_macro = "deny"
+todo = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+strip = "symbols"

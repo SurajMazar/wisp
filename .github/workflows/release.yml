@@ -1,0 +1,98 @@
+name: Release
+
+# Builds, tests and publishes a macOS release.
+#   • Push a tag like v0.1.0-alpha.1 → release for that tag (tags with "-" are pre-releases)
+#   • Or run manually from the Actions tab with a tag name
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to create and release (e.g. v0.1.0-alpha.2)"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # build number = commit count
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Rust toolchain (from rust-toolchain.toml)
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Toolchain versions
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+          rustc --version
+          node --version
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Validate (lint, typecheck, Rust/TS/Swift tests)
+        run: |
+          cargo build -p wisp-core
+          pnpm validate
+
+      - name: Build Wisp.app (release, ad-hoc signed)
+        run: scripts/build/build-macos.sh
+
+      - name: Package DMG and ZIP
+        run: scripts/release/package.sh "${TAG#v}"
+
+      - name: Write release notes
+        run: |
+          cat > build/release/NOTES.md <<'NOTES'
+          Early development build of **Wisp**, a local-first AI assistant for macOS. See
+          [PROJECT_STATUS.md](https://github.com/${{ github.repository }}/blob/main/PROJECT_STATUS.md)
+          for what works today.
+
+          ### Install
+          1. Download the `.dmg`, open it, and drag **Wisp** to **Applications**.
+          2. This build is **not notarized** (no Apple Developer ID yet), so macOS blocks the first launch.
+             Either run:
+             ```bash
+             xattr -dr com.apple.quarantine /Applications/Wisp.app
+             ```
+             or open Wisp once, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
+          3. To use ⌥⌘ in other apps, allow Wisp under **Privacy & Security → Accessibility**
+             (Settings → Invocation → *Open System Settings* takes you there).
+
+          Requirements: macOS 15 or later on Apple Silicon.
+          Checksums are in `SHA256SUMS.txt`.
+          NOTES
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          [[ "$TAG" == *-* ]] && prerelease="--prerelease"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" build/release/*.dmg build/release/*.zip build/release/SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" build/release/*.dmg build/release/*.zip build/release/SHA256SUMS.txt \
+              --title "Wisp ${TAG}" --notes-file build/release/NOTES.md --target "${{ github.sha }}" $prerelease
+          fi

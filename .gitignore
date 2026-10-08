@@ -1,0 +1,27 @@
+# Build output
+/build/
+/target/
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+apps/macos/.build/
+apps/macos/.swiftpm/
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+
+# Model binaries are downloaded at runtime into Application Support, never committed
+models/stt/*
+models/tts/*
+!models/stt/.gitkeep
+!models/tts/.gitkeep
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json

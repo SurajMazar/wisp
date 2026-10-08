@@ -1,0 +1,8 @@
+**/generated/**
+packages/contracts/schema/
+target/
+build/
+dist/
+apps/macos/
+pnpm-lock.yaml
+*.md

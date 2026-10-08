@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Fast checks before each commit. Full suite: `pnpm validate`.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+scripts/validation/check-architecture.sh
+pnpm -s contracts --check
+cargo fmt --all --check
+pnpm -s exec prettier --check . >/dev/null || { echo "prettier: run \`pnpm format\`" >&2; exit 1; }
+pnpm -s exec eslint .

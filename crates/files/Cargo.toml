@@ -1,0 +1,17 @@
+[package]
+name = "wisp-files"
+description = "File import, parsing, chunking, indexing and semantic search"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+wisp-common.workspace = true
+wisp-ipc.workspace = true
+wisp-database.workspace = true
+wisp-security.workspace = true

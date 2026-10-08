@@ -1,0 +1,16 @@
+[package]
+name = "wisp-memory"
+description = "Memory extraction, storage, retrieval and ranking"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+wisp-common.workspace = true
+wisp-ipc.workspace = true
+wisp-database.workspace = true

@@ -1,0 +1,825 @@
+{
+  "definitions": {
+    "AccentColor": {
+      "description": "Accent / assistant colors (spec §29). `Custom` uses `custom_color`.",
+      "enum": [
+        "default",
+        "blue",
+        "purple",
+        "cyan",
+        "green",
+        "orange",
+        "red",
+        "pink",
+        "monochrome",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "AppInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "coreVersion": {
+          "type": "string"
+        },
+        "dataDir": {
+          "type": "string"
+        },
+        "protocolVersion": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "schemaVersion": {
+          "description": "Highest applied database migration.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "startedAtMs": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "coreVersion",
+        "protocolVersion",
+        "schemaVersion",
+        "dataDir",
+        "startedAtMs"
+      ],
+      "type": "object"
+    },
+    "AppSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "appearance": {
+          "$ref": "#/definitions/AppearanceSettings",
+          "default": {
+            "accent": "default",
+            "theme": "system"
+          }
+        },
+        "general": {
+          "$ref": "#/definitions/GeneralSettings",
+          "default": {
+            "launchAtLogin": false,
+            "showMenuBarIcon": true
+          }
+        },
+        "invocation": {
+          "$ref": "#/definitions/InvocationSettings",
+          "default": {
+            "behavior": "hold",
+            "holdDelayMs": 150,
+            "mouseAction": "focusCursor",
+            "mouseButton": "none",
+            "shortcut": {
+              "modifiers": [
+                "option",
+                "command"
+              ]
+            }
+          }
+        },
+        "onboarding": {
+          "$ref": "#/definitions/OnboardingSettings",
+          "default": {
+            "completed": false
+          }
+        },
+        "privacy": {
+          "$ref": "#/definitions/PrivacySettings",
+          "default": {
+            "mode": "localOnly"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "AppearanceSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "accent": {
+          "$ref": "#/definitions/AccentColor",
+          "default": "default"
+        },
+        "customColor": {
+          "description": "`#RRGGBB`, used when `accent` is `custom`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "theme": {
+          "$ref": "#/definitions/ThemePreference",
+          "default": "system"
+        }
+      },
+      "type": "object"
+    },
+    "AssistantVisibility": {
+      "additionalProperties": false,
+      "description": "Assistant surface requested state.",
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/InvocationSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "visible"
+      ],
+      "type": "object"
+    },
+    "ChannelState": {
+      "description": "Whether each invocation channel is actually live right now — never assumed.",
+      "enum": [
+        "active",
+        "needsPermission",
+        "conflict",
+        "disabled",
+        "unsupported"
+      ],
+      "type": "string"
+    },
+    "ConflictSeverity": {
+      "oneOf": [
+        {
+          "const": "blocking",
+          "description": "The shortcut will not work (taken by macOS or another app).",
+          "type": "string"
+        },
+        {
+          "const": "warning",
+          "description": "It works, but shadows a common shortcut.",
+          "type": "string"
+        }
+      ]
+    },
+    "Empty": {
+      "additionalProperties": false,
+      "description": "Parameters for methods that take none. Accepts `{}` or an absent/`null` params field.",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "enum": [
+        "invalidRequest",
+        "methodNotFound",
+        "invalidParams",
+        "internal",
+        "unavailable",
+        "permissionDenied",
+        "cancelled",
+        "timeout",
+        "notFound"
+      ],
+      "type": "string"
+    },
+    "GeneralSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "launchAtLogin": {
+          "default": false,
+          "type": "boolean"
+        },
+        "showMenuBarIcon": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "InvocationAction": {
+      "description": "Action bound to a secondary invocation source.",
+      "oneOf": [
+        {
+          "enum": [
+            "disabled",
+            "openMainWindow"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "toggleAssistant",
+          "description": "Same as the keyboard shortcut in toggle mode.",
+          "type": "string"
+        },
+        {
+          "const": "focusCursor",
+          "description": "Assistant cursor appears ready to point or draw.",
+          "type": "string"
+        }
+      ]
+    },
+    "InvocationBehavior": {
+      "description": "What holding / pressing the shortcut does (spec §18).",
+      "oneOf": [
+        {
+          "const": "hold",
+          "description": "Active while held; releasing finishes the interaction.",
+          "type": "string"
+        },
+        {
+          "const": "toggle",
+          "description": "A press turns the assistant on; the next press turns it off.",
+          "type": "string"
+        },
+        {
+          "const": "pushToTalk",
+          "description": "Listening while held; releasing sends what you said. Requires voice.",
+          "type": "string"
+        }
+      ]
+    },
+    "InvocationEndReason": {
+      "enum": [
+        "released",
+        "toggled",
+        "dismissed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "InvocationEnded": {
+      "additionalProperties": false,
+      "properties": {
+        "durationMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "reason": {
+          "$ref": "#/definitions/InvocationEndReason"
+        },
+        "source": {
+          "$ref": "#/definitions/InvocationSource"
+        }
+      },
+      "required": [
+        "source",
+        "reason",
+        "durationMs"
+      ],
+      "type": "object"
+    },
+    "InvocationSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "behavior": {
+          "$ref": "#/definitions/InvocationBehavior",
+          "default": "hold"
+        },
+        "holdDelayMs": {
+          "default": 150,
+          "description": "Delay before a held modifier-only chord activates, so ⌘⌥-key app shortcuts don't flash Wisp.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mouseAction": {
+          "$ref": "#/definitions/InvocationAction",
+          "default": "focusCursor"
+        },
+        "mouseButton": {
+          "$ref": "#/definitions/MouseButton",
+          "default": "none"
+        },
+        "shortcut": {
+          "$ref": "#/definitions/Shortcut",
+          "default": {
+            "modifiers": [
+              "option",
+              "command"
+            ]
+          }
+        }
+      },
+      "type": "object"
+    },
+    "InvocationSource": {
+      "description": "Where an invocation came from.",
+      "enum": [
+        "keyboard",
+        "mouse",
+        "menuBar",
+        "dock",
+        "commandPalette"
+      ],
+      "type": "string"
+    },
+    "InvocationStarted": {
+      "additionalProperties": false,
+      "properties": {
+        "atMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "behavior": {
+          "$ref": "#/definitions/InvocationBehavior"
+        },
+        "source": {
+          "$ref": "#/definitions/InvocationSource"
+        }
+      },
+      "required": [
+        "source",
+        "behavior",
+        "atMs"
+      ],
+      "type": "object"
+    },
+    "InvocationStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "eventTapPermitted": {
+          "description": "Accessibility (or Input Monitoring) granted — required for modifier-only chords and mouse buttons.",
+          "type": "boolean"
+        },
+        "keyboard": {
+          "$ref": "#/definitions/ChannelState"
+        },
+        "menuBar": {
+          "$ref": "#/definitions/ChannelState"
+        },
+        "mouse": {
+          "$ref": "#/definitions/ChannelState"
+        },
+        "trackpad": {
+          "$ref": "#/definitions/ChannelState"
+        }
+      },
+      "required": [
+        "keyboard",
+        "mouse",
+        "trackpad",
+        "menuBar",
+        "eventTapPermitted"
+      ],
+      "type": "object"
+    },
+    "IpcError": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/ErrorCode"
+        },
+        "details": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Modifier": {
+      "description": "Modifier keys, in canonical display order (⌃ ⌥ ⇧ ⌘ fn).",
+      "enum": [
+        "control",
+        "option",
+        "shift",
+        "command",
+        "function"
+      ],
+      "type": "string"
+    },
+    "MouseButton": {
+      "description": "Mouse buttons macOS reports to event taps. Primary/secondary buttons are never bindable.",
+      "enum": [
+        "none",
+        "middle",
+        "back",
+        "forward"
+      ],
+      "type": "string"
+    },
+    "OnboardingSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "completed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "completedAtMs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "OpenSettingsPaneParams": {
+      "additionalProperties": false,
+      "properties": {
+        "pane": {
+          "$ref": "#/definitions/SettingsPane"
+        }
+      },
+      "required": [
+        "pane"
+      ],
+      "type": "object"
+    },
+    "PrivacyMode": {
+      "description": "Spec §14.",
+      "oneOf": [
+        {
+          "const": "localOnly",
+          "description": "Nothing leaves the Mac. Cloud providers are never eligible, including as fallback.",
+          "type": "string"
+        },
+        {
+          "const": "localPreferred",
+          "description": "Local whenever possible; ask before each cloud use.",
+          "type": "string"
+        },
+        {
+          "const": "cloudAllowed",
+          "description": "Configured cloud providers may be used.",
+          "type": "string"
+        }
+      ]
+    },
+    "PrivacySettings": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "$ref": "#/definitions/PrivacyMode",
+          "default": "localOnly"
+        }
+      },
+      "type": "object"
+    },
+    "SettingsPane": {
+      "description": "System Settings panes Wisp may open for the user.",
+      "enum": [
+        "accessibility",
+        "inputMonitoring",
+        "screenRecording",
+        "microphone",
+        "automation",
+        "notifications",
+        "keyboard"
+      ],
+      "type": "string"
+    },
+    "SettingsSection": {
+      "description": "One section replaced atomically.",
+      "oneOf": [
+        {
+          "properties": {
+            "section": {
+              "const": "general",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/GeneralSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "appearance",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/AppearanceSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "privacy",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/PrivacySettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "onboarding",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/OnboardingSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "invocation",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/InvocationSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SettingsUpdateParams": {
+      "additionalProperties": false,
+      "properties": {
+        "update": {
+          "$ref": "#/definitions/SettingsSection"
+        }
+      },
+      "required": [
+        "update"
+      ],
+      "type": "object"
+    },
+    "Shortcut": {
+      "additionalProperties": false,
+      "description": "A global shortcut: modifiers plus an optional key. No key means a modifier-only chord (⌘⌥).",
+      "properties": {
+        "keyCode": {
+          "description": "macOS virtual key code (`kVK_*`), absent for modifier-only chords.",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "keyLabel": {
+          "description": "Human-readable key label captured at record time, e.g. \"Space\", \"K\".",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modifiers": {
+          "items": {
+            "$ref": "#/definitions/Modifier"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "modifiers"
+      ],
+      "type": "object"
+    },
+    "ShortcutCheckParams": {
+      "additionalProperties": false,
+      "properties": {
+        "shortcut": {
+          "$ref": "#/definitions/Shortcut"
+        }
+      },
+      "required": [
+        "shortcut"
+      ],
+      "type": "object"
+    },
+    "ShortcutCheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "conflicts": {
+          "items": {
+            "$ref": "#/definitions/ShortcutConflict"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "conflicts"
+      ],
+      "type": "object"
+    },
+    "ShortcutConflict": {
+      "additionalProperties": false,
+      "properties": {
+        "severity": {
+          "$ref": "#/definitions/ConflictSeverity"
+        },
+        "with": {
+          "description": "What it conflicts with, e.g. \"Spotlight\", \"Copy (most apps)\".",
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "with"
+      ],
+      "type": "object"
+    },
+    "ShortcutRecordParams": {
+      "additionalProperties": false,
+      "properties": {
+        "timeoutMs": {
+          "description": "Give up after this long (1–30 s).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "timeoutMs"
+      ],
+      "type": "object"
+    },
+    "ShortcutRecordResult": {
+      "additionalProperties": false,
+      "properties": {
+        "conflicts": {
+          "items": {
+            "$ref": "#/definitions/ShortcutConflict"
+          },
+          "type": "array"
+        },
+        "shortcut": {
+          "$ref": "#/definitions/Shortcut"
+        }
+      },
+      "required": [
+        "shortcut",
+        "conflicts"
+      ],
+      "type": "object"
+    },
+    "ThemePreference": {
+      "enum": [
+        "system",
+        "light",
+        "dark"
+      ],
+      "type": "string"
+    }
+  },
+  "error": {
+    "$ref": "#/definitions/IpcError"
+  },
+  "events": [
+    {
+      "name": "core.ready",
+      "payload": {
+        "$ref": "#/definitions/AppInfo"
+      }
+    },
+    {
+      "name": "settings.changed",
+      "payload": {
+        "$ref": "#/definitions/AppSettings"
+      }
+    },
+    {
+      "name": "invocation.started",
+      "payload": {
+        "$ref": "#/definitions/InvocationStarted"
+      }
+    },
+    {
+      "name": "invocation.ended",
+      "payload": {
+        "$ref": "#/definitions/InvocationEnded"
+      }
+    },
+    {
+      "name": "invocation.statusChanged",
+      "payload": {
+        "$ref": "#/definitions/InvocationStatus"
+      }
+    }
+  ],
+  "methods": [
+    {
+      "name": "app.info",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/AppInfo"
+      },
+      "target": "core"
+    },
+    {
+      "name": "settings.get",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/AppSettings"
+      },
+      "target": "core"
+    },
+    {
+      "name": "settings.update",
+      "params": {
+        "$ref": "#/definitions/SettingsUpdateParams"
+      },
+      "result": {
+        "$ref": "#/definitions/AppSettings"
+      },
+      "target": "core"
+    },
+    {
+      "name": "host.invocation.status",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/InvocationStatus"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.shortcut.record",
+      "params": {
+        "$ref": "#/definitions/ShortcutRecordParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ShortcutRecordResult"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.shortcut.check",
+      "params": {
+        "$ref": "#/definitions/ShortcutCheckParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ShortcutCheckResult"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.system.openSettingsPane",
+      "params": {
+        "$ref": "#/definitions/OpenSettingsPaneParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.assistant.setVisible",
+      "params": {
+        "$ref": "#/definitions/AssistantVisibility"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    }
+  ],
+  "protocolVersion": 1
+}

@@ -1,0 +1,22 @@
+[package]
+name = "wisp-ipc"
+description = "Typed, versioned IPC contracts and framing between React, Swift and Rust"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+wisp-common.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+thiserror.workspace = true
+
+[[bin]]
+name = "contracts-gen"
+path = "src/bin/contracts_gen.rs"

@@ -1,0 +1,41 @@
+{
+  "name": "wisp",
+  "private": true,
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.12.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "bash scripts/development/dev.sh",
+    "build": "bash scripts/build/build-all.sh",
+    "build:web": "pnpm --filter @wisp/web build",
+    "build:macos": "bash scripts/build/build-macos.sh",
+    "contracts": "tsx scripts/validation/gen-contracts.ts",
+    "test": "pnpm -r --if-present test && cargo test --workspace && swift test --package-path apps/macos",
+    "test:js": "pnpm -r --if-present test",
+    "lint": "eslint . && cargo clippy --workspace --all-targets -- -D warnings",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "e2e": "bash tests/e2e/run.sh",
+    "validate": "bash scripts/validation/validate.sh",
+    "format": "prettier --write . && cargo fmt --all",
+    "prepare": "git config core.hooksPath .githooks || true"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.6.4",
+    "@wisp/config": "workspace:*",
+    "eslint": "10.12.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.9.9",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

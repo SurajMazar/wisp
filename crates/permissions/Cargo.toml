@@ -1,0 +1,17 @@
+[package]
+name = "wisp-permissions"
+description = "Central permission policy, risk levels, approvals and audit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+wisp-common.workspace = true
+wisp-ipc.workspace = true
+serde.workspace = true
+thiserror.workspace = true

@@ -1,0 +1,33 @@
+[package]
+name = "wisp-core"
+description = "Composition root: command dispatch, event bus, lifecycle and the wisp-core binary"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+wisp-common.workspace = true
+wisp-ipc.workspace = true
+wisp-database.workspace = true
+wisp-security.workspace = true
+wisp-permissions.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-appender = "0.2"
+
+[[bin]]
+name = "wisp-core"
+path = "src/main.rs"
+
+[dev-dependencies]
+tempfile.workspace = true

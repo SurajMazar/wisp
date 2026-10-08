@@ -1,0 +1,195 @@
+/*
+ * Wisp design tokens (spec §90).
+ * Calm, native, minimal. System type, restrained color, one luminous accent.
+ * Light and dark palettes are designed independently — dark is not an inversion.
+ */
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  /* Typography — SF Pro via the system stack; 13px base like native macOS apps */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 17px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+
+  /* Radius — modest, avoids the "everything is a pill" look */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Motion */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  /* Semantic colors resolve to the active palette below */
+  --color-bg: var(--wisp-bg);
+  --color-bg-sunken: var(--wisp-bg-sunken);
+  --color-surface: var(--wisp-surface);
+  --color-surface-hover: var(--wisp-surface-hover);
+  --color-border: var(--wisp-border);
+  --color-border-strong: var(--wisp-border-strong);
+  --color-text: var(--wisp-text);
+  --color-text-muted: var(--wisp-text-muted);
+  --color-text-faint: var(--wisp-text-faint);
+  --color-accent: var(--wisp-accent);
+  --color-accent-soft: var(--wisp-accent-soft);
+  --color-accent-contrast: var(--wisp-accent-contrast);
+  --color-success: var(--wisp-success);
+  --color-warning: var(--wisp-warning);
+  --color-danger: var(--wisp-danger);
+  --color-focus: var(--wisp-focus);
+}
+
+/* z-index scale */
+:root {
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-popover: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 12px 40px rgb(0 0 0 / 0.14), 0 2px 8px rgb(0 0 0 / 0.08);
+}
+
+/* Light palette */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --wisp-bg: #fbfbfa;
+  --wisp-bg-sunken: #f3f3f1;
+  --wisp-surface: #ffffff;
+  --wisp-surface-hover: #f1f1ef;
+  --wisp-border: rgb(20 20 18 / 0.08);
+  --wisp-border-strong: rgb(20 20 18 / 0.16);
+  --wisp-text: #1b1b19;
+  --wisp-text-muted: #64645f;
+  --wisp-text-faint: #9a9a94;
+  --wisp-success: #2f9e5b;
+  --wisp-warning: #c27c0e;
+  --wisp-danger: #d14343;
+  --wisp-focus: color-mix(in oklab, var(--wisp-accent) 55%, transparent);
+}
+
+/* Dark palette — warm-neutral charcoal, lifted surfaces, softened text contrast */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --wisp-bg: #161615;
+  --wisp-bg-sunken: #111110;
+  --wisp-surface: #1e1e1c;
+  --wisp-surface-hover: #262624;
+  --wisp-border: rgb(255 255 250 / 0.07);
+  --wisp-border-strong: rgb(255 255 250 / 0.14);
+  --wisp-text: #ecebe6;
+  --wisp-text-muted: #a3a29b;
+  --wisp-text-faint: #6d6c66;
+  --wisp-success: #4cc27b;
+  --wisp-warning: #e2a33b;
+  --wisp-danger: #ef6b6b;
+  --wisp-focus: color-mix(in oklab, var(--wisp-accent) 60%, transparent);
+}
+
+/* Accents (spec §29). "default" is Wisp's own: a soft violet-to-sky glow. */
+:root,
+[data-accent="default"] {
+  --wisp-accent: #7c6cf2;
+  --wisp-accent-glow: linear-gradient(135deg, #8b7cf6, #5ec8f2);
+}
+[data-accent="blue"] {
+  --wisp-accent: #3b82f6;
+  --wisp-accent-glow: #3b82f6;
+}
+[data-accent="purple"] {
+  --wisp-accent: #9b5de5;
+  --wisp-accent-glow: #9b5de5;
+}
+[data-accent="cyan"] {
+  --wisp-accent: #0fb5c9;
+  --wisp-accent-glow: #0fb5c9;
+}
+[data-accent="green"] {
+  --wisp-accent: #2fae66;
+  --wisp-accent-glow: #2fae66;
+}
+[data-accent="orange"] {
+  --wisp-accent: #f08a24;
+  --wisp-accent-glow: #f08a24;
+}
+[data-accent="red"] {
+  --wisp-accent: #e5484d;
+  --wisp-accent-glow: #e5484d;
+}
+[data-accent="pink"] {
+  --wisp-accent: #e5559b;
+  --wisp-accent-glow: #e5559b;
+}
+[data-accent="monochrome"] {
+  --wisp-accent: #6b6b66;
+  --wisp-accent-glow: #6b6b66;
+}
+[data-theme="dark"][data-accent="monochrome"] {
+  --wisp-accent: #d6d5cf;
+  --wisp-accent-glow: #d6d5cf;
+}
+
+:root {
+  --wisp-accent-soft: color-mix(in oklab, var(--wisp-accent) 14%, transparent);
+  --wisp-accent-contrast: #ffffff;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
+  input,
+  textarea,
+  [contenteditable],
+  .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Floating assistant panel: the native vibrancy view shows through. */
+@layer base {
+  html[data-surface="panel"] body {
+    background: transparent;
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "extends": "@wisp/config/tsconfig.base.json",
+  "include": ["src"]
+}

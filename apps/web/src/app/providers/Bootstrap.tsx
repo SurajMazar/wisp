@@ -1,0 +1,37 @@
+import { useEffect, type ReactNode } from "react";
+import { ipc } from "../../services/ipc";
+import { useAssistantStore } from "../../stores/assistantStore";
+import { useConnectionStore } from "../../stores/connectionStore";
+import { useInvocationStore } from "../../stores/invocationStore";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { applyAppearance } from "../../lib/theme";
+
+/** Connects stores to the core: initial loads, event subscriptions, theming. */
+export function Bootstrap({ children }: { children: ReactNode }) {
+  const appearance = useSettingsStore((s) => s.settings?.appearance);
+
+  useEffect(() => {
+    const client = ipc();
+    const offs = [
+      client.on("settings.changed", (s) => useSettingsStore.getState().receive(s)),
+      client.on("invocation.statusChanged", (st) => useInvocationStore.getState().receiveStatus(st)),
+      client.on("invocation.started", (e) => useAssistantStore.getState().started(e.source, e.behavior)),
+      client.on("invocation.ended", () => useAssistantStore.getState().ended()),
+      client.on("core.ready", (info) => {
+        useConnectionStore.getState().setConnected(info);
+        void useSettingsStore.getState().load();
+      }),
+    ];
+    client
+      .call("app.info", {}, { timeoutMs: 5_000 })
+      .then((info) => useConnectionStore.getState().setConnected(info))
+      .catch(() => useConnectionStore.getState().setUnavailable());
+    void useSettingsStore.getState().load();
+    void useInvocationStore.getState().loadStatus();
+    return () => offs.forEach((off) => off());
+  }, []);
+
+  useEffect(() => (appearance ? applyAppearance(appearance) : undefined), [appearance]);
+
+  return children;
+}

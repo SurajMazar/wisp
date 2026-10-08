@@ -1,0 +1,169 @@
+import type { AccentColor, PrivacyMode, ThemePreference } from "@wisp/contracts";
+import { Button, ErrorNotice, Segmented, SettingsGroup, SettingsRow, Spinner, Switch, cn } from "@wisp/ui";
+import { useConnectionStore } from "../../stores/connectionStore";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { InvocationSettingsGroup } from "./InvocationSettingsGroup";
+
+const accents: { value: AccentColor; label: string; swatch: string }[] = [
+  { value: "default", label: "Wisp", swatch: "linear-gradient(135deg,#8b7cf6,#5ec8f2)" },
+  { value: "blue", label: "Blue", swatch: "#3b82f6" },
+  { value: "purple", label: "Purple", swatch: "#9b5de5" },
+  { value: "cyan", label: "Cyan", swatch: "#0fb5c9" },
+  { value: "green", label: "Green", swatch: "#2fae66" },
+  { value: "orange", label: "Orange", swatch: "#f08a24" },
+  { value: "red", label: "Red", swatch: "#e5484d" },
+  { value: "pink", label: "Pink", swatch: "#e5559b" },
+  { value: "monochrome", label: "Monochrome", swatch: "#8a8a84" },
+];
+
+const privacyHints: Record<PrivacyMode, string> = {
+  localOnly: "Nothing leaves your Mac. Cloud models are never used — not even as a fallback.",
+  localPreferred: "Wisp runs on your Mac whenever it can and asks before each use of a cloud model.",
+  cloudAllowed:
+    "Cloud models you've configured may be used. Screenshots, audio and files are still never sent silently.",
+};
+
+export function SettingsPage() {
+  const { settings, status, error, saving, update, load } = useSettingsStore();
+  const info = useConnectionStore((s) => s.info);
+
+  if (status === "loading" || status === "idle") {
+    return (
+      <div className="flex items-center gap-2 pt-16 text-text-muted">
+        <Spinner /> Loading settings…
+      </div>
+    );
+  }
+  if (!settings) {
+    return (
+      <ErrorNotice
+        title="Settings couldn't be loaded."
+        message={error?.message}
+        details={error?.details}
+        actions={
+          <Button size="sm" onClick={() => void load()}>
+            Try Again
+          </Button>
+        }
+      />
+    );
+  }
+
+  const { general, appearance, privacy, invocation } = settings;
+
+  return (
+    <>
+      <h1 className="mb-6 text-xl font-semibold tracking-tight">Settings</h1>
+
+      {error && (
+        <div className="mb-4">
+          <ErrorNotice title="That change wasn't saved." message={error.message} details={error.details} />
+        </div>
+      )}
+
+      <SettingsGroup title="General">
+        <SettingsRow
+          label="Show menu bar icon"
+          hint="Quick access to Wisp from the menu bar."
+          control={
+            <Switch
+              label="Show menu bar icon"
+              checked={general.showMenuBarIcon}
+              disabled={saving === "general"}
+              onCheckedChange={(v) =>
+                void update({ section: "general", value: { ...general, showMenuBarIcon: v } })
+              }
+            />
+          }
+        />
+      </SettingsGroup>
+
+      <InvocationSettingsGroup invocation={invocation} />
+
+      <SettingsGroup title="Appearance">
+        <SettingsRow
+          label="Theme"
+          control={
+            <Segmented<ThemePreference>
+              label="Theme"
+              value={appearance.theme}
+              disabled={saving === "appearance"}
+              onValueChange={(theme) =>
+                void update({ section: "appearance", value: { ...appearance, theme } })
+              }
+              options={[
+                { value: "system", label: "System" },
+                { value: "light", label: "Light" },
+                { value: "dark", label: "Dark" },
+              ]}
+            />
+          }
+        />
+        <SettingsRow
+          label="Accent color"
+          hint={accents.find((a) => a.value === appearance.accent)?.label ?? "Custom"}
+          control={
+            <div role="radiogroup" aria-label="Accent color" className="flex gap-1.5">
+              {accents.map((a) => {
+                const selected = appearance.accent === a.value;
+                return (
+                  <button
+                    key={a.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={a.label}
+                    title={a.label}
+                    disabled={saving === "appearance"}
+                    onClick={() =>
+                      void update({ section: "appearance", value: { ...appearance, accent: a.value } })
+                    }
+                    className={cn(
+                      "h-5 w-5 rounded-full ring-offset-2 ring-offset-surface transition-shadow duration-[var(--duration-fast)]",
+                      selected ? "ring-2 ring-text-muted" : "hover:ring-2 hover:ring-border-strong",
+                    )}
+                    style={{ background: a.swatch }}
+                  />
+                );
+              })}
+            </div>
+          }
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title="Privacy" description={privacyHints[privacy.mode]}>
+        <SettingsRow
+          label="Processing"
+          control={
+            <Segmented<PrivacyMode>
+              label="Privacy mode"
+              value={privacy.mode}
+              disabled={saving === "privacy"}
+              onValueChange={(mode) => void update({ section: "privacy", value: { mode } })}
+              options={[
+                { value: "localOnly", label: "Local Only" },
+                { value: "localPreferred", label: "Local Preferred" },
+                { value: "cloudAllowed", label: "Cloud Allowed" },
+              ]}
+            />
+          }
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title="About">
+        <SettingsRow
+          label="Engine version"
+          control={<span className="text-text-muted">{info?.coreVersion ?? "—"}</span>}
+        />
+        <SettingsRow
+          label="Data location"
+          control={
+            <span className="selectable max-w-[320px] truncate font-mono text-sm text-text-muted">
+              {info?.dataDir ?? "—"}
+            </span>
+          }
+        />
+      </SettingsGroup>
+    </>
+  );
+}

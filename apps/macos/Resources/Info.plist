@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>Wisp</string>
+    <key>CFBundleExecutable</key>
+    <string>Wisp</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.wisp.assistant</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>Wisp</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>__VERSION__</string>
+    <key>CFBundleVersion</key>
+    <string>__BUILD__</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>15.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>NSSupportsAutomaticTermination</key>
+    <false/>
+    <key>NSHumanReadableCopyright</key>
+    <string>© 2026 Wisp contributors</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Wisp listens only while you're talking to it, so it can hear your questions.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Wisp asks before controlling other apps on your behalf.</string>
+</dict>
+</plist>
