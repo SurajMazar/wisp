@@ -5,6 +5,10 @@
  */
 @import "tailwindcss";
 
+/* Apps consume this package through a node_modules symlink, which Tailwind's automatic source
+   detection skips — so register the design-system components explicitly. */
+@source "../";
+
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {

@@ -20,7 +20,8 @@
     "e2e": "bash tests/e2e/run.sh",
     "validate": "bash scripts/validation/validate.sh",
     "format": "prettier --write . && cargo fmt --all",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "demo": "tsx scripts/demo/record-demo.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -28,6 +29,7 @@
     "@wisp/config": "workspace:*",
     "eslint": "10.12.0",
     "eslint-plugin-react-hooks": "7.1.1",
+    "playwright": "1.64.0",
     "prettier": "3.9.9",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
