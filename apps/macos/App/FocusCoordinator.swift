@@ -34,6 +34,14 @@ final class FocusCoordinator {
     /// Holding the invocation shortcut arms drawing.
     func holdStarted() {
         guard !overlay.isActive else { return }
+        // Without screen access, don't prompt or open the panel mid-hold: that steals focus and
+        // ends the hold, cutting off listening. Keep listening; the panel explains what's missing.
+        guard ScreenPermission.status == .enabled else {
+            router.emit(IPCEvents.focusEnded, FocusEnded(
+                detail: "Screen access is off, so Wisp can't see what you draw.", reason: .permissionDenied
+            ))
+            return
+        }
         holdSession = true
         start(kind: FocusKind(settings.drawStyle), showHint: true)
     }

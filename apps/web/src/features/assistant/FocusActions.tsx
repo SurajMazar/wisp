@@ -1,5 +1,6 @@
 import type { FocusKind } from "@wisp/contracts";
 import { Button } from "@wisp/ui";
+import { ipc } from "../../services/ipc";
 import { useFocusStore } from "../../stores/focusStore";
 
 const actions: { kind: FocusKind; label: string; hint: string }[] = [
@@ -22,11 +23,25 @@ export function FocusActions() {
       >
         <p className="font-medium text-text">Let Wisp see what you point at</p>
         <p className="mt-0.5 text-text-muted">
-          Screen access is off. Wisp only captures the area you select, only when you select it.
+          Screen access is off, so drawing on the screen is paused. Wisp only captures the area you select,
+          only when you select it. Already allowed it in System Settings? macOS applies it after Wisp
+          restarts.
         </p>
-        <Button size="sm" variant="primary" className="mt-2" onClick={() => void requestPermission()}>
-          Allow Screen Access
-        </Button>
+        <div className="mt-2 flex gap-1.5">
+          <Button size="sm" variant="primary" onClick={() => void requestPermission()}>
+            Allow Screen Access
+          </Button>
+          <Button
+            size="sm"
+            onClick={() =>
+              void ipc()
+                .call("host.app.relaunch")
+                .catch(() => {})
+            }
+          >
+            Restart Wisp
+          </Button>
+        </div>
       </div>
     );
   }
