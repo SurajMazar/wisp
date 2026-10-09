@@ -291,6 +291,13 @@ export const InvocationSettings = z.strictObject({
 });
 export type InvocationSettings = z.output<typeof InvocationSettings>;
 
+/** Memory preferences (spec §67). */
+export const MemorySettings = z.strictObject({
+  "enabled": z.boolean().default(true),
+  "learnFromChats": z.boolean().default(true),
+});
+export type MemorySettings = z.output<typeof MemorySettings>;
+
 /** A user-configured OpenAI-compatible endpoint (LM Studio, llama.cpp server, or a cloud API).
 Its API key lives in the Keychain under `keychain_account`, never here. */
 export const EndpointConfig = z.strictObject({
@@ -349,6 +356,7 @@ export const AppSettings = z.strictObject({
   "focus": FocusSettings.default(() => FocusSettings.parse({"dimSurroundings":true,"drawStyle":"rectangle","margin":24,"pointSize":480})),
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
   "invocation": InvocationSettings.default(() => InvocationSettings.parse({"behavior":"hold","holdDelayMs":150,"mouseAction":"focusCursor","mouseButton":"none","shortcut":{"modifiers":["option","command"]}})),
+  "memory": MemorySettings.default(() => MemorySettings.parse({"enabled":true,"learnFromChats":true})),
   "models": ModelSettings.default(() => ModelSettings.parse({"contextLength":8192,"endpoints":[],"maxTokens":1024,"ollamaUrl":"http://127.0.0.1:11434","temperature":0.4})),
   "onboarding": OnboardingSettings.default(() => OnboardingSettings.parse({"completed":false})),
   "privacy": PrivacySettings.default(() => PrivacySettings.parse({"mode":"localOnly"})),
@@ -531,6 +539,7 @@ export const ContextInfo = z.strictObject({
   "estimatedTokens": z.number().int().nonnegative(),
   "historyMessages": z.number().int().nonnegative(),
   "imageBytes": z.number().int().nonnegative().nullable().optional(),
+  "memories": z.array(z.string()).optional(),
   "reusedScreen": z.boolean(),
   "screenTextLines": z.number().int().nonnegative(),
   "selectedText": z.boolean(),
@@ -570,6 +579,13 @@ export type Locality = z.output<typeof Locality>;
 export const MessageRole = z.enum(["user","assistant"]);
 export type MessageRole = z.output<typeof MessageRole>;
 
+/** A memory saved or used by an answer (shown in the chat). */
+export const MemoryRef = z.strictObject({
+  "content": z.string(),
+  "id": z.string(),
+});
+export type MemoryRef = z.output<typeof MemoryRef>;
+
 /** Live progress of an answer, so the UI can say what Wisp is doing instead of a bare spinner. */
 export const MessageStage = z.enum(["preparing","readingScreen","choosingModel","loadingModel","waiting","reasoning","writing"]);
 export type MessageStage = z.output<typeof MessageStage>;
@@ -594,6 +610,7 @@ export const Message = z.strictObject({
   "reasoning": z.string().nullable().optional(),
   "reasoningMs": z.number().int().nonnegative().nullable().optional(),
   "role": MessageRole,
+  "savedMemories": z.array(MemoryRef).optional(),
   "stage": MessageStage.nullable().optional(),
   "status": MessageStatus,
 });
@@ -682,6 +699,18 @@ export const DragArgs = z.strictObject({
   "to": Point,
 });
 export type DragArgs = z.output<typeof DragArgs>;
+
+export const EmbedParams = z.strictObject({
+  "texts": z.array(z.string()),
+});
+export type EmbedParams = z.output<typeof EmbedParams>;
+
+export const Embeddings = z.strictObject({
+  "dims": z.number().int().nonnegative(),
+  "model": z.string(),
+  "vectors": z.array(z.array(z.number())),
+});
+export type Embeddings = z.output<typeof Embeddings>;
 
 /** Parameters for methods that take none. Accepts `{}` or an absent/`null` params field. */
 export const Empty = z.strictObject({
@@ -855,6 +884,57 @@ export const LessonControl = z.strictObject({
   "lessonId": z.string(),
 });
 export type LessonControl = z.output<typeof LessonControl>;
+
+export const MemoryCategory = z.enum(["userProfile","preference","project","fact","conversation","agent","skill"]);
+export type MemoryCategory = z.output<typeof MemoryCategory>;
+
+export const MemoryCleared = z.strictObject({
+  "deleted": z.number().int().nonnegative(),
+});
+export type MemoryCleared = z.output<typeof MemoryCleared>;
+
+export const MemoryLevel = z.enum(["project","persistent","temporary","session"]);
+export type MemoryLevel = z.output<typeof MemoryLevel>;
+
+export const MemorySource = z.enum(["user","extracted","agent"]);
+export type MemorySource = z.output<typeof MemorySource>;
+
+export const MemoryItem = z.strictObject({
+  "accessCount": z.number().int().nonnegative(),
+  "agentId": z.string().nullable().optional(),
+  "category": MemoryCategory,
+  "content": z.string(),
+  "conversationId": z.string().nullable().optional(),
+  "createdAtMs": z.number().int(),
+  "expiresAtMs": z.number().int().nullable().optional(),
+  "id": z.string(),
+  "importance": z.number(),
+  "lastAccessedAtMs": z.number().int().nullable().optional(),
+  "level": MemoryLevel,
+  "source": MemorySource,
+  "updatedAtMs": z.number().int(),
+});
+export type MemoryItem = z.output<typeof MemoryItem>;
+
+export const MemoryList = z.strictObject({
+  "items": z.array(MemoryItem),
+  "limit": z.number().int().nonnegative(),
+});
+export type MemoryList = z.output<typeof MemoryList>;
+
+export const MemoryListParams = z.strictObject({
+  "category": MemoryCategory.nullable().optional(),
+  "query": z.string().nullable().optional(),
+});
+export type MemoryListParams = z.output<typeof MemoryListParams>;
+
+export const MemorySaveParams = z.strictObject({
+  "category": MemoryCategory,
+  "content": z.string(),
+  "id": z.string().nullable().optional(),
+  "level": MemoryLevel,
+});
+export type MemorySaveParams = z.output<typeof MemorySaveParams>;
 
 export const MessageDelta = z.strictObject({
   "conversationId": z.string(),
@@ -1043,7 +1123,7 @@ export const SessionParams = z.strictObject({
 export type SessionParams = z.output<typeof SessionParams>;
 
 /** One section replaced atomically. */
-export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings }), z.strictObject({ "section": z.literal("voice"), "value": VoiceSettings }), z.strictObject({ "section": z.literal("computer"), "value": ComputerSettings })]);
+export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings }), z.strictObject({ "section": z.literal("voice"), "value": VoiceSettings }), z.strictObject({ "section": z.literal("computer"), "value": ComputerSettings }), z.strictObject({ "section": z.literal("memory"), "value": MemorySettings })]);
 export type SettingsSection = z.output<typeof SettingsSection>;
 
 export const SettingsUpdateParams = z.strictObject({
@@ -1367,6 +1447,10 @@ export const methods = {
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
   "conversation.regenerate": { target: "core", params: RegenerateParams, result: Message },
+  "memory.list": { target: "core", params: MemoryListParams, result: MemoryList },
+  "memory.save": { target: "core", params: MemorySaveParams, result: MemoryItem },
+  "memory.delete": { target: "core", params: IdParams, result: Empty },
+  "memory.clear": { target: "core", params: Empty, result: MemoryCleared },
   "skill.list": { target: "core", params: Empty, result: SkillList },
   "skill.get": { target: "core", params: IdParams, result: Skill },
   "skill.save": { target: "core", params: SkillSaveParams, result: Skill },
@@ -1394,6 +1478,7 @@ export const methods = {
   "host.clipboard.writeText": { target: "host", params: ClipboardText, result: Empty },
   "host.guidance.show": { target: "host", params: GuidanceShow, result: Empty },
   "host.guidance.clear": { target: "host", params: Empty, result: Empty },
+  "host.embed": { target: "host", params: EmbedParams, result: Embeddings },
   "host.screen.observe": { target: "host", params: Empty, result: FocusRegion },
   "host.input.perform": { target: "host", params: ToolCall, result: ToolExecution },
   "host.voice.start": { target: "host", params: HostVoiceStartParams, result: Empty },

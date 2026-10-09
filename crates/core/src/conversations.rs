@@ -165,6 +165,7 @@ pub(crate) fn new_message(
         reasoning_ms: None,
         context: None,
         guidance: vec![],
+        saved_memories: vec![],
         stage: None,
         created_at_ms: wisp_common::time::now_ms(),
     }
@@ -224,6 +225,8 @@ impl Core {
             MessageStatus::Streaming,
         );
         assistant.created_at_ms = user.created_at_ms + 1;
+        // Things the user clearly asked to be remembered — shown with the answer, never silent.
+        assistant.saved_memories = self.learn_from(&text, &conversation_id).await;
 
         let (u, a) = (user.clone(), assistant.clone());
         self.blocking(move |db| {
@@ -464,6 +467,12 @@ impl Core {
             system.push_str("\n\n");
             system.push_str(&s);
         }
+        let recalled = self.recall(question, None).await;
+        if let Some(section) = crate::memory::memory_section(&recalled) {
+            system.push_str("\n\n");
+            system.push_str(&section);
+        }
+        info.memories = recalled.into_iter().map(|m| m.content).collect();
         let (skill_names, skill_section) = self.active_skills(question, &[]).await;
         if let Some(section) = skill_section {
             system.push_str("\n\n");

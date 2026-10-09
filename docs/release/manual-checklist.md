@@ -160,5 +160,14 @@ Prerequisite: Computer control on (Settings), Accessibility, Screen Recording.
 - [ ] Drop a folder with a SKILL.md into ~/Library/Application Support/Wisp/skills and reopen: it appears, off.
 - [ ] Attach a skill to an agent: its runs list "Using skills: …".
 
+## Phase 15 — Memory
+- [ ] Say "I prefer dark roast coffee." The answer shows "Remembered: The user prefers dark roast coffee." with Undo.
+- [ ] In a new conversation ask "Which coffee should I buy?": the answer uses it; Context says "1 saved memory about you".
+- [ ] Ask something unrelated: the memory isn't used.
+- [ ] Memory page: the memory is listed under Preferences; edit it, delete it, add one by hand, Forget everything (asks first).
+- [ ] "Forget that I prefer dark roast coffee" removes it.
+- [ ] Turn off "Remember what I ask it to": statements are no longer saved. Turn off "Use memories in answers": nothing is recalled.
+- [ ] A memory set to "Until restart" is gone after reopening Wisp.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

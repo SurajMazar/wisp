@@ -439,6 +439,11 @@ impl Core {
             system.push_str("\n\nYour instructions:\n");
             system.push_str(a.instructions.trim());
         }
+        let recalled = self.recall(&run.goal, run.agent_id.as_deref()).await;
+        if let Some(section) = crate::memory::memory_section(&recalled) {
+            system.push_str("\n\n");
+            system.push_str(&section);
+        }
         let attached = agent.as_ref().map(|a| a.skills.clone()).unwrap_or_default();
         let (skill_names, skill_section) = self.active_skills(&run.goal, &attached).await;
         if let Some(section) = skill_section {
@@ -768,6 +773,32 @@ impl Core {
                             .end_run(run, RunStatus::Cancelled, Some("Stopped.".into()))
                             .await;
                     }
+                    continue;
+                }
+                Action::Remember(fact) => {
+                    let saved = self
+                        .add_memory(
+                            fact,
+                            wisp_ipc::types::memory::MemoryCategory::Agent,
+                            wisp_ipc::types::memory::MemoryLevel::Persistent,
+                            wisp_ipc::types::memory::MemorySource::Agent,
+                            run.agent_id.clone(),
+                            None,
+                        )
+                        .await;
+                    let (status, detail) = match &saved {
+                        Ok(_) => (RunStepStatus::Succeeded, None),
+                        Err(e) => (RunStepStatus::Failed, Some(e.message.clone())),
+                    };
+                    self.push_step(
+                        &mut run,
+                        StepKind::Message,
+                        format!("Remembered: {fact}"),
+                        status,
+                        detail,
+                    )
+                    .await;
+                    history.push(format!("- remembered: {fact}"));
                     continue;
                 }
                 Action::Wait(s) => {

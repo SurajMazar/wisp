@@ -57,6 +57,8 @@ pub enum Action {
     Wait(u32),
     Done(String),
     Ask(String),
+    /// Save something worth knowing next time (agent memory).
+    Remember(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -82,7 +84,8 @@ open_url "https://…"     open a web address
 copy / paste             copy the selection / paste
 wait 2                   wait seconds for something to load
 done "summary"           the goal is complete; say what you did
-ask "question"           you need the user to answer something"#;
+ask "question"           you need the user to answer something
+remember "fact"          save something useful for next time (not secrets)"#;
 
 fn unquote(s: &str) -> Option<String> {
     let s = s.trim();
@@ -223,6 +226,7 @@ pub fn parse_action(line: &str) -> Result<Action, String> {
         "wait" => Action::Wait(rest.parse::<u32>().unwrap_or(2).clamp(1, 10)),
         "done" | "finish" => Action::Done(unquote(rest).unwrap_or_else(|| "Done.".into())),
         "ask" => Action::Ask(unquote(rest).ok_or_else(|| need("a question"))?),
+        "remember" => Action::Remember(unquote(rest).ok_or_else(|| need("what to remember"))?),
         other => return Err(format!("unknown action {other:?}")),
     })
 }
@@ -338,7 +342,9 @@ pub fn to_tool_call(
         Action::OpenUrl(u) => ToolCall::OpenUrl(UrlArgs { url: u.clone() }),
         Action::Copy => ToolCall::Copy(Empty {}),
         Action::Paste => ToolCall::Paste(Empty {}),
-        Action::Wait(_) | Action::Done(_) | Action::Ask(_) => return Ok(None),
+        Action::Wait(_) | Action::Done(_) | Action::Ask(_) | Action::Remember(_) => {
+            return Ok(None);
+        }
     }))
 }
 

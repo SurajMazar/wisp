@@ -582,6 +582,17 @@ public struct InvocationSettings: Codable, Sendable, Equatable {
     }
 }
 
+/// Memory preferences (spec §67).
+public struct MemorySettings: Codable, Sendable, Equatable {
+    public var enabled: Bool
+    public var learnFromChats: Bool
+
+    public init(enabled: Bool, learnFromChats: Bool) {
+        self.enabled = enabled
+        self.learnFromChats = learnFromChats
+    }
+}
+
 /// A user-configured OpenAI-compatible endpoint (LM Studio, llama.cpp server, or a cloud API).
 /// Its API key lives in the Keychain under `keychain_account`, never here.
 public struct EndpointConfig: Codable, Sendable, Equatable {
@@ -678,18 +689,20 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var focus: FocusSettings
     public var general: GeneralSettings
     public var invocation: InvocationSettings
+    public var memory: MemorySettings
     public var models: ModelSettings
     public var onboarding: OnboardingSettings
     public var privacy: PrivacySettings
     public var voice: VoiceSettings
 
-    public init(appearance: AppearanceSettings, computer: ComputerSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings, voice: VoiceSettings) {
+    public init(appearance: AppearanceSettings, computer: ComputerSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, memory: MemorySettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings, voice: VoiceSettings) {
         self.appearance = appearance
         self.computer = computer
         self.cursor = cursor
         self.focus = focus
         self.general = general
         self.invocation = invocation
+        self.memory = memory
         self.models = models
         self.onboarding = onboarding
         self.privacy = privacy
@@ -1013,6 +1026,7 @@ public struct ContextInfo: Codable, Sendable, Equatable {
     public var estimatedTokens: UInt32
     public var historyMessages: UInt32
     public var imageBytes: UInt32?
+    public var memories: [String]?
     public var reusedScreen: Bool
     public var screenTextLines: UInt32
     public var selectedText: Bool
@@ -1021,10 +1035,11 @@ public struct ContextInfo: Codable, Sendable, Equatable {
     public var textOnlyReason: String?
     public var uiElements: UInt32
 
-    public init(estimatedTokens: UInt32, historyMessages: UInt32, imageBytes: UInt32? = nil, reusedScreen: Bool, screenTextLines: UInt32, selectedText: Bool, skills: [String]? = nil, summarizedMessages: UInt32, textOnlyReason: String? = nil, uiElements: UInt32) {
+    public init(estimatedTokens: UInt32, historyMessages: UInt32, imageBytes: UInt32? = nil, memories: [String]? = nil, reusedScreen: Bool, screenTextLines: UInt32, selectedText: Bool, skills: [String]? = nil, summarizedMessages: UInt32, textOnlyReason: String? = nil, uiElements: UInt32) {
         self.estimatedTokens = estimatedTokens
         self.historyMessages = historyMessages
         self.imageBytes = imageBytes
+        self.memories = memories
         self.reusedScreen = reusedScreen
         self.screenTextLines = screenTextLines
         self.selectedText = selectedText
@@ -1088,6 +1103,17 @@ public enum MessageRole: String, Codable, Sendable, Equatable, CaseIterable {
     case assistant = "assistant"
 }
 
+/// A memory saved or used by an answer (shown in the chat).
+public struct MemoryRef: Codable, Sendable, Equatable {
+    public var content: String
+    public var id: String
+
+    public init(content: String, id: String) {
+        self.content = content
+        self.id = id
+    }
+}
+
 /// Live progress of an answer, so the UI can say what Wisp is doing instead of a bare spinner.
 public enum MessageStage: String, Codable, Sendable, Equatable, CaseIterable {
     case preparing = "preparing"
@@ -1123,10 +1149,11 @@ public struct Message: Codable, Sendable, Equatable {
     public var reasoning: String?
     public var reasoningMs: UInt32?
     public var role: MessageRole
+    public var savedMemories: [MemoryRef]?
     public var stage: MessageStage?
     public var status: MessageStatus
 
-    public init(content: String, context: ContextInfo? = nil, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, guidance: [GuidanceTarget]? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, reasoning: String? = nil, reasoningMs: UInt32? = nil, role: MessageRole, stage: MessageStage? = nil, status: MessageStatus) {
+    public init(content: String, context: ContextInfo? = nil, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, guidance: [GuidanceTarget]? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, reasoning: String? = nil, reasoningMs: UInt32? = nil, role: MessageRole, savedMemories: [MemoryRef]? = nil, stage: MessageStage? = nil, status: MessageStatus) {
         self.content = content
         self.context = context
         self.conversationId = conversationId
@@ -1143,6 +1170,7 @@ public struct Message: Codable, Sendable, Equatable {
         self.reasoning = reasoning
         self.reasoningMs = reasoningMs
         self.role = role
+        self.savedMemories = savedMemories
         self.stage = stage
         self.status = status
     }
@@ -1294,6 +1322,26 @@ public struct DragArgs: Codable, Sendable, Equatable {
     public init(from: Point, to: Point) {
         self.from = from
         self.to = to
+    }
+}
+
+public struct EmbedParams: Codable, Sendable, Equatable {
+    public var texts: [String]
+
+    public init(texts: [String]) {
+        self.texts = texts
+    }
+}
+
+public struct Embeddings: Codable, Sendable, Equatable {
+    public var dims: UInt32
+    public var model: String
+    public var vectors: [[Double]]
+
+    public init(dims: UInt32, model: String, vectors: [[Double]]) {
+        self.dims = dims
+        self.model = model
+        self.vectors = vectors
     }
 }
 
@@ -1598,6 +1646,103 @@ public struct LessonControl: Codable, Sendable, Equatable {
     public init(action: LessonAction, lessonId: String) {
         self.action = action
         self.lessonId = lessonId
+    }
+}
+
+public enum MemoryCategory: String, Codable, Sendable, Equatable, CaseIterable {
+    case userProfile = "userProfile"
+    case preference = "preference"
+    case project = "project"
+    case fact = "fact"
+    case conversation = "conversation"
+    case agent = "agent"
+    case skill = "skill"
+}
+
+public struct MemoryCleared: Codable, Sendable, Equatable {
+    public var deleted: UInt32
+
+    public init(deleted: UInt32) {
+        self.deleted = deleted
+    }
+}
+
+public enum MemoryLevel: String, Codable, Sendable, Equatable, CaseIterable {
+    case project = "project"
+    case persistent = "persistent"
+    case temporary = "temporary"
+    case session = "session"
+}
+
+public enum MemorySource: String, Codable, Sendable, Equatable, CaseIterable {
+    case user = "user"
+    case extracted = "extracted"
+    case agent = "agent"
+}
+
+public struct MemoryItem: Codable, Sendable, Equatable {
+    public var accessCount: UInt32
+    public var agentId: String?
+    public var category: MemoryCategory
+    public var content: String
+    public var conversationId: String?
+    public var createdAtMs: Int64
+    public var expiresAtMs: Int64?
+    public var id: String
+    public var importance: Double
+    public var lastAccessedAtMs: Int64?
+    public var level: MemoryLevel
+    public var source: MemorySource
+    public var updatedAtMs: Int64
+
+    public init(accessCount: UInt32, agentId: String? = nil, category: MemoryCategory, content: String, conversationId: String? = nil, createdAtMs: Int64, expiresAtMs: Int64? = nil, id: String, importance: Double, lastAccessedAtMs: Int64? = nil, level: MemoryLevel, source: MemorySource, updatedAtMs: Int64) {
+        self.accessCount = accessCount
+        self.agentId = agentId
+        self.category = category
+        self.content = content
+        self.conversationId = conversationId
+        self.createdAtMs = createdAtMs
+        self.expiresAtMs = expiresAtMs
+        self.id = id
+        self.importance = importance
+        self.lastAccessedAtMs = lastAccessedAtMs
+        self.level = level
+        self.source = source
+        self.updatedAtMs = updatedAtMs
+    }
+}
+
+public struct MemoryList: Codable, Sendable, Equatable {
+    public var items: [MemoryItem]
+    public var limit: UInt32
+
+    public init(items: [MemoryItem], limit: UInt32) {
+        self.items = items
+        self.limit = limit
+    }
+}
+
+public struct MemoryListParams: Codable, Sendable, Equatable {
+    public var category: MemoryCategory?
+    public var query: String?
+
+    public init(category: MemoryCategory? = nil, query: String? = nil) {
+        self.category = category
+        self.query = query
+    }
+}
+
+public struct MemorySaveParams: Codable, Sendable, Equatable {
+    public var category: MemoryCategory
+    public var content: String
+    public var id: String?
+    public var level: MemoryLevel
+
+    public init(category: MemoryCategory, content: String, id: String? = nil, level: MemoryLevel) {
+        self.category = category
+        self.content = content
+        self.id = id
+        self.level = level
     }
 }
 
@@ -1945,6 +2090,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
     case models(ModelSettings)
     case voice(VoiceSettings)
     case computer(ComputerSettings)
+    case memory(MemorySettings)
 
     private enum CodingKeys: String, CodingKey {
         case tag = "section"
@@ -1965,6 +2111,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
         case "models": self = .models(try c.decode(ModelSettings.self, forKey: .content))
         case "voice": self = .voice(try c.decode(VoiceSettings.self, forKey: .content))
         case "computer": self = .computer(try c.decode(ComputerSettings.self, forKey: .content))
+        case "memory": self = .memory(try c.decode(MemorySettings.self, forKey: .content))
         default:
             throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown SettingsSection variant \(tag)")
         }
@@ -2002,6 +2149,9 @@ public enum SettingsSection: Codable, Sendable, Equatable {
             try c.encode(v, forKey: .content)
         case .computer(let v):
             try c.encode("computer", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .memory(let v):
+            try c.encode("memory", forKey: .tag)
             try c.encode(v, forKey: .content)
         }
     }
@@ -2636,6 +2786,10 @@ public enum IPCMethods {
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
     public static let conversationRegenerate = IPCMethod<RegenerateParams, Message>(name: "conversation.regenerate", target: .core)
+    public static let memoryList = IPCMethod<MemoryListParams, MemoryList>(name: "memory.list", target: .core)
+    public static let memorySave = IPCMethod<MemorySaveParams, MemoryItem>(name: "memory.save", target: .core)
+    public static let memoryDelete = IPCMethod<IdParams, Empty>(name: "memory.delete", target: .core)
+    public static let memoryClear = IPCMethod<Empty, MemoryCleared>(name: "memory.clear", target: .core)
     public static let skillList = IPCMethod<Empty, SkillList>(name: "skill.list", target: .core)
     public static let skillGet = IPCMethod<IdParams, Skill>(name: "skill.get", target: .core)
     public static let skillSave = IPCMethod<SkillSaveParams, Skill>(name: "skill.save", target: .core)
@@ -2663,6 +2817,7 @@ public enum IPCMethods {
     public static let hostClipboardWriteText = IPCMethod<ClipboardText, Empty>(name: "host.clipboard.writeText", target: .host)
     public static let hostGuidanceShow = IPCMethod<GuidanceShow, Empty>(name: "host.guidance.show", target: .host)
     public static let hostGuidanceClear = IPCMethod<Empty, Empty>(name: "host.guidance.clear", target: .host)
+    public static let hostEmbed = IPCMethod<EmbedParams, Embeddings>(name: "host.embed", target: .host)
     public static let hostScreenObserve = IPCMethod<Empty, FocusRegion>(name: "host.screen.observe", target: .host)
     public static let hostInputPerform = IPCMethod<ToolCall, ToolExecution>(name: "host.input.perform", target: .host)
     public static let hostVoiceStart = IPCMethod<HostVoiceStartParams, Empty>(name: "host.voice.start", target: .host)
@@ -2722,6 +2877,10 @@ public enum IPCMethods {
         "conversation.pin": .core,
         "conversation.delete": .core,
         "conversation.regenerate": .core,
+        "memory.list": .core,
+        "memory.save": .core,
+        "memory.delete": .core,
+        "memory.clear": .core,
         "skill.list": .core,
         "skill.get": .core,
         "skill.save": .core,
@@ -2749,6 +2908,7 @@ public enum IPCMethods {
         "host.clipboard.writeText": .host,
         "host.guidance.show": .host,
         "host.guidance.clear": .host,
+        "host.embed": .host,
         "host.screen.observe": .host,
         "host.input.perform": .host,
         "host.voice.start": .host,

@@ -1,5 +1,5 @@
 import type { Message } from "@wisp/contracts";
-import { CheckIcon, CopyIcon, PointIcon, RegenerateIcon, SpeakIcon, WispMark } from "@wisp/icons";
+import { CheckIcon, CopyIcon, MemoryIcon, PointIcon, RegenerateIcon, SpeakIcon, WispMark } from "@wisp/icons";
 import { Button, cn } from "@wisp/ui";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -146,6 +146,41 @@ function GuidanceChips({ m }: { m: Message }) {
   );
 }
 
+/** "Remembered: …" with Undo — memory is never saved silently (spec §67). */
+function SavedMemories({ m }: { m: Message }) {
+  const [undone, setUndone] = useState<string[]>([]);
+  return (
+    <div className="mt-2 space-y-1" role="status">
+      {(m.savedMemories ?? []).map((s) => (
+        <p key={s.id} className="flex flex-wrap items-center gap-1.5 text-xs text-text-muted">
+          <MemoryIcon size={12} className="text-accent" />
+          {undone.includes(s.id) ? (
+            <span>Forgotten.</span>
+          ) : (
+            <>
+              <span>
+                Remembered: <span className="text-text">{s.content}</span>
+              </span>
+              <button
+                type="button"
+                className="underline-offset-2 hover:text-text hover:underline"
+                onClick={() =>
+                  void ipc()
+                    .call("memory.delete", { id: s.id })
+                    .then(() => setUndone((u) => [...u, s.id]))
+                    .catch(() => {})
+                }
+              >
+                Undo
+              </button>
+            </>
+          )}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function ErrorBlock({ m, onRetry, compact }: { m: Message; onRetry?: () => void; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
@@ -240,6 +275,7 @@ export function MessageList({
                 />
               )}
               {m.guidance && m.guidance.length > 0 && m.status !== "streaming" && <GuidanceChips m={m} />}
+              {m.savedMemories && m.savedMemories.length > 0 && <SavedMemories m={m} />}
               {m.status === "cancelled" && <p className="mt-1 text-xs text-text-faint">Stopped</p>}
               {m.status === "error" && (
                 <ErrorBlock

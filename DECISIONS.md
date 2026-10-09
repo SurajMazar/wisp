@@ -234,3 +234,15 @@ at most two (plus attached) within a 6 000-character budget, added to the system
 Context. Imported skills (file, paste or folder) start disabled (spec §103, §118); skills are never run as code.
 A built-in "Mac keyboard shortcuts" skill is seeded as the sample.
 
+## D-032 — Memory: explicit, visible, local; Apple sentence embeddings with calibrated hybrid ranking
+**Status** accepted (2026-10-09)
+Wisp remembers only what the user clearly states ("remember that…", "my name is…", "I prefer…", "call me…",
+"from now on…", "my favorite…"), never questions, and each save is shown under the answer with Undo; "forget that…"
+deletes matching memories. No hidden summarization of chats (spec §67: don't silently store unlimited information);
+a hard cap of 500, temporary memories expire after a day and session ones at restart. Retrieval embeds the question
+and memories with Apple's on-device NaturalLanguage sentence embeddings via the host (no download, nothing leaves
+the Mac), cached per model in `memory_embeddings`, and ranks with an even blend of semantic similarity and keyword
+overlap — calibrated on measured cosines (related ≈ 0.25–0.40, unrelated ≈ 0–0.29, so 0.20–0.45 maps to 0–1) — plus
+boosts for profile facts and standing instructions; up to four above a threshold join the system prompt and are
+listed in Context. Without embeddings ranking falls back to keywords. Agents can `remember "…"` (agent-scoped).
+

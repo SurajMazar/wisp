@@ -10,7 +10,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
     accessibility::*, agents::*, app::*, conversations::*, cursor::*, focus::*, guidance::*,
-    invocation::*, models::*, settings::*, skills::*, teacher::*, tools::*, voice::*,
+    invocation::*, memory::*, models::*, settings::*, skills::*, teacher::*, tools::*, voice::*,
 };
 
 /// Which side implements a method.
@@ -169,6 +169,13 @@ define_methods! {
     ConversationDelete = "conversation.delete", Core, IdParams => Empty;
     /// Answer the same question again, replacing an assistant message.
     ConversationRegenerate = "conversation.regenerate", Core, RegenerateParams => Message;
+    /// Saved memories, newest first.
+    MemoryListMethod = "memory.list", Core, MemoryListParams => MemoryList;
+    /// Add or edit a memory.
+    MemorySave = "memory.save", Core, MemorySaveParams => MemoryItem;
+    MemoryDelete = "memory.delete", Core, IdParams => Empty;
+    /// Forget everything.
+    MemoryClear = "memory.clear", Core, Empty => MemoryCleared;
     /// Installed skills.
     SkillListMethod = "skill.list", Core, Empty => SkillList;
     SkillGet = "skill.get", Core, IdParams => Skill;
@@ -217,6 +224,8 @@ define_methods! {
     HostGuidanceShow = "host.guidance.show", Host, GuidanceShow => Empty;
     /// Remove any guidance from the screen.
     HostGuidanceClear = "host.guidance.clear", Host, Empty => Empty;
+    /// On-device sentence embeddings (Apple NaturalLanguage) for semantic search.
+    HostEmbed = "host.embed", Host, EmbedParams => Embeddings;
     /// Capture and read the frontmost window (not Wisp's), for lessons. Needs Screen Recording.
     HostScreenObserve = "host.screen.observe", Host, Empty => FocusRegion;
     /// Perform an approved action and observe whether it worked (needs Accessibility).

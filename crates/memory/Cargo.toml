@@ -13,4 +13,4 @@ workspace = true
 [dependencies]
 wisp-common.workspace = true
 wisp-ipc.workspace = true
-wisp-database.workspace = true
+

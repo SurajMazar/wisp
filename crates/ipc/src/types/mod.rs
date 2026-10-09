@@ -8,6 +8,7 @@ pub mod cursor;
 pub mod focus;
 pub mod guidance;
 pub mod invocation;
+pub mod memory;
 pub mod models;
 pub mod settings;
 pub mod skills;

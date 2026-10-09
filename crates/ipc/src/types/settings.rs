@@ -23,6 +23,7 @@ pub struct AppSettings {
     pub models: ModelSettings,
     pub voice: VoiceSettings,
     pub computer: ComputerSettings,
+    pub memory: super::memory::MemorySettings,
 }
 
 /// Computer control (spec §55–58). Off until the user turns it on.
@@ -127,6 +128,7 @@ pub enum SettingsSection {
     Models(ModelSettings),
     Voice(VoiceSettings),
     Computer(ComputerSettings),
+    Memory(super::memory::MemorySettings),
 }
 
 impl SettingsSection {
@@ -143,6 +145,7 @@ impl SettingsSection {
             Self::Models(_) => "models",
             Self::Voice(_) => "voice",
             Self::Computer(_) => "computer",
+            Self::Memory(_) => "memory",
         }
     }
 

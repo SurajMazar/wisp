@@ -27,6 +27,7 @@ tokio-util.workspace = true
 wisp-permissions.workspace = true
 wisp-computer.workspace = true
 wisp-agents.workspace = true
+wisp-memory.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

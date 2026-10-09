@@ -624,6 +624,13 @@
             }
           }
         },
+        "memory": {
+          "$ref": "#/definitions/MemorySettings",
+          "default": {
+            "enabled": true,
+            "learnFromChats": true
+          }
+        },
         "models": {
           "$ref": "#/definitions/ModelSettings",
           "default": {
@@ -1369,6 +1376,13 @@
             "null"
           ]
         },
+        "memories": {
+          "description": "Saved memories included.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "reusedScreen": {
           "description": "The screen from an earlier question was reused (no new capture or vision pass).",
           "type": "boolean"
@@ -1730,6 +1744,53 @@
         "circle"
       ],
       "type": "string"
+    },
+    "EmbedParams": {
+      "additionalProperties": false,
+      "properties": {
+        "texts": {
+          "description": "1–64 texts, each up to 2 000 characters.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "texts"
+      ],
+      "type": "object"
+    },
+    "Embeddings": {
+      "additionalProperties": false,
+      "properties": {
+        "dims": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "model": {
+          "description": "e.g. `apple-nl-sentence-en`.",
+          "type": "string"
+        },
+        "vectors": {
+          "description": "One per text; empty when a text couldn't be embedded.",
+          "items": {
+            "items": {
+              "format": "float",
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "model",
+        "dims",
+        "vectors"
+      ],
+      "type": "object"
     },
     "Empty": {
       "additionalProperties": false,
@@ -2638,6 +2699,253 @@
       ],
       "type": "string"
     },
+    "MemoryCategory": {
+      "enum": [
+        "userProfile",
+        "preference",
+        "project",
+        "fact",
+        "conversation",
+        "agent",
+        "skill"
+      ],
+      "type": "string"
+    },
+    "MemoryCleared": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "deleted"
+      ],
+      "type": "object"
+    },
+    "MemoryItem": {
+      "additionalProperties": false,
+      "properties": {
+        "accessCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "agentId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "category": {
+          "$ref": "#/definitions/MemoryCategory"
+        },
+        "content": {
+          "type": "string"
+        },
+        "conversationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "createdAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "expiresAtMs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "importance": {
+          "format": "float",
+          "type": "number"
+        },
+        "lastAccessedAtMs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "level": {
+          "$ref": "#/definitions/MemoryLevel"
+        },
+        "source": {
+          "$ref": "#/definitions/MemorySource"
+        },
+        "updatedAtMs": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "level",
+        "content",
+        "source",
+        "importance",
+        "accessCount",
+        "createdAtMs",
+        "updatedAtMs"
+      ],
+      "type": "object"
+    },
+    "MemoryLevel": {
+      "oneOf": [
+        {
+          "enum": [
+            "project",
+            "persistent"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "temporary",
+          "description": "Forgotten after a day.",
+          "type": "string"
+        },
+        {
+          "const": "session",
+          "description": "Forgotten when Wisp restarts.",
+          "type": "string"
+        }
+      ]
+    },
+    "MemoryList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/MemoryItem"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "description": "The cap on stored memories.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "limit"
+      ],
+      "type": "object"
+    },
+    "MemoryListParams": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/MemoryCategory"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "query": {
+          "description": "Filter by words in the content.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "MemoryRef": {
+      "additionalProperties": false,
+      "description": "A memory saved or used by an answer (shown in the chat).",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "content"
+      ],
+      "type": "object"
+    },
+    "MemorySaveParams": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/definitions/MemoryCategory"
+        },
+        "content": {
+          "type": "string"
+        },
+        "id": {
+          "description": "Omit to add.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "level": {
+          "$ref": "#/definitions/MemoryLevel"
+        }
+      },
+      "required": [
+        "content",
+        "category",
+        "level"
+      ],
+      "type": "object"
+    },
+    "MemorySettings": {
+      "additionalProperties": false,
+      "description": "Memory preferences (spec §67).",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "description": "Use saved memories in answers.",
+          "type": "boolean"
+        },
+        "learnFromChats": {
+          "default": true,
+          "description": "Save things the user clearly states (\"remember that…\", \"I prefer…\").",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "MemorySource": {
+      "oneOf": [
+        {
+          "const": "user",
+          "description": "Added or edited by the user on the Memory page.",
+          "type": "string"
+        },
+        {
+          "const": "extracted",
+          "description": "Taken from something the user said (\"remember that…\").",
+          "type": "string"
+        },
+        {
+          "const": "agent",
+          "description": "Saved by an agent.",
+          "type": "string"
+        }
+      ]
+    },
     "Message": {
       "additionalProperties": false,
       "properties": {
@@ -2747,6 +3055,13 @@
         },
         "role": {
           "$ref": "#/definitions/MessageRole"
+        },
+        "savedMemories": {
+          "description": "Memories saved from the question this answers (shown with Undo).",
+          "items": {
+            "$ref": "#/definitions/MemoryRef"
+          },
+          "type": "array"
         },
         "stage": {
           "anyOf": [
@@ -3979,6 +4294,22 @@
             },
             "value": {
               "$ref": "#/definitions/ComputerSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "memory",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/MemorySettings"
             }
           },
           "required": [
@@ -5965,6 +6296,46 @@
       "target": "core"
     },
     {
+      "name": "memory.list",
+      "params": {
+        "$ref": "#/definitions/MemoryListParams"
+      },
+      "result": {
+        "$ref": "#/definitions/MemoryList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "memory.save",
+      "params": {
+        "$ref": "#/definitions/MemorySaveParams"
+      },
+      "result": {
+        "$ref": "#/definitions/MemoryItem"
+      },
+      "target": "core"
+    },
+    {
+      "name": "memory.delete",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "memory.clear",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/MemoryCleared"
+      },
+      "target": "core"
+    },
+    {
       "name": "skill.list",
       "params": {
         "$ref": "#/definitions/Empty"
@@ -6231,6 +6602,16 @@
       },
       "result": {
         "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.embed",
+      "params": {
+        "$ref": "#/definitions/EmbedParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Embeddings"
       },
       "target": "host"
     },

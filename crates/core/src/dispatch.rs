@@ -59,6 +59,8 @@ impl Core {
         // Tool calls interrupted mid-approval or mid-action are recorded as failed.
         let _ = db.fail_unfinished_tool_calls();
         let _ = db.recover_unfinished_runs();
+        // Expired and session memories don't survive a restart.
+        let _ = db.prune_memories(true);
         let schema_version = db
             .schema_version()
             .map_err(|e| IpcError::internal(e.to_string()))?;
@@ -226,6 +228,30 @@ impl Core {
             ConversationSend::NAME => {
                 self.call::<ConversationSend, _, _>(params, |c, p| async move { c.send(p).await })
                     .await
+            }
+            wisp_ipc::methods::MemoryListMethod::NAME => {
+                self.call::<wisp_ipc::methods::MemoryListMethod, _, _>(params, |c, p| async move {
+                    c.memory_list(p.query, p.category).await
+                })
+                .await
+            }
+            wisp_ipc::methods::MemorySave::NAME => {
+                self.call::<wisp_ipc::methods::MemorySave, _, _>(params, |c, p| async move {
+                    c.memory_save(p).await
+                })
+                .await
+            }
+            wisp_ipc::methods::MemoryDelete::NAME => {
+                self.call::<wisp_ipc::methods::MemoryDelete, _, _>(params, |c, p| async move {
+                    c.memory_delete(p.id).await
+                })
+                .await
+            }
+            wisp_ipc::methods::MemoryClear::NAME => {
+                self.call::<wisp_ipc::methods::MemoryClear, _, _>(params, |c, _| async move {
+                    c.memory_clear().await
+                })
+                .await
             }
             wisp_ipc::methods::SkillListMethod::NAME => {
                 self.call::<wisp_ipc::methods::SkillListMethod, _, _>(params, |c, _| async move {

@@ -148,6 +148,7 @@ mod tests {
             reasoning_ms: None,
             context: None,
             guidance: vec![],
+            saved_memories: vec![],
             stage: None,
             created_at_ms: 0,
         }

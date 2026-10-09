@@ -50,7 +50,6 @@ export const sections: Section[] = [
     path: "/memory",
     label: "Memory",
     icon: MemoryIcon,
-    unavailableNote: "Memory isn't available in this build yet. Nothing is being remembered.",
   },
   {
     path: "/files",

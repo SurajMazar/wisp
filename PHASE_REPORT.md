@@ -463,3 +463,38 @@ import (off by default), export; mirrored to disk; attachable to agents.
 ## Stop Gate 14
 PASS on automated evidence (skill loads, affects behavior, can be disabled, edited, survives restart).
 
+---
+
+# Phase 15 — Memory (2026-10-09)
+
+## Summary
+Controlled persistent memory: explicit statements are saved visibly (with Undo), recalled when relevant using
+on-device embeddings, and fully inspectable, editable and deletable.
+
+## Implemented
+- Contracts: `MemoryItem` (category, level, source, scope, usage), `memory.list|save|delete|clear`, `host.embed`,
+  `MemorySettings`, `Message.savedMemories`, `ContextInfo.memories`
+- `wisp-memory`: extraction (with third-person rewriting), forget requests, lexical + cosine ranking calibrated on
+  measured Apple embeddings, vector encoding
+- Database: memories (scoped links checked), embeddings per model, prune expired/session, usage tracking
+- Core: memory service (dedupe, cap, embedding cache, recall with agent scope), extraction in `send`, recall into
+  answers/lessons and agent runs, agent `remember` action
+- Host: `SentenceEmbedder` (NLEmbedding sentence, English)
+- UI: Memory page (grouped, search, add/edit/delete, Forget everything with confirmation, settings), "Remembered … Undo"
+  under answers, Context count
+
+## Tests Added
+- Rust: extraction (8 cases + non-statements), forget, ranking, calibration on 6 measured pairs, vectors (5);
+  repository (1); stop gate end to end with and without embeddings — preference saved visibly, related question
+  recalls it, unrelated doesn't, forget removes it; manual add/edit/temporary/validation/filter/delete, learning
+  off, memory off, clear (2); agent `remember` parsing
+- Swift: on-device embeddings rank a related sentence above an unrelated one
+- React: grouped list + forget, add + Forget everything confirmation, Remembered/Undo chip (3)
+
+## Evidence
+Measured on this Mac (Apple NL sentence embeddings): coffee preference ↔ "Which coffee should I buy?" 0.394;
+dentist ↔ coffee 0.290; editor preference ↔ "Book a flight" 0.017 — used to calibrate ranking.
+
+## Stop Gate 15
+PASS on automated evidence (stated preference → memory → later conversation retrieves it; inspect; delete).
+

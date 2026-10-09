@@ -173,6 +173,11 @@ enum HostMethods {
             return Empty()
         }
 
+        router.register(IPCMethods.hostEmbed) { params in
+            guard (1...64).contains(params.texts.count) else { throw IpcError.invalidRequest("1–64 texts") }
+            return await SentenceEmbedder.shared.embed(params.texts)
+        }
+
         router.register(IPCMethods.hostScreenObserve) { _ in
             try await focus.observeFrontWindow()
         }

@@ -2378,6 +2378,7 @@ dependencies = [
  "wisp-computer",
  "wisp-database",
  "wisp-ipc",
+ "wisp-memory",
  "wisp-permissions",
  "wisp-providers",
  "wisp-screen",
@@ -2426,7 +2427,6 @@ name = "wisp-memory"
 version = "0.1.0"
 dependencies = [
  "wisp-common",
- "wisp-database",
  "wisp-ipc",
 ]
 

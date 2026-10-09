@@ -65,6 +65,9 @@ pub struct Message {
     /// How long the model reasoned before answering.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_ms: Option<u32>,
+    /// Memories saved from the question this answers (shown with Undo).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub saved_memories: Vec<super::memory::MemoryRef>,
     /// Things on screen this answer pointed at (shown with the guidance overlay).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub guidance: Vec<super::guidance::GuidanceTarget>,
@@ -99,6 +102,9 @@ pub struct ContextInfo {
     /// Skills whose instructions were included.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skills: Vec<String>,
+    /// Saved memories included.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub memories: Vec<String>,
     /// Why the screenshot wasn't sent even though one was attached.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_only_reason: Option<String>,
