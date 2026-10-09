@@ -205,6 +205,11 @@ impl OllamaProvider {
     }
 }
 
+/// Entries Ollama lists for its own bookkeeping rather than as user-facing models.
+pub fn is_internal_alias(name: &str) -> bool {
+    name.starts_with("llamacpp:") || name.starts_with("sha256-") || name.starts_with("sha256:")
+}
+
 /// Ollama model names: `name[:tag]` with a conservative character set (no paths, no URLs).
 pub fn validate_model_name(name: &str) -> Result<(), AiError> {
     let ok = !name.is_empty()
@@ -347,6 +352,17 @@ impl AiProvider for OllamaProvider {
             .json()
             .await
             .map_err(|e| AiError::Protocol(e.to_string()))?;
+        // Ollama can list internal aliases (`llamacpp:<digest>`, `sha256-…`) and duplicate names;
+        // show each real model once.
+        let mut seen = std::collections::HashSet::new();
+        let tags = Tags {
+            models: tags
+                .models
+                .into_iter()
+                .filter(|m| !is_internal_alias(&m.name))
+                .filter(|m| seen.insert(m.name.clone()))
+                .collect(),
+        };
         let shows =
             futures::future::join_all(tags.models.iter().map(|m| self.show(&m.name, &m.digest)))
                 .await;
@@ -474,6 +490,13 @@ mod tests {
             })]
         );
         assert!(parse_chat_line(r#"{"error":"model not found"}"#).is_err());
+    }
+
+    #[test]
+    fn hides_internal_aliases() {
+        assert!(is_internal_alias("llamacpp:e707b2c67b41"));
+        assert!(is_internal_alias("sha256-e707b2c67b41:latest"));
+        assert!(!is_internal_alias("qwen3-vl:8b-instruct"));
     }
 
     #[test]

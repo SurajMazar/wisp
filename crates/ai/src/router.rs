@@ -85,6 +85,9 @@ pub fn route(input: &RouteInput<'_>) -> Result<RouteInfo, AiError> {
     // for short prompts (fast, private), otherwise the largest-context local model.
     let rank = |(p, m): &(&ProviderInfo, &ModelInfo)| {
         let local = (m.locality == Locality::Local) as u8;
+        // Reasoning ("thinking") models deliberate silently before answering; for interactive
+        // questions prefer models that answer straight away.
+        let answers_immediately = !m.capabilities.contains(&ModelCapability::Reasoning) as u8;
         let apple_short = (p.kind == ProviderKind::Apple
             && !input.needs_vision
             && input.estimated_prompt_tokens < 2500) as u8;
@@ -93,6 +96,7 @@ pub fn route(input: &RouteInput<'_>) -> Result<RouteInfo, AiError> {
             local,
             apple_short,
             vision_bonus,
+            answers_immediately,
             m.context_length.unwrap_or(0),
             m.size_bytes.unwrap_or(0),
         )
@@ -293,6 +297,28 @@ mod tests {
         let r = route(&i).expect("fallback");
         assert_eq!(r.model.provider_id, "apple");
         assert!(r.reason.contains("isn't available"));
+    }
+
+    #[test]
+    fn prefers_models_that_answer_immediately() {
+        let mut w = world();
+        let mut thinking = model(
+            "ollama",
+            "qwen3-vl:8b-thinking",
+            Locality::Local,
+            true,
+            262144,
+        );
+        thinking.capabilities.push(ModelCapability::Reasoning);
+        thinking.size_bytes = Some(10);
+        w[1].1.push(thinking);
+        assert_eq!(
+            route(&input(&w, PrivacyMode::LocalOnly, true))
+                .expect("route")
+                .model
+                .model,
+            "qwen3-vl:8b"
+        );
     }
 
     #[test]

@@ -21,9 +21,9 @@ const stateBadge: Record<ProviderState, { text: string; tone: string }> = {
 };
 
 const suggestions = [
-  { name: "qwen3-vl:8b", note: "Sees your screen · 6.1 GB · recommended" },
-  { name: "gemma3:4b", note: "Sees images · 3.3 GB · faster" },
-  { name: "llama3.2:3b", note: "Text only · 2.0 GB · fastest" },
+  { name: "qwen3-vl:8b-instruct", note: "Sees your screen · 6.1 GB · recommended" },
+  { name: "qwen3-vl:4b-instruct", note: "Sees your screen · 3.3 GB · faster" },
+  { name: "gemma3:4b", note: "Sees images · 3.3 GB" },
 ];
 
 const gb = (b?: number | null) => (b ? `${(b / 1e9).toFixed(1)} GB` : "");
@@ -42,6 +42,7 @@ function Chips({ m }: { m: ModelInfo }) {
   const chips = [
     m.capabilities.includes("vision") ? "Sees images" : "Text",
     m.capabilities.includes("toolCalling") ? "Tools" : null,
+    m.capabilities.includes("reasoning") ? "Thinks before answering" : null,
     m.contextLength ? `${Math.round(m.contextLength / 1024)}K context` : null,
     m.parameterSize,
     gb(m.sizeBytes),

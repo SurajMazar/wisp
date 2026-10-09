@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { ipc } from "../../services/ipc";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { useConnectionStore } from "../../stores/connectionStore";
+import { useConversationStore } from "../../stores/conversationStore";
 import { useFocusStore } from "../../stores/focusStore";
 import { useModelsStore } from "../../stores/modelsStore";
 import { useInvocationStore } from "../../stores/invocationStore";
@@ -23,6 +24,9 @@ export function Bootstrap({ children }: { children: ReactNode }) {
       client.on("focus.ended", (e) => useFocusStore.getState().ended(e)),
       client.on("focus.cleared", () => useFocusStore.getState().cleared()),
       client.on("models.pullProgress", (p) => useModelsStore.getState().receivePull(p)),
+      client.on("conversation.delta", (d) => useConversationStore.getState().receiveDelta(d)),
+      client.on("conversation.messageUpdated", (m) => useConversationStore.getState().receiveMessage(m)),
+      client.on("conversation.updated", (c) => useConversationStore.getState().receiveSummary(c)),
       client.on("core.ready", (info) => {
         useConnectionStore.getState().setConnected(info);
         void useSettingsStore.getState().load();

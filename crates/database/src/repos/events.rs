@@ -36,6 +36,44 @@ impl Database {
     }
 }
 
+impl Database {
+    /// Local diagnostics (spec §105): provider, model, latency, tokens. Never prompt or answer text.
+    #[allow(clippy::too_many_arguments)]
+    pub fn record_diagnostic(
+        &self,
+        category: &str,
+        name: &str,
+        provider: Option<&str>,
+        model: Option<&str>,
+        latency_ms: Option<i64>,
+        tokens: (Option<u32>, Option<u32>),
+        data: Value,
+    ) -> DbResult<()> {
+        let conn = self.lock()?;
+        conn.execute(
+            "INSERT INTO diagnostics (id, category, name, provider, model, latency_ms, tokens_in, tokens_out, data, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![
+                wisp_common::ids::new_id(),
+                category,
+                name,
+                provider,
+                model,
+                latency_ms,
+                tokens.0,
+                tokens.1,
+                serde_json::to_string(&data)?,
+                wisp_common::time::now_ms()
+            ],
+        )?;
+        conn.execute(
+            "DELETE FROM diagnostics WHERE id IN (SELECT id FROM diagnostics ORDER BY created_at DESC LIMIT -1 OFFSET 5000)",
+            [],
+        )?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

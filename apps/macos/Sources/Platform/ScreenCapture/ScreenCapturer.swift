@@ -60,19 +60,44 @@ public enum ScreenCapturer {
         }
         CGImageDestinationAddImage(dest, image, nil)
         guard CGImageDestinationFinalize(dest) else { throw CaptureError.encodeFailed }
+        // A compressed copy sized for vision models (spec §98: compress screenshots).
+        if let small = downscaled(image, maxSide: 1280) {
+            let modelURL = directory.appendingPathComponent("\(id).model.jpg")
+            if let d = CGImageDestinationCreateWithURL(modelURL as CFURL, UTType.jpeg.identifier as CFString, 1, nil) {
+                CGImageDestinationAddImage(d, small, [kCGImageDestinationLossyCompressionQuality: 0.85] as CFDictionary)
+                CGImageDestinationFinalize(d)
+            }
+        }
         prune(directory: directory, keep: keep)
         return url
+    }
+
+    /// Image no larger than `maxSide` on its longest edge (unchanged if already smaller).
+    public static func downscaled(_ image: CGImage, maxSide: Int) -> CGImage? {
+        let longest = max(image.width, image.height)
+        guard longest > maxSide else { return image }
+        let scale = Double(maxSide) / Double(longest)
+        let w = Int((Double(image.width) * scale).rounded()), h = Int((Double(image.height) * scale).rounded())
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
+        ctx.interpolationQuality = .high
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return ctx.makeImage()
     }
 
     static func prune(directory: URL, keep: Int) {
         let fm = FileManager.default
         guard let files = try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])
             .filter({ $0.pathExtension == "png" }) else { return }
+        // Remove the model JPEG alongside each pruned PNG.
         let sorted = files.sorted {
             let a = (try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             let b = (try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             return a > b
         }
-        for f in sorted.dropFirst(keep) { try? fm.removeItem(at: f) }
+        for f in sorted.dropFirst(keep) {
+            try? fm.removeItem(at: f)
+            try? fm.removeItem(at: f.deletingPathExtension().appendingPathExtension("model.jpg"))
+        }
     }
 }

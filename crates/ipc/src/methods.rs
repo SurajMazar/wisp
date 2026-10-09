@@ -9,7 +9,8 @@ use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
-    accessibility::*, app::*, cursor::*, focus::*, invocation::*, models::*, settings::*,
+    accessibility::*, app::*, conversations::*, cursor::*, focus::*, invocation::*, models::*,
+    settings::*,
 };
 
 /// Which side implements a method.
@@ -156,6 +157,17 @@ define_methods! {
     /// Which model would answer, and why (respects privacy mode).
     AiRoute = "ai.route", Core, RouteParams => RouteInfo;
 
+    /// Recent conversations, newest first; `query` searches titles and messages.
+    ConversationListMethod = "conversation.list", Core, ConversationListParams => ConversationList;
+    ConversationGet = "conversation.get", Core, IdParams => Conversation;
+    /// Ask a question. Returns immediately; the answer streams as `conversation.delta`.
+    ConversationSend = "conversation.send", Core, SendParams => SendResult;
+    /// Stop an answer that is still streaming (by assistant message id).
+    ConversationCancel = "conversation.cancel", Core, IdParams => Empty;
+    ConversationRename = "conversation.rename", Core, RenameParams => ConversationSummary;
+    ConversationPin = "conversation.pin", Core, PinParams => ConversationSummary;
+    ConversationDelete = "conversation.delete", Core, IdParams => Empty;
+
     /// Rank and trim an accessibility snapshot into model-ready context.
     AccessibilityRank = "accessibility.rank", Core, AxRankParams => AxContext;
     /// The most recent focus region the core accepted.
@@ -187,6 +199,12 @@ define_events! {
     ModelsPullProgress = "models.pullProgress", PullProgress;
     /// Streaming text from Apple Foundation Models (host → core).
     AppleDeltaEvent = "apple.delta", AppleDelta;
+    /// Streaming text of an assistant message.
+    ConversationDeltaEvent = "conversation.delta", MessageDelta;
+    /// A message was created or changed status (complete, cancelled, error).
+    MessageUpdated = "conversation.messageUpdated", Message;
+    /// A conversation's title, pin or recency changed.
+    ConversationUpdated = "conversation.updated", ConversationSummary;
 }
 
 #[cfg(test)]

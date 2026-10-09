@@ -2,6 +2,7 @@
 
 pub mod accessibility;
 pub mod app;
+pub mod conversations;
 pub mod cursor;
 pub mod focus;
 pub mod invocation;

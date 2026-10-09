@@ -301,6 +301,75 @@ export type ChannelState = z.output<typeof ChannelState>;
 export const ConflictSeverity = z.enum(["blocking","warning"]);
 export type ConflictSeverity = z.output<typeof ConflictSeverity>;
 
+export const FocusKind = z.enum(["rectangle","circle","point","lasso","window","screen"]);
+export type FocusKind = z.output<typeof FocusKind>;
+
+/** What the user was pointing at when they asked. Metadata only; the image stays in the cache. */
+export const FocusAttachment = z.strictObject({
+  "focusId": z.string(),
+  "imageUrl": z.string().nullable().optional(),
+  "kind": FocusKind,
+  "label": z.string(),
+});
+export type FocusAttachment = z.output<typeof FocusAttachment>;
+
+export const Locality = z.enum(["local","cloud"]);
+export type Locality = z.output<typeof Locality>;
+
+export const MessageRole = z.enum(["user","assistant"]);
+export type MessageRole = z.output<typeof MessageRole>;
+
+export const MessageStatus = z.enum(["streaming","complete","cancelled","error"]);
+export type MessageStatus = z.output<typeof MessageStatus>;
+
+export const Message = z.strictObject({
+  "content": z.string(),
+  "conversationId": z.string(),
+  "createdAtMs": z.number().int(),
+  "error": z.string().nullable().optional(),
+  "errorDetails": z.string().nullable().optional(),
+  "focus": FocusAttachment.nullable().optional(),
+  "id": z.string(),
+  "latencyMs": z.number().int().nonnegative().nullable().optional(),
+  "locality": Locality.nullable().optional(),
+  "model": ModelRef.nullable().optional(),
+  "modelName": z.string().nullable().optional(),
+  "role": MessageRole,
+  "status": MessageStatus,
+});
+export type Message = z.output<typeof Message>;
+
+export const Conversation = z.strictObject({
+  "createdAtMs": z.number().int(),
+  "id": z.string(),
+  "messages": z.array(Message),
+  "pinned": z.boolean(),
+  "title": z.string(),
+  "updatedAtMs": z.number().int(),
+});
+export type Conversation = z.output<typeof Conversation>;
+
+export const ConversationSummary = z.strictObject({
+  "id": z.string(),
+  "messageCount": z.number().int().nonnegative(),
+  "pinned": z.boolean(),
+  "preview": z.string().nullable().optional(),
+  "title": z.string(),
+  "updatedAtMs": z.number().int(),
+});
+export type ConversationSummary = z.output<typeof ConversationSummary>;
+
+export const ConversationList = z.strictObject({
+  "items": z.array(ConversationSummary),
+});
+export type ConversationList = z.output<typeof ConversationList>;
+
+export const ConversationListParams = z.strictObject({
+  "limit": z.number().int().nonnegative(),
+  "query": z.string().nullable().optional(),
+});
+export type ConversationListParams = z.output<typeof ConversationListParams>;
+
 /** Play the given states on the real on-screen buddy, for previewing themes. */
 export const CursorPreviewParams = z.strictObject({
   "states": z.array(AssistantState),
@@ -342,9 +411,6 @@ export const FocusImage = z.strictObject({
 });
 export type FocusImage = z.output<typeof FocusImage>;
 
-export const FocusKind = z.enum(["rectangle","circle","point","lasso","window","screen"]);
-export type FocusKind = z.output<typeof FocusKind>;
-
 /** What the user pointed the assistant at (spec §34). */
 export const FocusRegion = z.strictObject({
   "accessibility": AxContext.nullable().optional(),
@@ -371,6 +437,11 @@ export const FocusStarted = z.strictObject({
   "kind": FocusKind,
 });
 export type FocusStarted = z.output<typeof FocusStarted>;
+
+export const IdParams = z.strictObject({
+  "id": z.string(),
+});
+export type IdParams = z.output<typeof IdParams>;
 
 export const InvocationEndReason = z.enum(["released","toggled","dismissed","cancelled"]);
 export type InvocationEndReason = z.output<typeof InvocationEndReason>;
@@ -427,8 +498,12 @@ export const LatestFocus = z.strictObject({
 });
 export type LatestFocus = z.output<typeof LatestFocus>;
 
-export const Locality = z.enum(["local","cloud"]);
-export type Locality = z.output<typeof Locality>;
+export const MessageDelta = z.strictObject({
+  "conversationId": z.string(),
+  "delta": z.string(),
+  "messageId": z.string(),
+});
+export type MessageDelta = z.output<typeof MessageDelta>;
 
 export const MicrophoneStatus = z.strictObject({
   "state": PermissionState,
@@ -500,6 +575,12 @@ export const OpenSettingsPaneParams = z.strictObject({
 });
 export type OpenSettingsPaneParams = z.output<typeof OpenSettingsPaneParams>;
 
+export const PinParams = z.strictObject({
+  "id": z.string(),
+  "pinned": z.boolean(),
+});
+export type PinParams = z.output<typeof PinParams>;
+
 export const PullProgress = z.strictObject({
   "completed": z.number().int().nonnegative().nullable().optional(),
   "done": z.boolean(),
@@ -509,6 +590,12 @@ export const PullProgress = z.strictObject({
   "total": z.number().int().nonnegative().nullable().optional(),
 });
 export type PullProgress = z.output<typeof PullProgress>;
+
+export const RenameParams = z.strictObject({
+  "id": z.string(),
+  "title": z.string(),
+});
+export type RenameParams = z.output<typeof RenameParams>;
 
 export const RequestIdParams = z.strictObject({
   "requestId": z.string(),
@@ -534,6 +621,22 @@ export const ScreenPermissionStatus = z.strictObject({
   "screenRecording": PermissionState,
 });
 export type ScreenPermissionStatus = z.output<typeof ScreenPermissionStatus>;
+
+export const SendParams = z.strictObject({
+  "allowCloud": z.boolean().default(false),
+  "conversationId": z.string().nullable().optional(),
+  "includeFocus": z.boolean().default(false),
+  "model": ModelRef.nullable().optional(),
+  "text": z.string(),
+});
+export type SendParams = z.output<typeof SendParams>;
+
+export const SendResult = z.strictObject({
+  "assistantMessage": Message,
+  "conversationId": z.string(),
+  "userMessage": Message,
+});
+export type SendResult = z.output<typeof SendResult>;
 
 /** One section replaced atomically. */
 export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings })]);
@@ -605,6 +708,13 @@ export const methods = {
   "models.delete": { target: "core", params: ModelNameParams, result: Empty },
   "models.test": { target: "core", params: ModelTestParams, result: ModelTestResult },
   "ai.route": { target: "core", params: RouteParams, result: RouteInfo },
+  "conversation.list": { target: "core", params: ConversationListParams, result: ConversationList },
+  "conversation.get": { target: "core", params: IdParams, result: Conversation },
+  "conversation.send": { target: "core", params: SendParams, result: SendResult },
+  "conversation.cancel": { target: "core", params: IdParams, result: Empty },
+  "conversation.rename": { target: "core", params: RenameParams, result: ConversationSummary },
+  "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
+  "conversation.delete": { target: "core", params: IdParams, result: Empty },
   "accessibility.rank": { target: "core", params: AxRankParams, result: AxContext },
   "focus.latest": { target: "core", params: Empty, result: LatestFocus },
 } as const;
@@ -622,6 +732,9 @@ export const events = {
   "focus.cleared": Empty,
   "models.pullProgress": PullProgress,
   "apple.delta": AppleDelta,
+  "conversation.delta": MessageDelta,
+  "conversation.messageUpdated": Message,
+  "conversation.updated": ConversationSummary,
 } as const;
 
 export type MethodName = keyof typeof methods;

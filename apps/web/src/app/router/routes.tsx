@@ -1,6 +1,7 @@
 import { createHashRouter, Navigate } from "react-router";
 import { AppShell } from "../../components/shell/AppShell";
 import { AssistantPanel } from "../../features/assistant/AssistantPanel";
+import { ConversationsPage } from "../../features/conversations/ConversationsPage";
 import { HomePage } from "../../features/home/HomePage";
 import { ModelsPage } from "../../features/models/ModelsPage";
 import { PermissionsPage } from "../../features/permissions/PermissionsPage";
@@ -13,6 +14,7 @@ const built: Record<string, React.ReactNode> = {
   "/settings": <SettingsPage />,
   "/permissions": <PermissionsPage />,
   "/models": <ModelsPage />,
+  "/conversations": <ConversationsPage />,
 };
 
 /** Hash routing: works identically under wisp:// in the app and the Vite dev server. */

@@ -8,11 +8,14 @@ use wisp_database::Database;
 use wisp_ipc::{
     IpcError, Method,
     methods::{
-        AccessibilityRank, AiRoute, AppInfoMethod, FocusLatest, ModelsCancelPull, ModelsDelete,
-        ModelsListMethod, ModelsPull, ModelsTest, SettingsChanged, SettingsGet, SettingsUpdate,
+        AccessibilityRank, AiRoute, AppInfoMethod, ConversationCancel, ConversationDelete,
+        ConversationGet, ConversationListMethod, ConversationPin, ConversationRename,
+        ConversationSend, FocusLatest, ModelsCancelPull, ModelsDelete, ModelsListMethod,
+        ModelsPull, ModelsTest, SettingsChanged, SettingsGet, SettingsUpdate,
     },
     types::{
         app::{AppInfo, Empty},
+        conversations::ConversationList,
         focus::{FocusRegion, LatestFocus},
     },
 };
@@ -28,6 +31,7 @@ pub struct Core {
 struct Inner {
     db: Database,
     ai: Arc<crate::ai::AiServices>,
+    streams: crate::conversations::Streams,
     events: EventBus,
     info: AppInfo,
     /// The region the user last focused. In memory only: pixels never reach the database.
@@ -36,6 +40,14 @@ struct Inner {
 
 impl Core {
     pub fn new(db: Database, paths: &DataPaths, events: EventBus) -> Result<Self, IpcError> {
+        // Answers interrupted by a crash or quit are marked cancelled, never left "streaming".
+        if let Ok(n) = db
+            .recover_streaming_messages()
+            .map_err(|e| tracing::warn!(error = %e, "recovery failed"))
+            && n > 0
+        {
+            tracing::info!(count = n, "recovered interrupted answers");
+        }
         let schema_version = db
             .schema_version()
             .map_err(|e| IpcError::internal(e.to_string()))?;
@@ -50,6 +62,7 @@ impl Core {
             inner: Arc::new(Inner {
                 db,
                 ai: Arc::new(crate::ai::AiServices::default()),
+                streams: Default::default(),
                 events,
                 info,
                 latest_focus: Mutex::new(None),
@@ -169,6 +182,83 @@ impl Core {
                 })
                 .await
             }
+            ConversationListMethod::NAME => {
+                self.call::<ConversationListMethod, _, _>(params, |c, p| async move {
+                    let limit = p.limit.clamp(1, 500);
+                    let items = c
+                        .blocking(move |db| db.list_conversations(p.query.as_deref(), limit))
+                        .await?;
+                    Ok(ConversationList { items })
+                })
+                .await
+            }
+            ConversationGet::NAME => {
+                self.call::<ConversationGet, _, _>(params, |c, p| async move {
+                    let id = valid_id(p.id)?;
+                    c.blocking(move |db| db.get_conversation(&id))
+                        .await?
+                        .ok_or_else(|| {
+                            IpcError::new(
+                                wisp_ipc::ErrorCode::NotFound,
+                                "That conversation no longer exists.",
+                            )
+                        })
+                })
+                .await
+            }
+            ConversationSend::NAME => {
+                self.call::<ConversationSend, _, _>(params, |c, p| async move { c.send(p).await })
+                    .await
+            }
+            ConversationCancel::NAME => {
+                self.call::<ConversationCancel, _, _>(params, |c, p| async move {
+                    c.inner.streams.cancel(&valid_id(p.id)?);
+                    Ok(Empty {})
+                })
+                .await
+            }
+            ConversationRename::NAME => {
+                self.call::<ConversationRename, _, _>(params, |c, p| async move {
+                    let id = valid_id(p.id)?;
+                    let title = p.title.trim().chars().take(120).collect::<String>();
+                    if title.is_empty() {
+                        return Err(IpcError::invalid_params("title must not be empty"));
+                    }
+                    let id2 = id.clone();
+                    c.blocking(move |db| db.rename_conversation(&id2, &title))
+                        .await?;
+                    c.summary_or_not_found(id).await
+                })
+                .await
+            }
+            ConversationPin::NAME => {
+                self.call::<ConversationPin, _, _>(params, |c, p| async move {
+                    let id = valid_id(p.id)?;
+                    let id2 = id.clone();
+                    c.blocking(move |db| db.pin_conversation(&id2, p.pinned))
+                        .await?;
+                    c.summary_or_not_found(id).await
+                })
+                .await
+            }
+            ConversationDelete::NAME => {
+                self.call::<ConversationDelete, _, _>(params, |c, p| async move {
+                    let id = valid_id(p.id)?;
+                    if let Some(conv) = {
+                        let id = id.clone();
+                        c.blocking(move |db| db.get_conversation(&id)).await?
+                    } {
+                        for m in conv.messages.iter().filter(|m| {
+                            m.status == wisp_ipc::types::conversations::MessageStatus::Streaming
+                        }) {
+                            c.inner.streams.cancel(&m.id);
+                        }
+                    }
+                    c.blocking(move |db| db.delete_conversation(&id)).await?;
+                    Ok(Empty {})
+                })
+                .await
+            }
             FocusLatest::NAME => {
                 self.call::<FocusLatest, _, _>(params, |c, _| async move {
                     Ok(LatestFocus {
@@ -179,6 +269,10 @@ impl Core {
             }
             other => Err(IpcError::method_not_found(other)),
         }
+    }
+
+    pub(crate) fn inner_streams(&self) -> &crate::conversations::Streams {
+        &self.inner.streams
     }
 
     pub fn ai(&self) -> &Arc<crate::ai::AiServices> {
@@ -195,6 +289,25 @@ impl Core {
 
     async fn settings(&self) -> Result<wisp_ipc::types::settings::AppSettings, IpcError> {
         self.blocking(|db| db.load_settings()).await
+    }
+
+    async fn summary_or_not_found(
+        &self,
+        id: String,
+    ) -> Result<wisp_ipc::types::conversations::ConversationSummary, IpcError> {
+        let s = self
+            .blocking(move |db| db.conversation_summary(&id))
+            .await?
+            .ok_or_else(|| {
+                IpcError::new(
+                    wisp_ipc::ErrorCode::NotFound,
+                    "That conversation no longer exists.",
+                )
+            })?;
+        self.inner
+            .events
+            .publish::<wisp_ipc::methods::ConversationUpdated>(&s);
+        Ok(s)
     }
 
     pub fn latest_focus(&self) -> Option<FocusRegion> {
@@ -290,7 +403,7 @@ impl Core {
     }
 
     /// Run a database operation on the blocking pool.
-    async fn blocking<T, F>(&self, f: F) -> Result<T, IpcError>
+    pub(crate) async fn blocking<T, F>(&self, f: F) -> Result<T, IpcError>
     where
         T: Send + 'static,
         F: FnOnce(&Database) -> wisp_database::DbResult<T> + Send + 'static,
@@ -300,5 +413,13 @@ impl Core {
             .await
             .map_err(|e| IpcError::internal(format!("task join: {e}")))?
             .map_err(|e| IpcError::internal(e.to_string()))
+    }
+}
+
+fn valid_id(id: String) -> Result<String, IpcError> {
+    if wisp_common::ids::is_valid_id(&id) {
+        Ok(id)
+    } else {
+        Err(IpcError::invalid_params("invalid id"))
     }
 }

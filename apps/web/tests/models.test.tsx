@@ -109,15 +109,23 @@ describe("Models page", () => {
 
   it("downloads with progress and can pause and resume", async () => {
     render(<ModelsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /gemma3:4b/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /qwen3-vl:4b-instruct/ }));
     act(() =>
-      useModelsStore
-        .getState()
-        .receivePull({ name: "gemma3:4b", status: "pulling", completed: 1.1e9, total: 3.3e9, done: false }),
+      useModelsStore.getState().receivePull({
+        name: "qwen3-vl:4b-instruct",
+        status: "pulling",
+        completed: 1.1e9,
+        total: 3.3e9,
+        done: false,
+      }),
     );
     expect(screen.getByText("1.1 GB / 3.3 GB · 33%")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Pause" }));
-    act(() => useModelsStore.getState().receivePull({ name: "gemma3:4b", status: "cancelled", done: true }));
+    act(() =>
+      useModelsStore
+        .getState()
+        .receivePull({ name: "qwen3-vl:4b-instruct", status: "cancelled", done: true }),
+    );
     expect(await screen.findByRole("button", { name: "Resume" })).toBeInTheDocument();
   });
 });

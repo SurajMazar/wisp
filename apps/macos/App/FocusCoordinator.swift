@@ -77,6 +77,7 @@ final class FocusCoordinator {
     func clear() {
         if let id = latest?.id {
             try? FileManager.default.removeItem(at: AppPaths.focusCacheDirectory.appendingPathComponent("\(id).png"))
+            try? FileManager.default.removeItem(at: AppPaths.focusCacheDirectory.appendingPathComponent("\(id).model.jpg"))
         }
         latest = nil
         router.emit(IPCEvents.focusCleared, Empty())

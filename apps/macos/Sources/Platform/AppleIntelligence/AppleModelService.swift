@@ -63,8 +63,11 @@ public final class AppleModelService {
                 return try await task.value
             } catch is CancellationError {
                 throw IpcError(code: .cancelled, details: nil, message: "Cancelled.")
-            } catch let e as LanguageModelSession.GenerationError {
-                throw IpcError(code: .unavailable, details: String(describing: e), message: "Apple's on-device model couldn't answer that.")
+            } catch let e as IpcError {
+                throw e
+            } catch {
+                // GenerationError and bridged system errors (e.g. the model service being busy).
+                throw IpcError(code: .unavailable, details: String(describing: error), message: "Apple's on-device model couldn't answer that right now.")
             }
         }
         #endif

@@ -2,6 +2,7 @@
 
 pub mod ai;
 pub mod config;
+pub mod conversations;
 pub mod dispatch;
 pub mod events;
 pub mod logging;

@@ -546,6 +546,133 @@ public enum ConflictSeverity: String, Codable, Sendable, Equatable, CaseIterable
     case warning = "warning"
 }
 
+public enum FocusKind: String, Codable, Sendable, Equatable, CaseIterable {
+    case rectangle = "rectangle"
+    case circle = "circle"
+    case point = "point"
+    case lasso = "lasso"
+    case window = "window"
+    case screen = "screen"
+}
+
+/// What the user was pointing at when they asked. Metadata only; the image stays in the cache.
+public struct FocusAttachment: Codable, Sendable, Equatable {
+    public var focusId: String
+    public var imageUrl: String?
+    public var kind: FocusKind
+    public var label: String
+
+    public init(focusId: String, imageUrl: String? = nil, kind: FocusKind, label: String) {
+        self.focusId = focusId
+        self.imageUrl = imageUrl
+        self.kind = kind
+        self.label = label
+    }
+}
+
+public enum Locality: String, Codable, Sendable, Equatable, CaseIterable {
+    case local = "local"
+    case cloud = "cloud"
+}
+
+public enum MessageRole: String, Codable, Sendable, Equatable, CaseIterable {
+    case user = "user"
+    case assistant = "assistant"
+}
+
+public enum MessageStatus: String, Codable, Sendable, Equatable, CaseIterable {
+    case streaming = "streaming"
+    case complete = "complete"
+    case cancelled = "cancelled"
+    case error = "error"
+}
+
+public struct Message: Codable, Sendable, Equatable {
+    public var content: String
+    public var conversationId: String
+    public var createdAtMs: Int64
+    public var error: String?
+    public var errorDetails: String?
+    public var focus: FocusAttachment?
+    public var id: String
+    public var latencyMs: UInt32?
+    public var locality: Locality?
+    public var model: ModelRef?
+    public var modelName: String?
+    public var role: MessageRole
+    public var status: MessageStatus
+
+    public init(content: String, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, role: MessageRole, status: MessageStatus) {
+        self.content = content
+        self.conversationId = conversationId
+        self.createdAtMs = createdAtMs
+        self.error = error
+        self.errorDetails = errorDetails
+        self.focus = focus
+        self.id = id
+        self.latencyMs = latencyMs
+        self.locality = locality
+        self.model = model
+        self.modelName = modelName
+        self.role = role
+        self.status = status
+    }
+}
+
+public struct Conversation: Codable, Sendable, Equatable {
+    public var createdAtMs: Int64
+    public var id: String
+    public var messages: [Message]
+    public var pinned: Bool
+    public var title: String
+    public var updatedAtMs: Int64
+
+    public init(createdAtMs: Int64, id: String, messages: [Message], pinned: Bool, title: String, updatedAtMs: Int64) {
+        self.createdAtMs = createdAtMs
+        self.id = id
+        self.messages = messages
+        self.pinned = pinned
+        self.title = title
+        self.updatedAtMs = updatedAtMs
+    }
+}
+
+public struct ConversationSummary: Codable, Sendable, Equatable {
+    public var id: String
+    public var messageCount: UInt32
+    public var pinned: Bool
+    public var preview: String?
+    public var title: String
+    public var updatedAtMs: Int64
+
+    public init(id: String, messageCount: UInt32, pinned: Bool, preview: String? = nil, title: String, updatedAtMs: Int64) {
+        self.id = id
+        self.messageCount = messageCount
+        self.pinned = pinned
+        self.preview = preview
+        self.title = title
+        self.updatedAtMs = updatedAtMs
+    }
+}
+
+public struct ConversationList: Codable, Sendable, Equatable {
+    public var items: [ConversationSummary]
+
+    public init(items: [ConversationSummary]) {
+        self.items = items
+    }
+}
+
+public struct ConversationListParams: Codable, Sendable, Equatable {
+    public var limit: UInt32
+    public var query: String?
+
+    public init(limit: UInt32, query: String? = nil) {
+        self.limit = limit
+        self.query = query
+    }
+}
+
 /// Play the given states on the real on-screen buddy, for previewing themes.
 public struct CursorPreviewParams: Codable, Sendable, Equatable {
     public var states: [AssistantState]
@@ -622,15 +749,6 @@ public struct FocusImage: Codable, Sendable, Equatable {
     }
 }
 
-public enum FocusKind: String, Codable, Sendable, Equatable, CaseIterable {
-    case rectangle = "rectangle"
-    case circle = "circle"
-    case point = "point"
-    case lasso = "lasso"
-    case window = "window"
-    case screen = "screen"
-}
-
 /// What the user pointed the assistant at (spec §34).
 public struct FocusRegion: Codable, Sendable, Equatable {
     public var accessibility: AxContext?
@@ -675,6 +793,14 @@ public struct FocusStarted: Codable, Sendable, Equatable {
 
     public init(kind: FocusKind) {
         self.kind = kind
+    }
+}
+
+public struct IdParams: Codable, Sendable, Equatable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
     }
 }
 
@@ -773,9 +899,16 @@ public struct LatestFocus: Codable, Sendable, Equatable {
     }
 }
 
-public enum Locality: String, Codable, Sendable, Equatable, CaseIterable {
-    case local = "local"
-    case cloud = "cloud"
+public struct MessageDelta: Codable, Sendable, Equatable {
+    public var conversationId: String
+    public var delta: String
+    public var messageId: String
+
+    public init(conversationId: String, delta: String, messageId: String) {
+        self.conversationId = conversationId
+        self.delta = delta
+        self.messageId = messageId
+    }
 }
 
 public struct MicrophoneStatus: Codable, Sendable, Equatable {
@@ -910,6 +1043,16 @@ public struct OpenSettingsPaneParams: Codable, Sendable, Equatable {
     }
 }
 
+public struct PinParams: Codable, Sendable, Equatable {
+    public var id: String
+    public var pinned: Bool
+
+    public init(id: String, pinned: Bool) {
+        self.id = id
+        self.pinned = pinned
+    }
+}
+
 public struct PullProgress: Codable, Sendable, Equatable {
     public var completed: UInt64?
     public var done: Bool
@@ -925,6 +1068,16 @@ public struct PullProgress: Codable, Sendable, Equatable {
         self.name = name
         self.status = status
         self.total = total
+    }
+}
+
+public struct RenameParams: Codable, Sendable, Equatable {
+    public var id: String
+    public var title: String
+
+    public init(id: String, title: String) {
+        self.id = id
+        self.title = title
     }
 }
 
@@ -967,6 +1120,34 @@ public struct ScreenPermissionStatus: Codable, Sendable, Equatable {
 
     public init(screenRecording: PermissionState) {
         self.screenRecording = screenRecording
+    }
+}
+
+public struct SendParams: Codable, Sendable, Equatable {
+    public var allowCloud: Bool
+    public var conversationId: String?
+    public var includeFocus: Bool
+    public var model: ModelRef?
+    public var text: String
+
+    public init(allowCloud: Bool, conversationId: String? = nil, includeFocus: Bool, model: ModelRef? = nil, text: String) {
+        self.allowCloud = allowCloud
+        self.conversationId = conversationId
+        self.includeFocus = includeFocus
+        self.model = model
+        self.text = text
+    }
+}
+
+public struct SendResult: Codable, Sendable, Equatable {
+    public var assistantMessage: Message
+    public var conversationId: String
+    public var userMessage: Message
+
+    public init(assistantMessage: Message, conversationId: String, userMessage: Message) {
+        self.assistantMessage = assistantMessage
+        self.conversationId = conversationId
+        self.userMessage = userMessage
     }
 }
 
@@ -1120,6 +1301,13 @@ public enum IPCMethods {
     public static let modelsDelete = IPCMethod<ModelNameParams, Empty>(name: "models.delete", target: .core)
     public static let modelsTest = IPCMethod<ModelTestParams, ModelTestResult>(name: "models.test", target: .core)
     public static let aiRoute = IPCMethod<RouteParams, RouteInfo>(name: "ai.route", target: .core)
+    public static let conversationList = IPCMethod<ConversationListParams, ConversationList>(name: "conversation.list", target: .core)
+    public static let conversationGet = IPCMethod<IdParams, Conversation>(name: "conversation.get", target: .core)
+    public static let conversationSend = IPCMethod<SendParams, SendResult>(name: "conversation.send", target: .core)
+    public static let conversationCancel = IPCMethod<IdParams, Empty>(name: "conversation.cancel", target: .core)
+    public static let conversationRename = IPCMethod<RenameParams, ConversationSummary>(name: "conversation.rename", target: .core)
+    public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
+    public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
     public static let accessibilityRank = IPCMethod<AxRankParams, AxContext>(name: "accessibility.rank", target: .core)
     public static let focusLatest = IPCMethod<Empty, LatestFocus>(name: "focus.latest", target: .core)
 
@@ -1158,6 +1346,13 @@ public enum IPCMethods {
         "models.delete": .core,
         "models.test": .core,
         "ai.route": .core,
+        "conversation.list": .core,
+        "conversation.get": .core,
+        "conversation.send": .core,
+        "conversation.cancel": .core,
+        "conversation.rename": .core,
+        "conversation.pin": .core,
+        "conversation.delete": .core,
         "accessibility.rank": .core,
         "focus.latest": .core,
     ]
@@ -1176,4 +1371,7 @@ public enum IPCEvents {
     public static let focusCleared = IPCEvent<Empty>(name: "focus.cleared")
     public static let modelsPullProgress = IPCEvent<PullProgress>(name: "models.pullProgress")
     public static let appleDelta = IPCEvent<AppleDelta>(name: "apple.delta")
+    public static let conversationDelta = IPCEvent<MessageDelta>(name: "conversation.delta")
+    public static let conversationMessageUpdated = IPCEvent<Message>(name: "conversation.messageUpdated")
+    public static let conversationUpdated = IPCEvent<ConversationSummary>(name: "conversation.updated")
 }

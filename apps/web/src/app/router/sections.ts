@@ -28,7 +28,6 @@ export const sections: Section[] = [
     path: "/conversations",
     label: "Conversations",
     icon: ConversationsIcon,
-    unavailableNote: "Conversations become available once an AI model is connected.",
   },
   {
     path: "/agents",

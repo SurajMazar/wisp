@@ -40,7 +40,11 @@ pub struct AiServices {
     pulls: Mutex<HashMap<String, CancellationToken>>,
     /// Test-only providers that replace the real ones.
     overrides: Mutex<Option<Vec<Arc<dyn AiProvider>>>>,
+    /// Providers that just failed are skipped for a while (spec §99 fallback).
+    cooldown: Mutex<HashMap<String, Instant>>,
 }
+
+const COOLDOWN: Duration = Duration::from_secs(120);
 
 pub struct Prepared {
     pub route: RouteInfo,
@@ -107,7 +111,14 @@ impl AiServices {
     pub async fn catalog(&self, settings: &ModelSettings) -> Vec<(ProviderInfo, Vec<ModelInfo>)> {
         let providers = self.providers(settings);
         let probes = providers.iter().map(|p| async move {
-            let info = p.info().await;
+            let mut info = p.info().await;
+            if self.cooling_down(&info.id)
+                && info.state == wisp_ipc::types::models::ProviderState::Available
+            {
+                info.state = wisp_ipc::types::models::ProviderState::Unavailable;
+                info.detail =
+                    Some("Failed a moment ago; Wisp is using another model for now.".into());
+            }
             let models = if info.state == wisp_ipc::types::models::ProviderState::Available {
                 tokio::time::timeout(Duration::from_secs(6), p.models())
                     .await
@@ -166,6 +177,20 @@ impl AiServices {
         Ok((route, provider))
     }
 
+    fn cooling_down(&self, provider_id: &str) -> bool {
+        self.cooldown
+            .lock()
+            .ok()
+            .and_then(|c| c.get(provider_id).copied())
+            .is_some_and(|t| t.elapsed() < COOLDOWN)
+    }
+
+    fn mark_failed(&self, provider_id: &str) {
+        if let Ok(mut c) = self.cooldown.lock() {
+            c.insert(provider_id.to_owned(), Instant::now());
+        }
+    }
+
     /// Route and start generating.
     #[allow(clippy::too_many_arguments)]
     pub async fn generate(
@@ -180,26 +205,71 @@ impl AiServices {
     ) -> Result<Prepared, IpcError> {
         let needs_vision = messages.iter().any(|m| !m.images.is_empty());
         let tokens = estimate_tokens(system.as_deref(), &messages);
-        let (route, provider) = self
-            .route(
-                settings,
-                privacy,
-                needs_vision,
-                allow_cloud,
-                tokens,
-                override_model,
-            )
-            .await?;
-        let req = GenerateRequest {
-            model: route.model.model.clone(),
-            system,
-            messages,
-            temperature: settings.temperature,
-            max_tokens: settings.max_tokens,
-            context_length: settings.context_length,
-        };
-        let stream = provider.generate(req, cancel).await?;
-        Ok(Prepared { route, stream })
+        // Try the routed model; if it fails before producing anything, fall back to the next
+        // eligible one (never crossing the privacy boundary — routing enforces that each time).
+        let mut last_err: Option<IpcError> = None;
+        for _attempt in 0..3 {
+            let (route, provider) = match self
+                .route(
+                    settings,
+                    privacy,
+                    needs_vision,
+                    allow_cloud,
+                    tokens,
+                    override_model,
+                )
+                .await
+            {
+                Ok(r) => r,
+                Err(e) => return Err(last_err.unwrap_or(e)),
+            };
+            let req = GenerateRequest {
+                model: route.model.model.clone(),
+                system: system.clone(),
+                messages: messages.clone(),
+                temperature: settings.temperature,
+                max_tokens: settings.max_tokens,
+                context_length: settings.context_length,
+            };
+            let mut stream = match provider.generate(req, cancel.clone()).await {
+                Ok(s) => s,
+                Err(AiError::Cancelled) => return Err(AiError::Cancelled.into()),
+                Err(e) => {
+                    tracing::warn!(provider = %route.model.provider_id, error = %e, "provider failed; trying another");
+                    self.mark_failed(&route.model.provider_id);
+                    last_err = Some(e.into());
+                    if override_model.is_some() {
+                        break;
+                    }
+                    continue;
+                }
+            };
+            // Peek the first item: a provider that errors before any text gets replaced.
+            match stream.next().await {
+                Some(Err(AiError::Cancelled)) => return Err(AiError::Cancelled.into()),
+                Some(Err(e)) => {
+                    tracing::warn!(provider = %route.model.provider_id, error = %e, "provider failed before answering; trying another");
+                    self.mark_failed(&route.model.provider_id);
+                    last_err = Some(e.into());
+                    if override_model.is_some() {
+                        break;
+                    }
+                    continue;
+                }
+                Some(Ok(first)) => {
+                    let stream: ChunkStream =
+                        Box::pin(futures::stream::once(async move { Ok(first) }).chain(stream));
+                    return Ok(Prepared { route, stream });
+                }
+                None => {
+                    let stream: ChunkStream = Box::pin(futures::stream::empty());
+                    return Ok(Prepared { route, stream });
+                }
+            }
+        }
+        Err(last_err.unwrap_or_else(|| {
+            AiError::NoModel("No AI model could answer right now.".into()).into()
+        }))
     }
 
     pub async fn test(

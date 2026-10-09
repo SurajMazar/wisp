@@ -15,7 +15,7 @@ public final class FloatingAssistantPanel: NSPanel {
     public init(router: IPCRouter) {
         surface = WebSurface(router: router, route: "/assistant", transparent: true)
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 300),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 520),
             styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView, .resizable],
             backing: .buffered,
             defer: false
@@ -34,7 +34,7 @@ public final class FloatingAssistantPanel: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true
-        minSize = NSSize(width: 360, height: 200)
+        minSize = NSSize(width: 380, height: 380)
         maxSize = NSSize(width: 720, height: 900)
         animationBehavior = .utilityWindow
 
@@ -58,6 +58,10 @@ public final class FloatingAssistantPanel: NSPanel {
         // Size is remembered; position always follows the buddy.
         setFrameAutosaveName("WispAssistantPanel")
         _ = setFrameUsingName("WispAssistantPanel")
+        // Older builds remembered a smaller, message-only size; the panel now holds a conversation.
+        if frame.width < minSize.width || frame.height < minSize.height {
+            setContentSize(NSSize(width: max(frame.width, 460), height: max(frame.height, 520)))
+        }
         surface.load()
     }
 

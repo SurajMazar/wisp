@@ -643,6 +643,116 @@
         }
       ]
     },
+    "Conversation": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "messages": {
+          "items": {
+            "$ref": "#/definitions/Message"
+          },
+          "type": "array"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAtMs": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "pinned",
+        "messages",
+        "createdAtMs",
+        "updatedAtMs"
+      ],
+      "type": "object"
+    },
+    "ConversationList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/ConversationSummary"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "ConversationListParams": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "1–500.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "query": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "limit"
+      ],
+      "type": "object"
+    },
+    "ConversationSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "messageCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "preview": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAtMs": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "pinned",
+        "messageCount",
+        "updatedAtMs"
+      ],
+      "type": "object"
+    },
     "CursorPreviewParams": {
       "additionalProperties": false,
       "description": "Play the given states on the real on-screen buddy, for previewing themes.",
@@ -820,6 +930,34 @@
         "notFound"
       ],
       "type": "string"
+    },
+    "FocusAttachment": {
+      "additionalProperties": false,
+      "description": "What the user was pointing at when they asked. Metadata only; the image stays in the cache.",
+      "properties": {
+        "focusId": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "$ref": "#/definitions/FocusKind"
+        },
+        "label": {
+          "description": "e.g. \"320 × 180 pt · Safari · Checkout\".",
+          "type": "string"
+        }
+      },
+      "required": [
+        "focusId",
+        "kind",
+        "label"
+      ],
+      "type": "object"
     },
     "FocusEndReason": {
       "enum": [
@@ -1058,6 +1196,18 @@
           "type": "boolean"
         }
       },
+      "type": "object"
+    },
+    "IdParams": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
       "type": "object"
     },
     "InvocationAction": {
@@ -1315,6 +1465,132 @@
       "enum": [
         "local",
         "cloud"
+      ],
+      "type": "string"
+    },
+    "Message": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "conversationId": {
+          "type": "string"
+        },
+        "createdAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "error": {
+          "description": "User-facing error when `status` is `error`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "errorDetails": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "focus": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FocusAttachment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "latencyMs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Locality"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ModelRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "modelName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "$ref": "#/definitions/MessageRole"
+        },
+        "status": {
+          "$ref": "#/definitions/MessageStatus"
+        }
+      },
+      "required": [
+        "id",
+        "conversationId",
+        "role",
+        "content",
+        "status",
+        "createdAtMs"
+      ],
+      "type": "object"
+    },
+    "MessageDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "conversationId": {
+          "type": "string"
+        },
+        "delta": {
+          "type": "string"
+        },
+        "messageId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "conversationId",
+        "messageId",
+        "delta"
+      ],
+      "type": "object"
+    },
+    "MessageRole": {
+      "enum": [
+        "user",
+        "assistant"
+      ],
+      "type": "string"
+    },
+    "MessageStatus": {
+      "enum": [
+        "streaming",
+        "complete",
+        "cancelled",
+        "error"
       ],
       "type": "string"
     },
@@ -1624,6 +1900,22 @@
       ],
       "type": "string"
     },
+    "PinParams": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "pinned": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "pinned"
+      ],
+      "type": "object"
+    },
     "Point": {
       "properties": {
         "x": {
@@ -1814,6 +2106,22 @@
       ],
       "type": "object"
     },
+    "RenameParams": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
     "RequestIdParams": {
       "additionalProperties": false,
       "properties": {
@@ -1881,6 +2189,66 @@
       },
       "required": [
         "screenRecording"
+      ],
+      "type": "object"
+    },
+    "SendParams": {
+      "additionalProperties": false,
+      "properties": {
+        "allowCloud": {
+          "default": false,
+          "description": "The user approved cloud for this message (Local Preferred).",
+          "type": "boolean"
+        },
+        "conversationId": {
+          "description": "Continue this conversation; omit to start a new one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "includeFocus": {
+          "default": false,
+          "description": "Attach the current focus region (screenshot + UI elements).",
+          "type": "boolean"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ModelRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Use this model instead of the router's choice."
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "SendResult": {
+      "additionalProperties": false,
+      "properties": {
+        "assistantMessage": {
+          "$ref": "#/definitions/Message"
+        },
+        "conversationId": {
+          "type": "string"
+        },
+        "userMessage": {
+          "$ref": "#/definitions/Message"
+        }
+      },
+      "required": [
+        "conversationId",
+        "userMessage",
+        "assistantMessage"
       ],
       "type": "object"
     },
@@ -2261,6 +2629,24 @@
       "payload": {
         "$ref": "#/definitions/AppleDelta"
       }
+    },
+    {
+      "name": "conversation.delta",
+      "payload": {
+        "$ref": "#/definitions/MessageDelta"
+      }
+    },
+    {
+      "name": "conversation.messageUpdated",
+      "payload": {
+        "$ref": "#/definitions/Message"
+      }
+    },
+    {
+      "name": "conversation.updated",
+      "payload": {
+        "$ref": "#/definitions/ConversationSummary"
+      }
     }
   ],
   "methods": [
@@ -2591,6 +2977,76 @@
       },
       "result": {
         "$ref": "#/definitions/RouteInfo"
+      },
+      "target": "core"
+    },
+    {
+      "name": "conversation.list",
+      "params": {
+        "$ref": "#/definitions/ConversationListParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ConversationList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "conversation.get",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Conversation"
+      },
+      "target": "core"
+    },
+    {
+      "name": "conversation.send",
+      "params": {
+        "$ref": "#/definitions/SendParams"
+      },
+      "result": {
+        "$ref": "#/definitions/SendResult"
+      },
+      "target": "core"
+    },
+    {
+      "name": "conversation.cancel",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "conversation.rename",
+      "params": {
+        "$ref": "#/definitions/RenameParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ConversationSummary"
+      },
+      "target": "core"
+    },
+    {
+      "name": "conversation.pin",
+      "params": {
+        "$ref": "#/definitions/PinParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ConversationSummary"
+      },
+      "target": "core"
+    },
+    {
+      "name": "conversation.delete",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
       },
       "target": "core"
     },
