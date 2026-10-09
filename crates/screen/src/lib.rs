@@ -4,6 +4,8 @@
 //! host reports before the rest of the runtime relies on it — a region that doesn't fit its display,
 //! or an image whose size doesn't match the crop at the display's scale, is rejected.
 
+pub mod describe;
+
 use wisp_common::geometry::Rect;
 use wisp_ipc::types::focus::{FocusKind, FocusRegion};
 
@@ -122,6 +124,7 @@ mod tests {
             application: None,
             window: None,
             accessibility: None,
+            text: None,
             created_at_ms: 0,
         }
     }

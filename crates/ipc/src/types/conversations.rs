@@ -65,10 +65,37 @@ pub struct Message {
     /// How long the model reasoned before answering.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_ms: Option<u32>,
+    /// What was sent to the model with this answer's question (privacy transparency).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<ContextInfo>,
     /// What's happening right now while `status` is `streaming` (live progress for the UI).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stage: Option<MessageStage>,
     pub created_at_ms: i64,
+}
+
+/// What context an answer was given (spec §36, §97) — shown under the answer.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ContextInfo {
+    /// Size of the compressed screenshot sent, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_bytes: Option<u32>,
+    /// Lines of on-screen text included.
+    pub screen_text_lines: u32,
+    pub ui_elements: u32,
+    pub selected_text: bool,
+    /// The screen from an earlier question was reused (no new capture or vision pass).
+    pub reused_screen: bool,
+    /// Earlier messages included verbatim.
+    pub history_messages: u32,
+    /// Older messages condensed into a short summary to fit the model's context.
+    pub summarized_messages: u32,
+    /// Rough size of the prompt.
+    pub estimated_tokens: u32,
+    /// Why the screenshot wasn't sent even though one was attached.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_only_reason: Option<String>,
 }
 
 /// Live progress of an answer, so the UI can say what Wisp is doing instead of a bare spinner.

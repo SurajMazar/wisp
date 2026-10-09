@@ -80,6 +80,9 @@ fn message_from_row(r: &Row<'_>) -> rusqlite::Result<Message> {
             .get("reasoningMs")
             .and_then(|v| v.as_u64())
             .map(|n| n.min(u32::MAX as u64) as u32),
+        context: ctx
+            .get("contextInfo")
+            .and_then(|v| serde_json::from_value(v.clone()).ok()),
         stage: None,
         latency_ms: r
             .get::<_, Option<i64>>("latency_ms")?
@@ -264,6 +267,9 @@ impl Database {
         if let Some(ms) = m.reasoning_ms {
             ctx.insert("reasoningMs".into(), ms.into());
         }
+        if let Some(c) = &m.context {
+            ctx.insert("contextInfo".into(), serde_json::to_value(c)?);
+        }
         let n = self.lock()?.execute(
             "UPDATE messages SET content = ?2, status = ?3, provider_id = ?4, model_key = ?5, locality = ?6, context = ?7,
                  error = ?8, latency_ms = ?9, tokens_in = ?10, tokens_out = ?11, updated_at = ?12 WHERE id = ?1",
@@ -356,6 +362,7 @@ mod tests {
             latency_ms: None,
             reasoning: None,
             reasoning_ms: None,
+            context: None,
             stage: None,
             created_at_ms: at,
         }

@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Phase
-Phase 8 — Voice Pipeline (implemented; **manual stop gates 2–8 pending on the Mac**)
+Phase 10 — Visual Guidance (in progress). Phase 9 implemented; **manual stop gates 2–9 pending on the Mac**
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +18,8 @@ Phase 8 — Voice Pipeline (implemented; **manual stop gates 2–8 pending on th
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- **9 Screen understanding:** on-device OCR, budgeted context builder with condensed history, text-only fallback,
+  screen reuse for follow-ups, quick actions, "Context" disclosure; screen text fenced as untrusted
 - Phases 5–8 implemented and automatically verified (see PHASE_REPORT.md):
   - **5 Accessibility:** element under pointer, ancestors, focused element, region elements (bounded, off-main-thread,
     secure values never read), Rust relevance ranking, Permissions page + inspector

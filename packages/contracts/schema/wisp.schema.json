@@ -695,6 +695,74 @@
         }
       ]
     },
+    "ContextInfo": {
+      "additionalProperties": false,
+      "description": "What context an answer was given (spec §36, §97) — shown under the answer.",
+      "properties": {
+        "estimatedTokens": {
+          "description": "Rough size of the prompt.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "historyMessages": {
+          "description": "Earlier messages included verbatim.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "imageBytes": {
+          "description": "Size of the compressed screenshot sent, if any.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reusedScreen": {
+          "description": "The screen from an earlier question was reused (no new capture or vision pass).",
+          "type": "boolean"
+        },
+        "screenTextLines": {
+          "description": "Lines of on-screen text included.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "selectedText": {
+          "type": "boolean"
+        },
+        "summarizedMessages": {
+          "description": "Older messages condensed into a short summary to fit the model's context.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "textOnlyReason": {
+          "description": "Why the screenshot wasn't sent even though one was attached.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "uiElements": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "screenTextLines",
+        "uiElements",
+        "selectedText",
+        "reusedScreen",
+        "historyMessages",
+        "summarizedMessages",
+        "estimatedTokens"
+      ],
+      "type": "object"
+    },
     "Conversation": {
       "additionalProperties": false,
       "properties": {
@@ -1199,6 +1267,17 @@
           "$ref": "#/definitions/Rect",
           "description": "What the user selected, global points."
         },
+        "text": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ScreenText"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Text recognized on screen inside the capture (Apple Vision, on device)."
+        },
         "window": {
           "anyOf": [
             {
@@ -1599,6 +1678,17 @@
       "properties": {
         "content": {
           "type": "string"
+        },
+        "context": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ContextInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What was sent to the model with this answer's question (privacy transparency)."
         },
         "conversationId": {
           "type": "string"
@@ -2427,6 +2517,29 @@
       ],
       "type": "object"
     },
+    "ScreenText": {
+      "additionalProperties": false,
+      "description": "On-screen text, read on device. Lets text-only models understand the screen and lets\nguidance find targets by their label.",
+      "properties": {
+        "elapsedMs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "lines": {
+          "description": "Reading order: top to bottom, left to right.",
+          "items": {
+            "$ref": "#/definitions/TextLine"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "lines",
+        "elapsedMs"
+      ],
+      "type": "object"
+    },
     "SendParams": {
       "additionalProperties": false,
       "properties": {
@@ -2928,6 +3041,29 @@
         "completed",
         "total",
         "done"
+      ],
+      "type": "object"
+    },
+    "TextLine": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "description": "0–1.",
+          "format": "float",
+          "type": "number"
+        },
+        "frame": {
+          "$ref": "#/definitions/Rect",
+          "description": "Global points (top-left origin), like every other screen coordinate."
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "frame",
+        "confidence"
       ],
       "type": "object"
     },

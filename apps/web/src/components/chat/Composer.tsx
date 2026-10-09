@@ -12,6 +12,7 @@ import {
 import { cn } from "@wisp/ui";
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { describeRegion, regionLabel } from "../../lib/focus";
+import { quickActions } from "../../lib/quickActions";
 import { useFocusStore } from "../../stores/focusStore";
 import { MicButton } from "./MicButton";
 import { ModelPicker } from "./ModelPicker";
@@ -135,8 +136,22 @@ export function Composer({
       }}
     >
       {focus?.attached && (
-        <div className="mb-2">
+        <div className="mb-2 space-y-2">
           <FocusChip region={focus.region} />
+          {!streaming && !text.trim() && (
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Quick actions">
+              {quickActions(focus.region).map((a) => (
+                <button
+                  key={a.label}
+                  type="button"
+                  onClick={() => onSend(a.prompt)}
+                  className="rounded-full border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:border-border-strong hover:bg-surface-hover hover:text-text"
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
       <textarea

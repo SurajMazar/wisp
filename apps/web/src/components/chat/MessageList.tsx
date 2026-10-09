@@ -7,6 +7,7 @@ import { copyText } from "../../lib/clipboard";
 import { useConversationStore } from "../../stores/conversationStore";
 import { useVoiceStore } from "../../stores/voiceStore";
 import { ReasoningBlock, StepTrail } from "./AnswerProgress";
+import { ContextButton } from "./ContextInfo";
 import { RichText } from "./RichText";
 
 function Meta({ m }: { m: Message }) {
@@ -70,6 +71,7 @@ function Actions({ m, onRegenerate }: { m: Message; onRegenerate?: () => void })
           <SpeakIcon size={14} />
         </IconAction>
       )}
+      {m.context && <ContextButton context={m.context} />}
       <span className="ml-1.5">
         <Meta m={m} />
       </span>

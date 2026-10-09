@@ -142,7 +142,30 @@ pub struct FocusRegion {
     /// Relevant UI elements in the region, when Accessibility is allowed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub accessibility: Option<super::accessibility::AxContext>,
+    /// Text recognized on screen inside the capture (Apple Vision, on device).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<ScreenText>,
     pub created_at_ms: i64,
+}
+
+/// On-screen text, read on device. Lets text-only models understand the screen and lets
+/// guidance find targets by their label.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ScreenText {
+    /// Reading order: top to bottom, left to right.
+    pub lines: Vec<TextLine>,
+    pub elapsed_ms: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TextLine {
+    pub text: String,
+    /// Global points (top-left origin), like every other screen coordinate.
+    pub frame: Rect,
+    /// 0–1.
+    pub confidence: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

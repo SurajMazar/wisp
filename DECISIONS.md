@@ -159,3 +159,16 @@ the real cursor); users can pick Pointer or Dot. Flat fill in the cursor color w
 3D extrusion or gloss (explicitly rejected). The glow is either the cursor color or a two-color gradient
 (presets Aurora, Sunset, Ocean, Mint, Ember, or custom colors), rendered as the gradient-filled shape
 blurred with Core Image, because layer shadows can only be a single color.
+
+## D-026 — Screen understanding: on-device OCR, text fallback, fenced screen content
+**Status** accepted (2026-10-09)
+Every capture is also read with Apple Vision text recognition on device (lines with global-point frames, reading
+order). The context builder (`wisp-core::context`) sizes the prompt from the model's context length: newest turns
+verbatim, older turns condensed into a summary appended to the system prompt (no extra LLM call), and the screen
+described compactly by `wisp-screen::describe` (app/window, ranked UI elements, selected text, recognized text
+within a budget). When no allowed model can see images — or the user picked a text-only model — and the region is
+readable, the screenshot is not sent and the model answers from the text (so Apple's on-device model can answer
+about the screen). Follow-ups within six messages reuse the cached description instead of recapturing. Screen
+content is untrusted: it is fenced in `<screen>` / `"""` with control characters stripped, and the system prompt
+says it is information, never instructions. Each answer records a `ContextInfo` shown in a "Context" disclosure.
+

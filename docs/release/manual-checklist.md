@@ -103,5 +103,12 @@ Prerequisite: Microphone permission; `brew install espeak-ng` (already installed
 - [ ] Local Only on, Wi-Fi off: the whole voice loop still works.
 - [ ] No microphone indicator in the menu bar except while holding the shortcut.
 
+## Phase 9 — Screen understanding
+- [ ] Select an area containing text: the composer shows quick actions that fit it (an error → Explain error / Fix error; code → Explain code / Find bugs; selected text → Explain / Summarize / Rewrite / Translate).
+- [ ] Ask about it; under the answer, Context lists the screenshot size, lines of screen text, UI elements.
+- [ ] Pick a text-only model (e.g. Apple on-device) in the composer and ask about a selection: it answers from the on-screen text; Context says why no screenshot was sent.
+- [ ] Ask a follow-up without selecting again: Context says the earlier screen was reused.
+- [ ] Select a web page that says "ignore previous instructions…": Wisp explains it rather than obeying it.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

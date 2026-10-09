@@ -342,6 +342,20 @@ export type ClipboardText = z.output<typeof ClipboardText>;
 export const ConflictSeverity = z.enum(["blocking","warning"]);
 export type ConflictSeverity = z.output<typeof ConflictSeverity>;
 
+/** What context an answer was given (spec §36, §97) — shown under the answer. */
+export const ContextInfo = z.strictObject({
+  "estimatedTokens": z.number().int().nonnegative(),
+  "historyMessages": z.number().int().nonnegative(),
+  "imageBytes": z.number().int().nonnegative().nullable().optional(),
+  "reusedScreen": z.boolean(),
+  "screenTextLines": z.number().int().nonnegative(),
+  "selectedText": z.boolean(),
+  "summarizedMessages": z.number().int().nonnegative(),
+  "textOnlyReason": z.string().nullable().optional(),
+  "uiElements": z.number().int().nonnegative(),
+});
+export type ContextInfo = z.output<typeof ContextInfo>;
+
 export const FocusKind = z.enum(["rectangle","circle","point","lasso","window","screen"]);
 export type FocusKind = z.output<typeof FocusKind>;
 
@@ -369,6 +383,7 @@ export type MessageStatus = z.output<typeof MessageStatus>;
 
 export const Message = z.strictObject({
   "content": z.string(),
+  "context": ContextInfo.nullable().optional(),
   "conversationId": z.string(),
   "createdAtMs": z.number().int(),
   "error": z.string().nullable().optional(),
@@ -459,6 +474,21 @@ export const FocusImage = z.strictObject({
 });
 export type FocusImage = z.output<typeof FocusImage>;
 
+export const TextLine = z.strictObject({
+  "confidence": z.number(),
+  "frame": Rect,
+  "text": z.string(),
+});
+export type TextLine = z.output<typeof TextLine>;
+
+/** On-screen text, read on device. Lets text-only models understand the screen and lets
+guidance find targets by their label. */
+export const ScreenText = z.strictObject({
+  "elapsedMs": z.number().int().nonnegative(),
+  "lines": z.array(TextLine),
+});
+export type ScreenText = z.output<typeof ScreenText>;
+
 /** What the user pointed the assistant at (spec §34). */
 export const FocusRegion = z.strictObject({
   "accessibility": AxContext.nullable().optional(),
@@ -472,6 +502,7 @@ export const FocusRegion = z.strictObject({
   "kind": FocusKind,
   "path": z.array(Point).optional(),
   "selection": Rect,
+  "text": ScreenText.nullable().optional(),
   "window": WindowInfo.nullable().optional(),
 });
 export type FocusRegion = z.output<typeof FocusRegion>;

@@ -618,6 +618,31 @@ public enum ConflictSeverity: String, Codable, Sendable, Equatable, CaseIterable
     case warning = "warning"
 }
 
+/// What context an answer was given (spec §36, §97) — shown under the answer.
+public struct ContextInfo: Codable, Sendable, Equatable {
+    public var estimatedTokens: UInt32
+    public var historyMessages: UInt32
+    public var imageBytes: UInt32?
+    public var reusedScreen: Bool
+    public var screenTextLines: UInt32
+    public var selectedText: Bool
+    public var summarizedMessages: UInt32
+    public var textOnlyReason: String?
+    public var uiElements: UInt32
+
+    public init(estimatedTokens: UInt32, historyMessages: UInt32, imageBytes: UInt32? = nil, reusedScreen: Bool, screenTextLines: UInt32, selectedText: Bool, summarizedMessages: UInt32, textOnlyReason: String? = nil, uiElements: UInt32) {
+        self.estimatedTokens = estimatedTokens
+        self.historyMessages = historyMessages
+        self.imageBytes = imageBytes
+        self.reusedScreen = reusedScreen
+        self.screenTextLines = screenTextLines
+        self.selectedText = selectedText
+        self.summarizedMessages = summarizedMessages
+        self.textOnlyReason = textOnlyReason
+        self.uiElements = uiElements
+    }
+}
+
 public enum FocusKind: String, Codable, Sendable, Equatable, CaseIterable {
     case rectangle = "rectangle"
     case circle = "circle"
@@ -672,6 +697,7 @@ public enum MessageStatus: String, Codable, Sendable, Equatable, CaseIterable {
 
 public struct Message: Codable, Sendable, Equatable {
     public var content: String
+    public var context: ContextInfo?
     public var conversationId: String
     public var createdAtMs: Int64
     public var error: String?
@@ -688,8 +714,9 @@ public struct Message: Codable, Sendable, Equatable {
     public var stage: MessageStage?
     public var status: MessageStatus
 
-    public init(content: String, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, reasoning: String? = nil, reasoningMs: UInt32? = nil, role: MessageRole, stage: MessageStage? = nil, status: MessageStatus) {
+    public init(content: String, context: ContextInfo? = nil, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, reasoning: String? = nil, reasoningMs: UInt32? = nil, role: MessageRole, stage: MessageStage? = nil, status: MessageStatus) {
         self.content = content
+        self.context = context
         self.conversationId = conversationId
         self.createdAtMs = createdAtMs
         self.error = error
@@ -838,6 +865,30 @@ public struct FocusImage: Codable, Sendable, Equatable {
     }
 }
 
+public struct TextLine: Codable, Sendable, Equatable {
+    public var confidence: Double
+    public var frame: Rect
+    public var text: String
+
+    public init(confidence: Double, frame: Rect, text: String) {
+        self.confidence = confidence
+        self.frame = frame
+        self.text = text
+    }
+}
+
+/// On-screen text, read on device. Lets text-only models understand the screen and lets
+/// guidance find targets by their label.
+public struct ScreenText: Codable, Sendable, Equatable {
+    public var elapsedMs: UInt32
+    public var lines: [TextLine]
+
+    public init(elapsedMs: UInt32, lines: [TextLine]) {
+        self.elapsedMs = elapsedMs
+        self.lines = lines
+    }
+}
+
 /// What the user pointed the assistant at (spec §34).
 public struct FocusRegion: Codable, Sendable, Equatable {
     public var accessibility: AxContext?
@@ -851,9 +902,10 @@ public struct FocusRegion: Codable, Sendable, Equatable {
     public var kind: FocusKind
     public var path: [Point]?
     public var selection: Rect
+    public var text: ScreenText?
     public var window: WindowInfo?
 
-    public init(accessibility: AxContext? = nil, application: ApplicationInfo? = nil, createdAtMs: Int64, crop: Rect, cursor: Point, display: DisplayInfo, id: String, image: FocusImage? = nil, kind: FocusKind, path: [Point]? = nil, selection: Rect, window: WindowInfo? = nil) {
+    public init(accessibility: AxContext? = nil, application: ApplicationInfo? = nil, createdAtMs: Int64, crop: Rect, cursor: Point, display: DisplayInfo, id: String, image: FocusImage? = nil, kind: FocusKind, path: [Point]? = nil, selection: Rect, text: ScreenText? = nil, window: WindowInfo? = nil) {
         self.accessibility = accessibility
         self.application = application
         self.createdAtMs = createdAtMs
@@ -865,6 +917,7 @@ public struct FocusRegion: Codable, Sendable, Equatable {
         self.kind = kind
         self.path = path
         self.selection = selection
+        self.text = text
         self.window = window
     }
 }

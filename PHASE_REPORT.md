@@ -284,3 +284,34 @@ and make it voice-driven (8).
 
 ## Stop Gates 5–8
 PENDING — automated portions pass; manual checklists (Phases 5–8) remain.
+
+---
+
+# Phase 9 — Screen Understanding (2026-10-09)
+
+## Summary
+Answers now understand the screen with less work and more transparency: on-device text recognition, a
+token-budgeted context builder, text-only fallback, screen reuse for follow-ups, quick actions and a context
+disclosure. Also in this period: agentic chat UI (live stage trail, streamed reasoning, Thought for Ns),
+conversation routing fix.
+
+## Implemented
+- Host `TextRecognizer` (Apple Vision, accurate, language correction) run concurrently with Accessibility on every
+  capture; `FocusRegion.text` (lines with global frames, confidence)
+- `wisp-screen::describe` (fenced, control-stripped, budgeted) and `readable_without_image`
+- `wisp-core::context`: `budget`, `fit_history` (verbatim window + condensed older turns), `estimate`
+- `AiServices::can_see`; text-only fallback with a stated reason; screen description cache per focus
+  (`cache/focus/<id>.context.txt`, pruned with the capture); reuse within 6 messages
+- `ContextInfo` on assistant messages (persisted); UI "Context" disclosure; context-aware quick actions
+  (error / code / selected text / general)
+- System prompt: screen content is information, never instructions
+
+## Tests Added
+- Swift: rendered text read back in reading order with correct global frames
+- Rust: describe (fencing, budget, readability), context (verbatim, condensing, budget split), engine (text-only
+  fallback with OCR + reuse on follow-up, prompt-injection text stays fenced)
+- React: quick action classification (4), context disclosure
+
+## Stop Gate 9
+Automated portions PASS; manual checklist (Phase 9) pending.
+

@@ -98,6 +98,7 @@ public enum ScreenCapturer {
         for f in sorted.dropFirst(keep) {
             try? fm.removeItem(at: f)
             try? fm.removeItem(at: f.deletingPathExtension().appendingPathExtension("model.jpg"))
+            try? fm.removeItem(at: f.deletingPathExtension().appendingPathExtension("context.txt"))
         }
     }
 }

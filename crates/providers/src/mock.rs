@@ -58,14 +58,22 @@ impl AiProvider for MockProvider {
         req: GenerateRequest,
         cancel: CancellationToken,
     ) -> Result<ChunkStream, AiError> {
+        // "<echo>" replies with the prompt's last message, so tests can inspect the context.
+        let source = if self.reply == "<echo>" {
+            req.messages
+                .last()
+                .map(|m| m.content.clone())
+                .unwrap_or_default()
+        } else {
+            self.reply.clone()
+        };
         // `<think>…</think>` at the start of the reply is streamed as reasoning.
-        let (reasoning, reply) = match self
-            .reply
+        let (reasoning, reply) = match source
             .strip_prefix("<think>")
             .and_then(|r| r.split_once("</think>"))
         {
             Some((r, rest)) => (Some(r.to_owned()), rest.trim_start().to_owned()),
-            None => (None, self.reply.clone()),
+            None => (None, source.clone()),
         };
         let saw_image = req.messages.iter().any(|m| !m.images.is_empty());
         let mut items: Vec<Chunk> = reasoning.into_iter().map(Chunk::Reasoning).collect();

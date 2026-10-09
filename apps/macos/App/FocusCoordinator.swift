@@ -79,6 +79,7 @@ final class FocusCoordinator {
         if let id = latest?.id {
             try? FileManager.default.removeItem(at: AppPaths.focusCacheDirectory.appendingPathComponent("\(id).png"))
             try? FileManager.default.removeItem(at: AppPaths.focusCacheDirectory.appendingPathComponent("\(id).model.jpg"))
+            try? FileManager.default.removeItem(at: AppPaths.focusCacheDirectory.appendingPathComponent("\(id).context.txt"))
         }
         latest = nil
         router.emit(IPCEvents.focusCleared, Empty())
@@ -134,7 +135,10 @@ final class FocusCoordinator {
         do {
             let image = try await ScreenCapturer.capture(rect: crop, display: display)
             _ = try ScreenCapturer.save(image, id: id, directory: AppPaths.focusCacheDirectory)
+            // Read the text and the UI elements concurrently.
+            async let recognized = TextRecognizer.recognize(image, crop: crop)
             let accessibility = await accessibilityContext(selection: selection, cursor: r.kind == .point ? path.first ?? cursor : cursor)
+            let text = await recognized
             let region = FocusRegion(
                 accessibility: accessibility,
                 application: found?.application ?? WindowLocator.frontmostApplication(),
@@ -147,6 +151,7 @@ final class FocusCoordinator {
                 kind: r.kind,
                 path: path.map(Point.init),
                 selection: Rect(selection),
+                text: text,
                 window: found?.window
             )
             latest = region

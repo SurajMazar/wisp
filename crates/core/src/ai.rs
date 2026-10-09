@@ -275,6 +275,24 @@ impl AiServices {
         }))
     }
 
+    /// Whether an image can be sent: some allowed model can see, and if the user picked a model,
+    /// it's that one.
+    pub async fn can_see(
+        &self,
+        settings: &ModelSettings,
+        privacy: PrivacyMode,
+        allow_cloud: bool,
+        override_model: Option<&ModelRef>,
+    ) -> bool {
+        match self
+            .route(settings, privacy, true, allow_cloud, 0, override_model)
+            .await
+        {
+            Ok((r, _)) => override_model.is_none_or(|o| *o == r.model),
+            Err(_) => false,
+        }
+    }
+
     pub async fn test(
         &self,
         settings: &ModelSettings,
