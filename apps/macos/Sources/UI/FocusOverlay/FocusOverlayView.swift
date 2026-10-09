@@ -147,13 +147,22 @@ final class FocusOverlayView: NSView {
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let tracking { removeTrackingArea(tracking) }
-        let t = NSTrackingArea(rect: .zero, options: [.activeAlways, .mouseMoved, .cursorUpdate, .inVisibleRect], owner: self)
+        let t = NSTrackingArea(rect: .zero, options: [.activeAlways, .mouseMoved, .mouseEnteredAndExited, .cursorUpdate, .inVisibleRect], owner: self)
         addTrackingArea(t)
         tracking = t
     }
 
     override func cursorUpdate(with event: NSEvent) {
         NSCursor.crosshair.set()
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        NSCursor.crosshair.set()
+    }
+
+    /// The pointer moved to another display: its overlay shows the tip now.
+    override func mouseExited(with event: NSEvent) {
+        if ink, phase != .drawing { tipBackground.opacity = 0 }
     }
 
     override func mouseMoved(with event: NSEvent) {

@@ -33,6 +33,9 @@ public final class FocusOverlayController {
     private var completion: ((Result?) -> Void)?
     private var timeout: Task<Void, Never>?
     private var screenObserver: NSObjectProtocol?
+    private var activationObserver: NSObjectProtocol?
+    /// The app the user was in when drawing started; drawing must never take focus from it.
+    private var previousApp: NSRunningApplication?
 
     public init() {}
 
@@ -47,7 +50,11 @@ public final class FocusOverlayController {
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let pointer = NSEvent.mouseLocation
         for screen in NSScreen.screens {
-            let panel = NSPanel(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            let panel = OverlayPanel(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            // While drawing, stay out of the way: never key, so clicking never activates Wisp
+            // (which would bring its windows to the front over the app you're drawing on).
+            panel.keyable = !ink
+            panel.becomesKeyOnlyIfNeeded = true
             panel.isOpaque = false
             panel.backgroundColor = .clear
             panel.hasShadow = false
@@ -87,7 +94,7 @@ public final class FocusOverlayController {
             panel.contentView = view
             view.prepare(showHint: showHint && NSMouseInRect(pointer, screen.frame, false))
             panel.orderFrontRegardless()
-            if NSMouseInRect(pointer, screen.frame, false) {
+            if !ink, NSMouseInRect(pointer, screen.frame, false) {
                 panel.makeKey()
                 panel.makeFirstResponder(view)
             }
@@ -95,6 +102,19 @@ public final class FocusOverlayController {
         }
         onPhase?(ink ? .listening : .selecting)
         NSCursor.crosshair.set()
+        if ink {
+            let me = NSRunningApplication.current
+            previousApp = NSWorkspace.shared.frontmostApplication.flatMap { $0 == me ? nil : $0 }
+            // Belt and braces: if anything activates Wisp mid-drawing, hand focus straight back.
+            activationObserver = NotificationCenter.default.addObserver(
+                forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self, self.completion != nil, let app = self.previousApp, !app.isTerminated else { return }
+                    app.activate()
+                }
+            }
+        }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.cancel() } }
@@ -167,10 +187,21 @@ public final class FocusOverlayController {
         timeout = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         screenObserver = nil
+        if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
+        activationObserver = nil
+        previousApp = nil
         for w in windows {
             w.orderOut(nil)
             w.contentView = nil
         }
         windows.removeAll()
     }
+}
+
+/// A borderless overlay panel that becomes key only when keyboard input is wanted (Esc to cancel
+/// a box/lasso selection), never while the pointer is a pen.
+final class OverlayPanel: NSPanel {
+    var keyable = true
+    override var canBecomeKey: Bool { keyable }
+    override var canBecomeMain: Bool { false }
 }
