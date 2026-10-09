@@ -30,7 +30,7 @@ export function BuddyPreview({
   const accent = accentColor(cursor.theme, cursor.customColor);
   const secondary = cursor.theme === "default" ? "#5ec8f2" : accent;
   const ring = stateColor(state, accent);
-  const orb = 16 * cursor.size;
+  const orb = 18 * cursor.size;
   const animate = !reduceMotion && cursor.animation !== "minimal";
   const label = stateLabel[state] ?? (cursor.showLabel ? cursor.label : null);
   const ringAnim =
@@ -90,17 +90,34 @@ export function BuddyPreview({
               }}
             />
           )}
-          <span
-            className="rounded-full"
+          <svg
+            width={14 * cursor.size}
+            height={20 * cursor.size}
+            viewBox="0 0 14 20"
             style={{
-              width: orb,
-              height: orb,
-              background: `radial-gradient(circle at 42% 38%, #fff 0%, color-mix(in srgb, ${accent} 65%, white) 35%, ${accent} 100%)`,
-              boxShadow: `0 0 ${(3 + 9 * cursor.glow) * cursor.size}px ${(1 + 3 * cursor.glow) * cursor.size}px color-mix(in srgb, ${secondary} ${Math.round(25 + 60 * cursor.glow)}%, transparent)`,
-              opacity: state === "idle" ? 0.88 : 1,
-              animation: state === "idle" && animate ? "wisp-breathe 2.6s ease-in-out infinite" : undefined,
+              overflow: "visible",
+              filter: `drop-shadow(0 0 ${(2 + 7 * cursor.glow) * cursor.size}px color-mix(in srgb, ${secondary} ${Math.round(20 + 70 * cursor.glow)}%, transparent))`,
+              opacity: state === "idle" ? 0.92 : 1,
+              animation:
+                state === "following" && animate ? "wisp-breathe 1.6s ease-in-out infinite" : undefined,
+              transformOrigin: "0 0",
             }}
-          />
+          >
+            <defs>
+              <linearGradient id="wisp-buddy-fill" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor={`color-mix(in srgb, ${accent} 65%, white)`} />
+                <stop offset="55%" stopColor={accent} />
+                <stop offset="100%" stopColor={secondary} />
+              </linearGradient>
+            </defs>
+            <path
+              d="M0 0 L0 16.5 L4.2 12.8 L7.1 19.6 L9.6 18.5 L6.8 11.9 L12.4 11.9 Z"
+              fill="url(#wisp-buddy-fill)"
+              stroke="white"
+              strokeWidth={1.3}
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
         {label && (
           <span className="flex items-center gap-1.5 rounded-full border border-border bg-surface/90 px-2 py-0.5 text-xs font-medium shadow-[var(--shadow-sm)]">

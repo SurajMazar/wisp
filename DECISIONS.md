@@ -143,3 +143,11 @@ re-applied on every attempt) and the failed provider cools down for two minutes 
 `think:false`; the router prefers models that answer immediately and Wisp recommends the `-instruct`
 variants. Apple Foundation Models can refuse non-foreground callers (ModelManagerError 1013); fallback
 covers it.
+
+## D-024 — The buddy is a second cursor, never a control (supersedes the click part of D-019)
+**Status** accepted (owner feedback, 2026-10-09)
+Like HeyClicky, the assistant cursor looks like an actual pointer (accent-colored arrow with a soft glow)
+trailing the real cursor's tip diagonally below-right. It is fully click-through and never hovers, holds
+still or dodges — anything else distracts from moving the mouse. The panel opens with a **quick tap of the
+shortcut** (< 350 ms, no other key), the menu bar, or automatically when there's an answer; **holding**
+remains talk-and-point, and a hold that turns out to be a tap discards its recording unheard.

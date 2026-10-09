@@ -22,7 +22,6 @@ final class AssistantCoordinator {
     init(router: IPCRouter, invocation: InvocationController) {
         self.router = router
         self.invocation = invocation
-        buddy.onClick = { [weak self] in self?.toggleExpanded() }
     }
 
     var isExpanded: Bool { panel?.isExpanded ?? false }

@@ -17,12 +17,16 @@ public struct ChordStateMachine: Sendable {
         case scheduleHoldTimer(token: Int, after: Duration)
         case activate
         case deactivate(InvocationEndReason)
+        /// A quick press-and-release before hold activated (hold mode): toggle the panel.
+        case tap
     }
 
     public var target: Set<Modifier>
     public var behavior: InvocationBehavior
     public var holdDelay: Duration
     public var tapMaxDuration: Duration = .milliseconds(450)
+    /// In hold mode, a press shorter than this counts as a tap rather than a hold.
+    public var holdTapMaxDuration: Duration = .milliseconds(350)
 
     public private(set) var isActive = false
     private var chordDown = false
@@ -58,11 +62,13 @@ public struct ChordStateMachine: Sendable {
             defer { downAt = nil }
             switch behavior {
             case .hold, .pushToTalk:
+                let quick = released && !tainted && heldFor <= holdTapMaxDuration
                 if isActive {
                     isActive = false
+                    if quick { return .deactivate(.tapped) }
                     return .deactivate(released && !tainted ? .released : .cancelled)
                 }
-                return .none
+                return quick ? .tap : .none
             case .toggle:
                 guard released, !tainted, heldFor <= tapMaxDuration else { return .none }
                 isActive.toggle()

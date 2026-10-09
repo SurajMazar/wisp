@@ -8,6 +8,8 @@ public protocol InvocationDelegate: AnyObject {
     func invocationStarted(source: InvocationSource, behavior: InvocationBehavior)
     func invocationEnded(source: InvocationSource, reason: InvocationEndReason, duration: Duration)
     func invocationRequestsMainWindow()
+    /// Quick tap of the shortcut in hold mode.
+    func invocationTapped()
     func invocationStatusChanged(_ status: InvocationStatus)
 }
 
@@ -183,6 +185,8 @@ public final class InvocationController {
             start(source: source, behavior: settings.behavior)
         case .deactivate(let reason):
             end(reason: reason)
+        case .tap:
+            delegate?.invocationTapped()
         }
     }
 

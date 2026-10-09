@@ -31,52 +31,36 @@ import Testing
         #expect(a.x < -5, "flips left at the shared edge instead of crossing onto the other display")
     }
 
-    @Test func followsQuickMovementAndConverges() {
+    @Test func followsAndConverges() {
         var m = BuddyMotion()
-        var t: TimeInterval = 0
-        _ = m.step(cursor: CGPoint(x: 100, y: 500), time: t, size: size, bounds: screen, smoothing: 0.3)
+        _ = m.step(cursor: CGPoint(x: 100, y: 500), size: size, bounds: screen, smoothing: 0.42)
         var c = CGPoint.zero
         for i in 1...60 {
-            t += 1.0 / 60
-            c = m.step(cursor: CGPoint(x: 100 + CGFloat(min(i, 10)) * 40, y: 500), time: t, size: size, bounds: screen, smoothing: 0.3)
+            c = m.step(cursor: CGPoint(x: 100 + CGFloat(min(i, 10)) * 40, y: 500), size: size, bounds: screen, smoothing: 0.42)
         }
         let target = BuddyMotion.anchor(cursor: CGPoint(x: 500, y: 500), size: size, bounds: screen, gap: 14)
         #expect(hypot(c.x - target.x, c.y - target.y) < 0.5)
-        #expect(!m.isHeld)
     }
 
-    @Test func holdsStillWhenReachedForSlowlySoItCanBeClicked() {
+    @Test func neverStopsWhenThePointerMovesOntoIt() {
+        // The buddy is click-through and always trails; reaching toward it never pins it in place.
         var m = BuddyMotion()
-        var t: TimeInterval = 0
-        let start = m.step(cursor: CGPoint(x: 500, y: 500), time: t, size: size, bounds: screen, smoothing: 0.3)
+        let start = m.step(cursor: CGPoint(x: 500, y: 500), size: size, bounds: screen, smoothing: 0.42)
         var cursor = CGPoint(x: 500, y: 500)
-        for _ in 0..<40 {
-            t += 1.0 / 60
-            // Slow approach (~120 pt/s) toward the buddy.
-            let dx = start.x - cursor.x, dy = start.y - cursor.y
-            let len = hypot(dx, dy)
-            guard len > 1 else { break }
-            cursor.x += dx / len * 2
-            cursor.y += dy / len * 2
-            let c = m.step(cursor: cursor, time: t, size: size, bounds: screen, smoothing: 0.3)
-            #expect(c == start, "buddy ran away from a pointer reaching for it")
+        var last = start
+        for _ in 0..<20 {
+            cursor.x += 2
+            cursor.y -= 2
+            last = m.step(cursor: cursor, size: size, bounds: screen, smoothing: 0.42)
         }
-        #expect(m.isHeld)
-    }
-
-    @Test func fastMovementTowardItIsNotAReach() {
-        var m = BuddyMotion()
-        _ = m.step(cursor: CGPoint(x: 500, y: 500), time: 0, size: size, bounds: screen, smoothing: 0.3)
-        // 1,200 pt/s diagonal sweep through the buddy's position.
-        _ = m.step(cursor: CGPoint(x: 520, y: 480), time: 1.0 / 60, size: size, bounds: screen, smoothing: 0.3)
-        _ = m.step(cursor: CGPoint(x: 560, y: 440), time: 2.0 / 60, size: size, bounds: screen, smoothing: 0.3)
-        #expect(!m.isHeld)
+        #expect(last != start)
+        #expect(last.x > start.x && last.y < start.y)
     }
 
     @Test func snapsWithReducedMotion() {
         var m = BuddyMotion()
-        _ = m.step(cursor: CGPoint(x: 100, y: 500), time: 0, size: size, bounds: screen, smoothing: 1)
-        let c = m.step(cursor: CGPoint(x: 900, y: 300), time: 1.0 / 60, size: size, bounds: screen, smoothing: 1)
+        _ = m.step(cursor: CGPoint(x: 100, y: 500), size: size, bounds: screen, smoothing: 1)
+        let c = m.step(cursor: CGPoint(x: 900, y: 300), size: size, bounds: screen, smoothing: 1)
         #expect(c == BuddyMotion.anchor(cursor: CGPoint(x: 900, y: 300), size: size, bounds: screen, gap: 14))
     }
 }

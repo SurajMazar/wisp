@@ -3,15 +3,14 @@ import SwiftUI
 import WispIPC
 import WispUtilities
 
-/// The assistant cursor ("buddy"): a small companion that stays beside the pointer on every
-/// display, shows what the assistant is doing, and opens the assistant when clicked.
+/// The assistant cursor ("buddy"): a second, luminous cursor that trails the real one on every
+/// display and shows what the assistant is doing.
 ///
-/// It never replaces or hides the system cursor (spec §26) and is excluded from screenshots
-/// and screen recordings (`sharingType = .none`), so Wisp never sees itself when it looks at the screen.
+/// It is purely visual — click-through, never hoverable, never in the way — and it never replaces
+/// or hides the system cursor (spec §26). It is excluded from screenshots and recordings
+/// (`sharingType = .none`), so Wisp never sees itself when it looks at the screen.
 @MainActor
 public final class BuddyController {
-    public var onClick: (() -> Void)?
-
     private let window: NSPanel
     private let view: BuddyView
     private let labelWindow: NSPanel
@@ -29,7 +28,6 @@ public final class BuddyController {
     public private(set) var state: AssistantState = .idle
     private var summoned = false
     private var suppressed = false
-    private var hovering = false
 
     public init(settings: CursorSettings = CursorSettings(
         animation: .normal, customColor: nil, enabled: true, glow: 0.6, label: "Wisp", opacity: 0.95,
@@ -37,13 +35,12 @@ public final class BuddyController {
     )) {
         self.settings = settings
         view = BuddyView(style: Self.style(for: settings))
-        window = Self.makePanel(size: view.frame.size, clickable: true)
+        window = Self.makePanel(size: view.frame.size)
         window.contentView = view
-        labelWindow = Self.makePanel(size: NSSize(width: 120, height: 24), clickable: false)
+        labelWindow = Self.makePanel(size: NSSize(width: 120, height: 24))
         let host = NSHostingView(rootView: BuddyLabel(model: labelModel))
         host.sizingOptions = [.intrinsicContentSize]
         labelWindow.contentView = host
-        view.onClick = { [weak self] in self?.onClick?() }
 
         let ws = NSWorkspace.shared.notificationCenter
         observers.append(ws.addObserver(forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
@@ -170,20 +167,10 @@ public final class BuddyController {
             lastScreen = displayID
         }
         let size = window.frame.size
-        let center = motion.step(
-            cursor: cursor, time: now.timeIntervalSinceReferenceDate, size: size, bounds: screen.frame,
-            smoothing: smoothing
-        )
+        let center = motion.step(cursor: cursor, size: size, bounds: screen.frame, smoothing: smoothing)
         let origin = NSPoint(x: (center.x - size.width / 2).rounded(), y: (center.y - size.height / 2).rounded())
         if window.frame.origin != origin { window.setFrameOrigin(origin) }
 
-        let r = BuddyView.baseOrb * CGFloat(settings.size) / 2 + 6
-        let isHovering = hypot(cursor.x - center.x, cursor.y - center.y) <= r
-        if isHovering != hovering {
-            hovering = isHovering
-            view.set(hovering: isHovering)
-            updateLabel()
-        }
         positionLabel(buddyCenter: center, cursor: cursor, screen: screen.frame)
     }
 
@@ -193,8 +180,8 @@ public final class BuddyController {
         if reduceMotion { return 1 }
         return switch settings.animation {
         case .minimal: 0.55
-        case .normal: 0.3
-        case .expressive: 0.2
+        case .normal: 0.42
+        case .expressive: 0.26
         }
     }
 
@@ -212,7 +199,7 @@ public final class BuddyController {
     }
 
     private func updateLabel() {
-        let text: String? = hovering ? "Open \(settings.label)" : (BuddyTheme.label(for: state) ?? (settings.showLabel ? settings.label : nil))
+        let text: String? = BuddyTheme.label(for: state) ?? (settings.showLabel ? settings.label : nil)
         labelModel.text = text
         labelModel.accent = Color(nsColor: BuddyTheme.stateColor(state, accent: BuddyTheme.color(for: settings.theme, custom: settings.customColor)))
         if text == nil { labelWindow.orderOut(nil) } else if window.isVisible { labelWindow.orderFrontRegardless() }
@@ -239,7 +226,7 @@ public final class BuddyController {
         )
     }
 
-    private static func makePanel(size: NSSize, clickable: Bool) -> NSPanel {
+    private static func makePanel(size: NSSize) -> NSPanel {
         let p = NSPanel(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         p.isOpaque = false
         p.backgroundColor = .clear
@@ -247,7 +234,7 @@ public final class BuddyController {
         // Above the focus overlay (.popUpMenu) so the buddy stays visible while selecting.
         p.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue + 1)
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        p.ignoresMouseEvents = !clickable
+        p.ignoresMouseEvents = true  // never intercepts a click or hover
         p.hidesOnDeactivate = false
         p.isReleasedWhenClosed = false
         // Hidden from screenshots/recordings so Wisp never captures itself. WISP_BUDDY_CAPTURABLE=1

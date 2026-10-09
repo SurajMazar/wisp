@@ -143,6 +143,8 @@ pub enum InvocationSource {
 #[serde(rename_all = "camelCase")]
 pub enum InvocationEndReason {
     Released,
+    /// A quick press-and-release in hold mode (opens or closes the assistant panel).
+    Tapped,
     Toggled,
     Dismissed,
     Cancelled,

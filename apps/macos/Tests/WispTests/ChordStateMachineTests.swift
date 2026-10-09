@@ -40,11 +40,19 @@ import Testing
         #expect(m.keyDown() == .deactivate(.cancelled))
     }
 
-    @Test func releasingBeforeDelayDoesNothing() {
+    @Test func quickTapInHoldModeTogglesThePanel() {
         var m = ChordStateMachine(target: cmdOpt, behavior: .hold, holdDelay: .milliseconds(150))
         let sched = m.flagsChanged(cmdOpt, at: t0)
-        #expect(m.flagsChanged([], at: t0 + .milliseconds(50)) == .none)
-        #expect(fireTimer(&m, sched) == .none)
+        #expect(m.flagsChanged([], at: t0 + .milliseconds(80)) == .tap)
+        #expect(fireTimer(&m, sched) == .none, "no hold after a tap")
+        // A short hold that already activated also counts as a tap.
+        let s2 = m.flagsChanged(cmdOpt, at: t0 + .seconds(2))
+        #expect(fireTimer(&m, s2) == .activate)
+        #expect(m.flagsChanged([], at: t0 + .seconds(2) + .milliseconds(250)) == .deactivate(.tapped))
+        // ⌘⌥-key is never a tap.
+        _ = m.flagsChanged(cmdOpt, at: t0 + .seconds(5))
+        _ = m.keyDown()
+        #expect(m.flagsChanged([], at: t0 + .seconds(5) + .milliseconds(80)) == .none)
     }
 
     @Test func supersetChordIsNotTheChord() {

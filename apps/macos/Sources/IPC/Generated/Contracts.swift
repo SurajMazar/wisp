@@ -865,6 +865,7 @@ public enum InvocationEndReason: String, Codable, Sendable, Equatable, CaseItera
     case toggled = "toggled"
     case dismissed = "dismissed"
     case cancelled = "cancelled"
+    case tapped = "tapped"
 }
 
 public struct InvocationEnded: Codable, Sendable, Equatable {

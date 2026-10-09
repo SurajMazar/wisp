@@ -134,10 +134,21 @@ extension AppDelegate: InvocationDelegate {
 
     func invocationEnded(source: InvocationSource, reason: InvocationEndReason, duration: Duration) {
         focus?.holdEnded()
-        voice?.holdEnded()
-        assistant?.invocationEnded()
+        if reason == .tapped {
+            // A quick tap: nothing was said or drawn — just open/close the panel.
+            voice?.cancelHold()
+            assistant?.invocationEnded()
+            assistant?.toggleExpanded()
+        } else {
+            voice?.holdEnded()
+            assistant?.invocationEnded()
+        }
         let ms = duration.components.seconds * 1000 + duration.components.attoseconds / 1_000_000_000_000_000
         deps?.router.emit(IPCEvents.invocationEnded, InvocationEnded(durationMs: ms, reason: reason, source: source))
+    }
+
+    func invocationTapped() {
+        assistant?.toggleExpanded()
     }
 
     func invocationRequestsMainWindow() {

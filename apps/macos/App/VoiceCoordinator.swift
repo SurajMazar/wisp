@@ -64,6 +64,14 @@ final class VoiceCoordinator {
         Task { _ = try? await self.finish() }
     }
 
+    /// The hold turned out to be a tap: discard the recording without transcribing.
+    func cancelHold() {
+        guard let session = capture.sessionId, purpose == .ask else { return }
+        capture.stop()
+        if assistant.state == .listening { assistant.set(state: .idle) }
+        Task { _ = try? await router.core.request(method: IPCMethods.voiceCancel.name, params: .object(["sessionId": .string(session)])) }
+    }
+
     /// Stop any speech right away (spec §85: user speaking interrupts playback).
     func interrupt() {
         if player.isSpeaking {

@@ -82,7 +82,7 @@ export function CursorSettingsGroup({ cursor }: { cursor: CursorSettings }) {
   return (
     <SettingsGroup
       title="Assistant cursor"
-      description="A small companion that stays beside your pointer. Click it to open Wisp; hold your shortcut and it pays attention."
+      description="A second cursor that trails yours and shows what Wisp is doing. It never gets in the way of clicks. Tap your shortcut to open Wisp; hold it to talk and point."
     >
       <div className="space-y-2 px-3 py-3">
         <BuddyPreview cursor={draft} state={previewState} reduceMotion={reduceMotion} />

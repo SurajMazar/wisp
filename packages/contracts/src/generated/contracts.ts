@@ -475,7 +475,7 @@ export const IdParams = z.strictObject({
 });
 export type IdParams = z.output<typeof IdParams>;
 
-export const InvocationEndReason = z.enum(["released","toggled","dismissed","cancelled"]);
+export const InvocationEndReason = z.enum(["released","toggled","dismissed","cancelled","tapped"]);
 export type InvocationEndReason = z.output<typeof InvocationEndReason>;
 
 export const InvocationEnded = z.strictObject({

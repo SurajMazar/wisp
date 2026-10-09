@@ -1301,13 +1301,22 @@
       ]
     },
     "InvocationEndReason": {
-      "enum": [
-        "released",
-        "toggled",
-        "dismissed",
-        "cancelled"
-      ],
-      "type": "string"
+      "oneOf": [
+        {
+          "enum": [
+            "released",
+            "toggled",
+            "dismissed",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "tapped",
+          "description": "A quick press-and-release in hold mode (opens or closes the assistant panel).",
+          "type": "string"
+        }
+      ]
     },
     "InvocationEnded": {
       "additionalProperties": false,
