@@ -2,7 +2,7 @@ import { Outlet, useLocation } from "react-router";
 import { Sidebar } from "./Sidebar";
 
 /** Chat surfaces own their full height (pinned composer, scrolling thread). */
-const fullBleed = (path: string) => path === "/" || path.startsWith("/conversations");
+const fullBleed = (path: string) => path === "/home" || path.startsWith("/conversations");
 
 export function AppShell() {
   const { pathname } = useLocation();

@@ -2,7 +2,8 @@ import { IpcClient, type Message } from "@wisp/contracts";
 import { MockTransport } from "@wisp/test-utils";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, RouterProvider, Routes } from "react-router";
+import { createRouter } from "../src/app/router/routes";
 import { beforeEach, describe, expect, it } from "vitest";
 import { AssistantPanel } from "../src/features/assistant/AssistantPanel";
 import { ConversationsPage } from "../src/features/conversations/ConversationsPage";
@@ -229,5 +230,13 @@ describe("Chat", () => {
         params: { model: { providerId: "ollama", model: "llama3.2:3b" } },
       }),
     );
+  });
+
+  it("sending from Home opens the conversation (real app routes)", async () => {
+    window.location.hash = "#/home";
+    render(<RouterProvider router={createRouter()} />);
+    await userEvent.type(await screen.findByRole("textbox", { name: "Message" }), "Which button?{Enter}");
+    await waitFor(() => expect(window.location.hash).toBe(`#/conversations/${CID}`));
+    expect(await screen.findByText("Which button?")).toBeInTheDocument();
   });
 });

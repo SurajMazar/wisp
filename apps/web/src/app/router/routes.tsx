@@ -33,6 +33,8 @@ export function createRouter() {
           path: s.path.slice(1),
           element: built[s.path] ?? <UnavailablePage section={s} />,
         })),
+        // A specific conversation (linked from Home, history and the panel).
+        { path: "conversations/:id", element: <ConversationsPage /> },
         { path: "*", element: <Navigate to="/home" replace /> },
       ],
     },
