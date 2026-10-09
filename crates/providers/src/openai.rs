@@ -9,7 +9,8 @@ use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 use wisp_ai::{AiError, AiProvider, Chunk, ChunkStream, GenerateRequest, Role, Usage};
 use wisp_ipc::types::models::{
-    EndpointConfig, Locality, ModelCapability, ModelInfo, ProviderInfo, ProviderKind, ProviderState,
+    CloudPreset, EndpointConfig, Locality, ModelCapability, ModelInfo, ProviderInfo, ProviderKind,
+    ProviderState,
 };
 
 use crate::{HostBridge, stream::lines_to_chunks};
@@ -61,6 +62,11 @@ impl OpenAiCompatibleProvider {
             .await
         {
             Ok(v) => match v.get("secret").and_then(Value::as_str) {
+                // Anthropic's model list wants its own headers; its chat endpoint takes either.
+                Some(key) if self.config.preset == Some(CloudPreset::Anthropic) => req
+                    .bearer_auth(key)
+                    .header("x-api-key", key)
+                    .header("anthropic-version", "2023-06-01"),
                 Some(key) => req.bearer_auth(key),
                 None => req,
             },
@@ -70,6 +76,61 @@ impl OpenAiCompatibleProvider {
             }
         }
     }
+}
+
+/// Chat models only: providers also list embedding, speech, image and moderation models.
+fn preset_keeps(preset: Option<CloudPreset>, id: &str) -> bool {
+    const NOT_CHAT: [&str; 12] = [
+        "embed",
+        "tts",
+        "whisper",
+        "transcribe",
+        "audio",
+        "realtime",
+        "image",
+        "dall-e",
+        "moderation",
+        "search",
+        "aqa",
+        "imagen",
+    ];
+    if NOT_CHAT.iter().any(|w| id.contains(w)) {
+        return false;
+    }
+    match preset {
+        None => true,
+        Some(CloudPreset::Openai) => {
+            ["gpt-", "o1", "o3", "o4", "chatgpt-"]
+                .iter()
+                .any(|p| id.starts_with(p))
+                && !id.contains("instruct")
+                && !id.starts_with("gpt-3.5")
+        }
+        Some(CloudPreset::Anthropic) => id.starts_with("claude-"),
+        Some(CloudPreset::Gemini) => id.starts_with("gemini-") || id.starts_with("gemma-"),
+    }
+}
+
+/// Current models from these services understand images; unknown endpoints are text-only
+/// unless the user picks the model for vision.
+fn preset_capabilities(preset: Option<CloudPreset>, id: &str) -> Vec<ModelCapability> {
+    let mut caps = vec![ModelCapability::Text, ModelCapability::Streaming];
+    let vision = match preset {
+        None => false,
+        Some(CloudPreset::Openai) => !id.starts_with("o1-mini") && !id.starts_with("o3-mini"),
+        Some(CloudPreset::Anthropic) => true,
+        Some(CloudPreset::Gemini) => id.starts_with("gemini-"),
+    };
+    if vision {
+        caps.push(ModelCapability::Vision);
+    }
+    caps
+}
+
+fn openai_is_reasoning(model: &str) -> bool {
+    ["o1", "o3", "o4", "gpt-5"]
+        .iter()
+        .any(|p| model.starts_with(p))
 }
 
 pub(crate) fn parse_sse_line(line: &str) -> Result<Vec<Chunk>, AiError> {
@@ -170,15 +231,23 @@ impl AiProvider for OpenAiCompatibleProvider {
             .and_then(Value::as_array)
             .into_iter()
             .flatten()
-            .filter_map(|m| m.get("id").and_then(Value::as_str))
-            .map(|id| ModelInfo {
+            .filter_map(|m| {
+                let id = m.get("id").and_then(Value::as_str)?;
+                // Gemini lists `models/gemini-…`; requests take the bare name.
+                let id = id.strip_prefix("models/").unwrap_or(id);
+                let name = m
+                    .get("display_name")
+                    .and_then(Value::as_str)
+                    .unwrap_or(id)
+                    .to_owned();
+                preset_keeps(self.config.preset, id).then(|| (id.to_owned(), name))
+            })
+            .map(|(id, name)| ModelInfo {
                 provider_id: self.id.clone(),
-                id: id.to_owned(),
-                name: id.to_owned(),
+                capabilities: preset_capabilities(self.config.preset, &id),
+                id,
+                name,
                 locality: self.locality,
-                // The models endpoint doesn't report modalities; images are attempted only when the
-                // user explicitly picks this model for vision.
-                capabilities: vec![ModelCapability::Text, ModelCapability::Streaming],
                 size_bytes: None,
                 context_length: None,
                 parameter_size: None,
@@ -213,7 +282,23 @@ impl AiProvider for OpenAiCompatibleProvider {
                 messages.push(json!({ "role": role, "content": parts }));
             }
         }
-        let body = json!({ "model": req.model, "messages": messages, "stream": true, "temperature": req.temperature, "max_tokens": req.max_tokens });
+        let mut body = json!({ "model": req.model, "messages": messages, "stream": true, "temperature": req.temperature, "max_tokens": req.max_tokens });
+        if self.config.preset == Some(CloudPreset::Openai)
+            && let Some(o) = body.as_object_mut()
+        {
+            // Current OpenAI models take `max_completion_tokens`; reasoning models reject a
+            // custom temperature.
+            if let Some(m) = o.remove("max_tokens") {
+                o.insert("max_completion_tokens".into(), m);
+            }
+            if openai_is_reasoning(&req.model) {
+                o.remove("temperature");
+                o.insert(
+                    "reasoning_effort".into(),
+                    json!(if req.think { "medium" } else { "low" }),
+                );
+            }
+        }
         let resp = self
             .auth(self.client.post(self.url("chat/completions")).json(&body))
             .await
@@ -234,6 +319,25 @@ impl AiProvider for OpenAiCompatibleProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn presets_keep_only_chat_models() {
+        use CloudPreset::*;
+        assert!(preset_keeps(Some(Openai), "gpt-4.1-mini"));
+        assert!(preset_keeps(Some(Openai), "o4-mini"));
+        assert!(!preset_keeps(Some(Openai), "text-embedding-3-small"));
+        assert!(!preset_keeps(Some(Openai), "gpt-4o-mini-tts"));
+        assert!(!preset_keeps(Some(Openai), "gpt-4o-realtime-preview"));
+        assert!(preset_keeps(Some(Anthropic), "claude-sonnet-4-5"));
+        assert!(preset_keeps(Some(Gemini), "gemini-2.5-flash"));
+        assert!(!preset_keeps(Some(Gemini), "gemini-embedding-001"));
+        assert!(
+            preset_capabilities(Some(Anthropic), "claude-sonnet-4-5")
+                .contains(&ModelCapability::Vision)
+        );
+        assert!(!preset_capabilities(None, "local-model").contains(&ModelCapability::Vision));
+        assert!(openai_is_reasoning("gpt-5-mini") && !openai_is_reasoning("gpt-4.1"));
+    }
 
     #[test]
     fn locality_from_address() {

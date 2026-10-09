@@ -61,18 +61,20 @@ export function EndpointsGroup({
       title="Other model servers"
       description="Connect LM Studio, a llama.cpp server or any OpenAI-compatible API. Keys are stored in your Mac's Keychain. Cloud servers are only used when your privacy setting allows."
     >
-      {settings.endpoints.map((e) => (
-        <SettingsRow
-          key={e.id}
-          label={e.name}
-          hint={`${e.baseUrl} · ${isLocal(e.baseUrl) ? "on this Mac" : "cloud"}${e.keychainAccount ? " · key in Keychain" : ""}`}
-          control={
-            <Button size="sm" variant="ghost" onClick={() => void removeEndpoint(e)}>
-              Remove
-            </Button>
-          }
-        />
-      ))}
+      {settings.endpoints
+        .filter((e) => !e.preset)
+        .map((e) => (
+          <SettingsRow
+            key={e.id}
+            label={e.name}
+            hint={`${e.baseUrl} · ${isLocal(e.baseUrl) ? "on this Mac" : "cloud"}${e.keychainAccount ? " · key in Keychain" : ""}`}
+            control={
+              <Button size="sm" variant="ghost" onClick={() => void removeEndpoint(e)}>
+                Remove
+              </Button>
+            }
+          />
+        ))}
       {adding ? (
         <form
           className="grid grid-cols-[110px_1fr] items-center gap-2 px-3 py-2.5"

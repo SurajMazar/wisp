@@ -96,6 +96,18 @@ pub struct EndpointConfig {
     pub base_url: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keychain_account: Option<String>,
+    /// A known cloud service, for its model list, request quirks and headers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preset: Option<CloudPreset>,
+}
+
+/// Cloud services reached through their OpenAI-compatible APIs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum CloudPreset {
+    Openai,
+    Anthropic,
+    Gemini,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

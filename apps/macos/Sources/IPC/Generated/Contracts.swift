@@ -593,6 +593,13 @@ public struct MemorySettings: Codable, Sendable, Equatable {
     }
 }
 
+/// Cloud services reached through their OpenAI-compatible APIs.
+public enum CloudPreset: String, Codable, Sendable, Equatable, CaseIterable {
+    case openai = "openai"
+    case anthropic = "anthropic"
+    case gemini = "gemini"
+}
+
 /// A user-configured OpenAI-compatible endpoint (LM Studio, llama.cpp server, or a cloud API).
 /// Its API key lives in the Keychain under `keychain_account`, never here.
 public struct EndpointConfig: Codable, Sendable, Equatable {
@@ -600,12 +607,14 @@ public struct EndpointConfig: Codable, Sendable, Equatable {
     public var id: String
     public var keychainAccount: String?
     public var name: String
+    public var preset: CloudPreset?
 
-    public init(baseUrl: String, id: String, keychainAccount: String? = nil, name: String) {
+    public init(baseUrl: String, id: String, keychainAccount: String? = nil, name: String, preset: CloudPreset? = nil) {
         self.baseUrl = baseUrl
         self.id = id
         self.keychainAccount = keychainAccount
         self.name = name
+        self.preset = preset
     }
 }
 

@@ -11,6 +11,7 @@ import { Button, ErrorNotice, SettingsGroup, SettingsRow, Slider, Spinner, Switc
 import { useEffect, useState } from "react";
 import { modelKey, useModelsStore } from "../../stores/modelsStore";
 import { useSettingsStore } from "../../stores/settingsStore";
+import { CloudProvidersGroup } from "./CloudProvidersGroup";
 import { EndpointsGroup } from "./EndpointsGroup";
 
 const stateBadge: Record<ProviderState, { text: string; tone: string }> = {
@@ -375,6 +376,7 @@ export function ModelsPage() {
         </SettingsGroup>
       )}
 
+      {draft && <CloudProvidersGroup settings={draft} onSave={save} />}
       {draft && <EndpointsGroup settings={draft} onSave={save} />}
     </>
   );

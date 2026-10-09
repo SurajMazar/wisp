@@ -1389,6 +1389,15 @@
       ],
       "type": "object"
     },
+    "CloudPreset": {
+      "description": "Cloud services reached through their OpenAI-compatible APIs.",
+      "enum": [
+        "openai",
+        "anthropic",
+        "gemini"
+      ],
+      "type": "string"
+    },
     "ComputerSettings": {
       "additionalProperties": false,
       "description": "Computer control (spec §55–58). Off until the user turns it on.",
@@ -1890,6 +1899,17 @@
         },
         "name": {
           "type": "string"
+        },
+        "preset": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/CloudPreset"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A known cloud service, for its model list, request quirks and headers."
         }
       },
       "required": [

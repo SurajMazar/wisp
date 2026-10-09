@@ -298,6 +298,10 @@ export const MemorySettings = z.strictObject({
 });
 export type MemorySettings = z.output<typeof MemorySettings>;
 
+/** Cloud services reached through their OpenAI-compatible APIs. */
+export const CloudPreset = z.enum(["openai","anthropic","gemini"]);
+export type CloudPreset = z.output<typeof CloudPreset>;
+
 /** A user-configured OpenAI-compatible endpoint (LM Studio, llama.cpp server, or a cloud API).
 Its API key lives in the Keychain under `keychain_account`, never here. */
 export const EndpointConfig = z.strictObject({
@@ -305,6 +309,7 @@ export const EndpointConfig = z.strictObject({
   "id": z.string(),
   "keychainAccount": z.string().nullable().optional(),
   "name": z.string(),
+  "preset": CloudPreset.nullable().optional(),
 });
 export type EndpointConfig = z.output<typeof EndpointConfig>;
 
