@@ -76,7 +76,6 @@ export const sections: Section[] = [
     path: "/permissions",
     label: "Permissions",
     icon: PermissionsIcon,
-    unavailableNote: "The permission center isn't available in this build yet.",
   },
   { path: "/settings", label: "Settings", icon: SettingsIcon },
 ];

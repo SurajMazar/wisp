@@ -1,4 +1,68 @@
 {
   "version": 1,
-  "models": []
+  "models": [
+    {
+      "id": "whisper-base.en",
+      "name": "Whisper Base (English)",
+      "type": "stt",
+      "provider": "whisper.cpp",
+      "format": "ggml",
+      "preset": "fast",
+      "languages": ["en"],
+      "license": "MIT",
+      "source": "huggingface.co/ggerganov/whisper.cpp@5359861c739e955e79d9a303bcbc70fb988958b1",
+      "capabilities": ["speech-to-text"],
+      "requirements": { "minMemoryBytes": 400000000 },
+      "files": [
+        {
+          "path": "ggml-base.en.bin",
+          "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.en.bin",
+          "sha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+          "sizeBytes": 147964211
+        }
+      ]
+    },
+    {
+      "id": "whisper-small.en",
+      "name": "Whisper Small (English)",
+      "type": "stt",
+      "provider": "whisper.cpp",
+      "format": "ggml",
+      "preset": "balanced",
+      "languages": ["en"],
+      "license": "MIT",
+      "source": "huggingface.co/ggerganov/whisper.cpp@5359861c739e955e79d9a303bcbc70fb988958b1",
+      "capabilities": ["speech-to-text"],
+      "requirements": { "minMemoryBytes": 1000000000 },
+      "files": [
+        {
+          "path": "ggml-small.en.bin",
+          "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-small.en.bin",
+          "sha256": "c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d",
+          "sizeBytes": 487614201
+        }
+      ]
+    },
+    {
+      "id": "whisper-large-v3-turbo-q5",
+      "name": "Whisper Large v3 Turbo (multilingual)",
+      "type": "stt",
+      "provider": "whisper.cpp",
+      "format": "ggml",
+      "preset": "highQuality",
+      "languages": ["multilingual"],
+      "license": "MIT",
+      "source": "huggingface.co/ggerganov/whisper.cpp@5359861c739e955e79d9a303bcbc70fb988958b1",
+      "capabilities": ["speech-to-text"],
+      "requirements": { "minMemoryBytes": 1500000000 },
+      "files": [
+        {
+          "path": "ggml-large-v3-turbo-q5_0.bin",
+          "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-large-v3-turbo-q5_0.bin",
+          "sha256": "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2",
+          "sizeBytes": 574041195
+        }
+      ]
+    }
+  ]
 }

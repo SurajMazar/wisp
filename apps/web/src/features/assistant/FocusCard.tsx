@@ -34,6 +34,14 @@ export function FocusCard({ region }: { region: FocusRegion }) {
       <figcaption className="min-w-0 flex-1">
         <p className="text-sm font-medium text-text">Focused: {kindLabel[region.kind]}</p>
         <p className="truncate text-xs text-text-muted">{describeRegion(region)}</p>
+        {region.accessibility?.underPointer && (
+          <p className="truncate text-xs text-text-muted">
+            Element: {region.accessibility.underPointer.role}
+            {region.accessibility.underPointer.title ? ` “${region.accessibility.underPointer.title}”` : ""}
+            {region.accessibility.nodes.length > 0 &&
+              ` · ${region.accessibility.nodes.length} controls understood`}
+          </p>
+        )}
         {region.image && (
           <p className="text-xs text-text-faint">
             {region.image.widthPx} × {region.image.heightPx} px · stays on this Mac

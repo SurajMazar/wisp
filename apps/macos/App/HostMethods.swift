@@ -72,6 +72,40 @@ enum HostMethods {
             ScreenPermissionStatus(screenRecording: ScreenPermission.request())
         }
 
+        router.register(IPCMethods.hostAxStatus) { _ in
+            AccessibilityStatus(state: AccessibilityReader.status)
+        }
+
+        router.register(IPCMethods.hostAxRequestPermission) { _ in
+            let state = AccessibilityReader.requestPermission()
+            if state != .enabled { SystemSettings.open(.accessibility) }
+            deps.invocation.refresh()
+            return AccessibilityStatus(state: state)
+        }
+
+        router.register(IPCMethods.hostAxSnapshot) { params in
+            guard (1...600).contains(params.maxNodes) else { throw IpcError.invalidRequest("maxNodes must be 1–600") }
+            guard AccessibilityReader.isTrusted else {
+                throw IpcError(code: .permissionDenied, details: nil, message: "Wisp needs Accessibility permission to read app controls.")
+            }
+            let point = params.point?.cg ?? FocusGeometry.cgPoint(fromAppKit: NSEvent.mouseLocation, primaryHeight: Displays.primaryHeight)
+            return await AccessibilityReader.snapshot(
+                point: point, region: params.region?.cg,
+                limits: .init(maxNodes: Int(params.maxNodes)),
+                excludingPID: ProcessInfo.processInfo.processIdentifier
+            )
+        }
+
+        router.register(IPCMethods.hostMicPermission) { _ in
+            MicrophoneStatus(state: MicrophonePermission.status)
+        }
+
+        router.register(IPCMethods.hostMicRequestPermission) { _ in
+            let state = await MicrophonePermission.request()
+            if state != .enabled { SystemSettings.open(.microphone) }
+            return MicrophoneStatus(state: state)
+        }
+
         router.register(IPCMethods.hostCursorPreview) { params in
             guard (300...5_000).contains(params.stepMs), (1...12).contains(params.states.count) else {
                 throw IpcError.invalidRequest("stepMs must be 300–5000 and 1–12 states")

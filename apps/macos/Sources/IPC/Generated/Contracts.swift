@@ -18,6 +18,20 @@ public enum AccentColor: String, Codable, Sendable, Equatable, CaseIterable {
     case custom = "custom"
 }
 
+public enum PermissionState: String, Codable, Sendable, Equatable, CaseIterable {
+    case enabled = "enabled"
+    case needsAttention = "needsAttention"
+    case notRequested = "notRequested"
+}
+
+public struct AccessibilityStatus: Codable, Sendable, Equatable {
+    public var state: PermissionState
+
+    public init(state: PermissionState) {
+        self.state = state
+    }
+}
+
 /// How lively the buddy's motion is. Reduced Motion in macOS always wins.
 public enum AnimationLevel: String, Codable, Sendable, Equatable, CaseIterable {
     case minimal = "minimal"
@@ -286,6 +300,138 @@ public struct AssistantVisibility: Codable, Sendable, Equatable {
     }
 }
 
+public struct Rect: Codable, Sendable, Equatable {
+    public var height: Double
+    public var width: Double
+    public var x: Double
+    public var y: Double
+
+    public init(height: Double, width: Double, x: Double, y: Double) {
+        self.height = height
+        self.width = width
+        self.x = x
+        self.y = y
+    }
+}
+
+/// One normalized accessibility element. Secure text field values are never populated.
+public struct AxNode: Codable, Sendable, Equatable {
+    public var actions: [String]?
+    public var depth: UInt32
+    public var description: String?
+    public var enabled: Bool
+    public var focused: Bool
+    public var frame: Rect?
+    public var identifier: String?
+    public var role: String
+    public var selected: Bool
+    public var subrole: String?
+    public var title: String?
+    public var value: String?
+
+    public init(actions: [String]? = nil, depth: UInt32, description: String? = nil, enabled: Bool, focused: Bool, frame: Rect? = nil, identifier: String? = nil, role: String, selected: Bool, subrole: String? = nil, title: String? = nil, value: String? = nil) {
+        self.actions = actions
+        self.depth = depth
+        self.description = description
+        self.enabled = enabled
+        self.focused = focused
+        self.frame = frame
+        self.identifier = identifier
+        self.role = role
+        self.selected = selected
+        self.subrole = subrole
+        self.title = title
+        self.value = value
+    }
+}
+
+/// Model-ready accessibility context: the few elements that matter, plus a compact text form.
+public struct AxContext: Codable, Sendable, Equatable {
+    public var focused: AxNode?
+    public var nodes: [AxNode]
+    public var summary: String
+    public var underPointer: AxNode?
+
+    public init(focused: AxNode? = nil, nodes: [AxNode], summary: String, underPointer: AxNode? = nil) {
+        self.focused = focused
+        self.nodes = nodes
+        self.summary = summary
+        self.underPointer = underPointer
+    }
+}
+
+public struct Point: Codable, Sendable, Equatable {
+    public var x: Double
+    public var y: Double
+
+    public init(x: Double, y: Double) {
+        self.x = x
+        self.y = y
+    }
+}
+
+public struct WindowInfo: Codable, Sendable, Equatable {
+    public var frame: Rect
+    public var id: UInt32
+    public var title: String?
+
+    public init(frame: Rect, id: UInt32, title: String? = nil) {
+        self.frame = frame
+        self.id = id
+        self.title = title
+    }
+}
+
+public struct AxSnapshot: Codable, Sendable, Equatable {
+    public var ancestors: [AxNode]?
+    public var application: ApplicationInfo?
+    public var elapsedMs: UInt32
+    public var focused: AxNode?
+    public var nodes: [AxNode]?
+    public var selectedText: String?
+    public var truncated: Bool
+    public var underPointer: AxNode?
+    public var window: WindowInfo?
+
+    public init(ancestors: [AxNode]? = nil, application: ApplicationInfo? = nil, elapsedMs: UInt32, focused: AxNode? = nil, nodes: [AxNode]? = nil, selectedText: String? = nil, truncated: Bool, underPointer: AxNode? = nil, window: WindowInfo? = nil) {
+        self.ancestors = ancestors
+        self.application = application
+        self.elapsedMs = elapsedMs
+        self.focused = focused
+        self.nodes = nodes
+        self.selectedText = selectedText
+        self.truncated = truncated
+        self.underPointer = underPointer
+        self.window = window
+    }
+}
+
+public struct AxRankParams: Codable, Sendable, Equatable {
+    public var cursor: Point?
+    public var limit: UInt32
+    public var region: Rect?
+    public var snapshot: AxSnapshot
+
+    public init(cursor: Point? = nil, limit: UInt32, region: Rect? = nil, snapshot: AxSnapshot) {
+        self.cursor = cursor
+        self.limit = limit
+        self.region = region
+        self.snapshot = snapshot
+    }
+}
+
+public struct AxSnapshotParams: Codable, Sendable, Equatable {
+    public var maxNodes: UInt32
+    public var point: Point?
+    public var region: Rect?
+
+    public init(maxNodes: UInt32, point: Point? = nil, region: Rect? = nil) {
+        self.maxNodes = maxNodes
+        self.point = point
+        self.region = region
+    }
+}
+
 /// Whether each invocation channel is actually live right now — never assumed.
 public enum ChannelState: String, Codable, Sendable, Equatable, CaseIterable {
     case active = "active"
@@ -308,20 +454,6 @@ public struct CursorPreviewParams: Codable, Sendable, Equatable {
     public init(states: [AssistantState], stepMs: UInt32) {
         self.states = states
         self.stepMs = stepMs
-    }
-}
-
-public struct Rect: Codable, Sendable, Equatable {
-    public var height: Double
-    public var width: Double
-    public var x: Double
-    public var y: Double
-
-    public init(height: Double, width: Double, x: Double, y: Double) {
-        self.height = height
-        self.width = width
-        self.x = x
-        self.y = y
     }
 }
 
@@ -399,30 +531,9 @@ public enum FocusKind: String, Codable, Sendable, Equatable, CaseIterable {
     case screen = "screen"
 }
 
-public struct Point: Codable, Sendable, Equatable {
-    public var x: Double
-    public var y: Double
-
-    public init(x: Double, y: Double) {
-        self.x = x
-        self.y = y
-    }
-}
-
-public struct WindowInfo: Codable, Sendable, Equatable {
-    public var frame: Rect
-    public var id: UInt32
-    public var title: String?
-
-    public init(frame: Rect, id: UInt32, title: String? = nil) {
-        self.frame = frame
-        self.id = id
-        self.title = title
-    }
-}
-
 /// What the user pointed the assistant at (spec §34).
 public struct FocusRegion: Codable, Sendable, Equatable {
+    public var accessibility: AxContext?
     public var application: ApplicationInfo?
     public var createdAtMs: Int64
     public var crop: Rect
@@ -435,7 +546,8 @@ public struct FocusRegion: Codable, Sendable, Equatable {
     public var selection: Rect
     public var window: WindowInfo?
 
-    public init(application: ApplicationInfo? = nil, createdAtMs: Int64, crop: Rect, cursor: Point, display: DisplayInfo, id: String, image: FocusImage? = nil, kind: FocusKind, path: [Point]? = nil, selection: Rect, window: WindowInfo? = nil) {
+    public init(accessibility: AxContext? = nil, application: ApplicationInfo? = nil, createdAtMs: Int64, crop: Rect, cursor: Point, display: DisplayInfo, id: String, image: FocusImage? = nil, kind: FocusKind, path: [Point]? = nil, selection: Rect, window: WindowInfo? = nil) {
+        self.accessibility = accessibility
         self.application = application
         self.createdAtMs = createdAtMs
         self.crop = crop
@@ -535,6 +647,14 @@ public struct LatestFocus: Codable, Sendable, Equatable {
     }
 }
 
+public struct MicrophoneStatus: Codable, Sendable, Equatable {
+    public var state: PermissionState
+
+    public init(state: PermissionState) {
+        self.state = state
+    }
+}
+
 /// System Settings panes Wisp may open for the user.
 public enum SettingsPane: String, Codable, Sendable, Equatable, CaseIterable {
     case accessibility = "accessibility"
@@ -552,12 +672,6 @@ public struct OpenSettingsPaneParams: Codable, Sendable, Equatable {
     public init(pane: SettingsPane) {
         self.pane = pane
     }
-}
-
-public enum PermissionState: String, Codable, Sendable, Equatable, CaseIterable {
-    case enabled = "enabled"
-    case needsAttention = "needsAttention"
-    case notRequested = "notRequested"
 }
 
 public struct ScreenPermissionStatus: Codable, Sendable, Equatable {
@@ -695,6 +809,12 @@ public enum IPCMethods {
     public static let hostFocusClear = IPCMethod<Empty, Empty>(name: "host.focus.clear", target: .host)
     public static let hostScreenPermission = IPCMethod<Empty, ScreenPermissionStatus>(name: "host.screen.permission", target: .host)
     public static let hostScreenRequestPermission = IPCMethod<Empty, ScreenPermissionStatus>(name: "host.screen.requestPermission", target: .host)
+    public static let hostAxStatus = IPCMethod<Empty, AccessibilityStatus>(name: "host.ax.status", target: .host)
+    public static let hostAxRequestPermission = IPCMethod<Empty, AccessibilityStatus>(name: "host.ax.requestPermission", target: .host)
+    public static let hostAxSnapshot = IPCMethod<AxSnapshotParams, AxSnapshot>(name: "host.ax.snapshot", target: .host)
+    public static let hostMicPermission = IPCMethod<Empty, MicrophoneStatus>(name: "host.mic.permission", target: .host)
+    public static let hostMicRequestPermission = IPCMethod<Empty, MicrophoneStatus>(name: "host.mic.requestPermission", target: .host)
+    public static let accessibilityRank = IPCMethod<AxRankParams, AxContext>(name: "accessibility.rank", target: .core)
     public static let focusLatest = IPCMethod<Empty, LatestFocus>(name: "focus.latest", target: .core)
 
     /// Every known method and which side implements it. Used to route and reject unknown methods.
@@ -714,6 +834,12 @@ public enum IPCMethods {
         "host.focus.clear": .host,
         "host.screen.permission": .host,
         "host.screen.requestPermission": .host,
+        "host.ax.status": .host,
+        "host.ax.requestPermission": .host,
+        "host.ax.snapshot": .host,
+        "host.mic.permission": .host,
+        "host.mic.requestPermission": .host,
+        "accessibility.rank": .core,
         "focus.latest": .core,
     ]
 }

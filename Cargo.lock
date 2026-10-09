@@ -970,6 +970,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "wisp-accessibility",
  "wisp-common",
  "wisp-database",
  "wisp-ipc",

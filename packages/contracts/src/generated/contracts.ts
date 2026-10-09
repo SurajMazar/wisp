@@ -7,6 +7,14 @@ export const PROTOCOL_VERSION = 1 as const;
 export const AccentColor = z.enum(["default","blue","purple","cyan","green","orange","red","pink","monochrome","custom"]);
 export type AccentColor = z.output<typeof AccentColor>;
 
+export const PermissionState = z.enum(["enabled","needsAttention","notRequested"]);
+export type PermissionState = z.output<typeof PermissionState>;
+
+export const AccessibilityStatus = z.strictObject({
+  "state": PermissionState,
+});
+export type AccessibilityStatus = z.output<typeof AccessibilityStatus>;
+
 /** How lively the buddy's motion is. Reduced Motion in macOS always wins. */
 export const AnimationLevel = z.enum(["minimal","normal","expressive"]);
 export type AnimationLevel = z.output<typeof AnimationLevel>;
@@ -153,6 +161,81 @@ export const AssistantVisibility = z.strictObject({
 });
 export type AssistantVisibility = z.output<typeof AssistantVisibility>;
 
+export const Rect = z.object({
+  "height": z.number(),
+  "width": z.number(),
+  "x": z.number(),
+  "y": z.number(),
+});
+export type Rect = z.output<typeof Rect>;
+
+/** One normalized accessibility element. Secure text field values are never populated. */
+export const AxNode = z.strictObject({
+  "actions": z.array(z.string()).optional(),
+  "depth": z.number().int().nonnegative(),
+  "description": z.string().nullable().optional(),
+  "enabled": z.boolean(),
+  "focused": z.boolean(),
+  "frame": Rect.nullable().optional(),
+  "identifier": z.string().nullable().optional(),
+  "role": z.string(),
+  "selected": z.boolean(),
+  "subrole": z.string().nullable().optional(),
+  "title": z.string().nullable().optional(),
+  "value": z.string().nullable().optional(),
+});
+export type AxNode = z.output<typeof AxNode>;
+
+/** Model-ready accessibility context: the few elements that matter, plus a compact text form. */
+export const AxContext = z.strictObject({
+  "focused": AxNode.nullable().optional(),
+  "nodes": z.array(AxNode),
+  "summary": z.string(),
+  "underPointer": AxNode.nullable().optional(),
+});
+export type AxContext = z.output<typeof AxContext>;
+
+export const Point = z.object({
+  "x": z.number(),
+  "y": z.number(),
+});
+export type Point = z.output<typeof Point>;
+
+export const WindowInfo = z.strictObject({
+  "frame": Rect,
+  "id": z.number().int().nonnegative(),
+  "title": z.string().nullable().optional(),
+});
+export type WindowInfo = z.output<typeof WindowInfo>;
+
+export const AxSnapshot = z.strictObject({
+  "ancestors": z.array(AxNode).optional(),
+  "application": ApplicationInfo.nullable().optional(),
+  "elapsedMs": z.number().int().nonnegative(),
+  "focused": AxNode.nullable().optional(),
+  "nodes": z.array(AxNode).optional(),
+  "selectedText": z.string().nullable().optional(),
+  "truncated": z.boolean(),
+  "underPointer": AxNode.nullable().optional(),
+  "window": WindowInfo.nullable().optional(),
+});
+export type AxSnapshot = z.output<typeof AxSnapshot>;
+
+export const AxRankParams = z.strictObject({
+  "cursor": Point.nullable().optional(),
+  "limit": z.number().int().nonnegative(),
+  "region": Rect.nullable().optional(),
+  "snapshot": AxSnapshot,
+});
+export type AxRankParams = z.output<typeof AxRankParams>;
+
+export const AxSnapshotParams = z.strictObject({
+  "maxNodes": z.number().int().nonnegative(),
+  "point": Point.nullable().optional(),
+  "region": Rect.nullable().optional(),
+});
+export type AxSnapshotParams = z.output<typeof AxSnapshotParams>;
+
 /** Whether each invocation channel is actually live right now — never assumed. */
 export const ChannelState = z.enum(["active","needsPermission","conflict","disabled","unsupported"]);
 export type ChannelState = z.output<typeof ChannelState>;
@@ -166,14 +249,6 @@ export const CursorPreviewParams = z.strictObject({
   "stepMs": z.number().int().nonnegative(),
 });
 export type CursorPreviewParams = z.output<typeof CursorPreviewParams>;
-
-export const Rect = z.object({
-  "height": z.number(),
-  "width": z.number(),
-  "x": z.number(),
-  "y": z.number(),
-});
-export type Rect = z.output<typeof Rect>;
 
 export const DisplayInfo = z.strictObject({
   "frame": Rect,
@@ -212,21 +287,9 @@ export type FocusImage = z.output<typeof FocusImage>;
 export const FocusKind = z.enum(["rectangle","circle","point","lasso","window","screen"]);
 export type FocusKind = z.output<typeof FocusKind>;
 
-export const Point = z.object({
-  "x": z.number(),
-  "y": z.number(),
-});
-export type Point = z.output<typeof Point>;
-
-export const WindowInfo = z.strictObject({
-  "frame": Rect,
-  "id": z.number().int().nonnegative(),
-  "title": z.string().nullable().optional(),
-});
-export type WindowInfo = z.output<typeof WindowInfo>;
-
 /** What the user pointed the assistant at (spec §34). */
 export const FocusRegion = z.strictObject({
+  "accessibility": AxContext.nullable().optional(),
   "application": ApplicationInfo.nullable().optional(),
   "createdAtMs": z.number().int(),
   "crop": Rect,
@@ -290,6 +353,11 @@ export const LatestFocus = z.strictObject({
 });
 export type LatestFocus = z.output<typeof LatestFocus>;
 
+export const MicrophoneStatus = z.strictObject({
+  "state": PermissionState,
+});
+export type MicrophoneStatus = z.output<typeof MicrophoneStatus>;
+
 /** System Settings panes Wisp may open for the user. */
 export const SettingsPane = z.enum(["accessibility","inputMonitoring","screenRecording","microphone","automation","notifications","keyboard"]);
 export type SettingsPane = z.output<typeof SettingsPane>;
@@ -298,9 +366,6 @@ export const OpenSettingsPaneParams = z.strictObject({
   "pane": SettingsPane,
 });
 export type OpenSettingsPaneParams = z.output<typeof OpenSettingsPaneParams>;
-
-export const PermissionState = z.enum(["enabled","needsAttention","notRequested"]);
-export type PermissionState = z.output<typeof PermissionState>;
 
 export const ScreenPermissionStatus = z.strictObject({
   "screenRecording": PermissionState,
@@ -359,6 +424,12 @@ export const methods = {
   "host.focus.clear": { target: "host", params: Empty, result: Empty },
   "host.screen.permission": { target: "host", params: Empty, result: ScreenPermissionStatus },
   "host.screen.requestPermission": { target: "host", params: Empty, result: ScreenPermissionStatus },
+  "host.ax.status": { target: "host", params: Empty, result: AccessibilityStatus },
+  "host.ax.requestPermission": { target: "host", params: Empty, result: AccessibilityStatus },
+  "host.ax.snapshot": { target: "host", params: AxSnapshotParams, result: AxSnapshot },
+  "host.mic.permission": { target: "host", params: Empty, result: MicrophoneStatus },
+  "host.mic.requestPermission": { target: "host", params: Empty, result: MicrophoneStatus },
+  "accessibility.rank": { target: "core", params: AxRankParams, result: AxContext },
   "focus.latest": { target: "core", params: Empty, result: LatestFocus },
 } as const;
 

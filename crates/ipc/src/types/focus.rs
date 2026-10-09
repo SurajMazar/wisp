@@ -139,6 +139,9 @@ pub struct FocusRegion {
     pub application: Option<ApplicationInfo>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub window: Option<WindowInfo>,
+    /// Relevant UI elements in the region, when Accessibility is allowed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accessibility: Option<super::accessibility::AxContext>,
     pub created_at_ms: i64,
 }
 
@@ -184,6 +187,12 @@ pub enum PermissionState {
     Enabled,
     NeedsAttention,
     NotRequested,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MicrophoneStatus {
+    pub state: PermissionState,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

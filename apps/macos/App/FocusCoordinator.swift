@@ -132,7 +132,9 @@ final class FocusCoordinator {
         do {
             let image = try await ScreenCapturer.capture(rect: crop, display: display)
             _ = try ScreenCapturer.save(image, id: id, directory: AppPaths.focusCacheDirectory)
+            let accessibility = await accessibilityContext(selection: selection, cursor: r.kind == .point ? path.first ?? cursor : cursor)
             let region = FocusRegion(
+                accessibility: accessibility,
                 application: found?.application ?? WindowLocator.frontmostApplication(),
                 createdAtMs: Int64(Date().timeIntervalSince1970 * 1000),
                 crop: Rect(crop),
@@ -158,6 +160,25 @@ final class FocusCoordinator {
             Log.app.error("focus capture failed: \(error.localizedDescription, privacy: .public)")
             assistant.set(state: .error)
             end(.captureFailed, detail: error.localizedDescription)
+        }
+    }
+
+    /// The UI elements inside the selection, ranked by the core (spec §35). Nil without permission.
+    private func accessibilityContext(selection: CGRect, cursor: CGPoint) async -> AxContext? {
+        guard AccessibilityReader.isTrusted else { return nil }
+        let point = selection.contains(cursor) ? cursor : CGPoint(x: selection.midX, y: selection.midY)
+        let snapshot = await AccessibilityReader.snapshot(
+            point: point, region: selection, limits: .init(maxNodes: 400),
+            excludingPID: ProcessInfo.processInfo.processIdentifier
+        )
+        do {
+            return try await router.core.call(
+                IPCMethods.accessibilityRank,
+                AxRankParams(cursor: Point(point), limit: 40, region: Rect(selection), snapshot: snapshot)
+            )
+        } catch {
+            Log.app.error("accessibility ranking failed: \(String(describing: error), privacy: .public)")
+            return nil
         }
     }
 

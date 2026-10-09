@@ -8,7 +8,7 @@
 use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
-use crate::types::{app::*, cursor::*, focus::*, invocation::*, settings::*};
+use crate::types::{accessibility::*, app::*, cursor::*, focus::*, invocation::*, settings::*};
 
 /// Which side implements a method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -119,6 +119,19 @@ define_methods! {
     /// Ask macOS for Screen Recording permission (shows the system prompt once).
     HostScreenRequestPermission = "host.screen.requestPermission", Host, Empty => ScreenPermissionStatus;
 
+    /// Accessibility permission as macOS reports it.
+    HostAxStatus = "host.ax.status", Host, Empty => AccessibilityStatus;
+    /// Show the system Accessibility prompt (once) and open the settings pane.
+    HostAxRequestPermission = "host.ax.requestPermission", Host, Empty => AccessibilityStatus;
+    /// Read the element under a point and the elements in a region (bounded).
+    HostAxSnapshot = "host.ax.snapshot", Host, AxSnapshotParams => AxSnapshot;
+    /// Microphone permission as macOS reports it.
+    HostMicPermission = "host.mic.permission", Host, Empty => MicrophoneStatus;
+    /// Ask for microphone access (system prompt the first time).
+    HostMicRequestPermission = "host.mic.requestPermission", Host, Empty => MicrophoneStatus;
+
+    /// Rank and trim an accessibility snapshot into model-ready context.
+    AccessibilityRank = "accessibility.rank", Core, AxRankParams => AxContext;
     /// The most recent focus region the core accepted.
     FocusLatest = "focus.latest", Core, Empty => LatestFocus;
 }

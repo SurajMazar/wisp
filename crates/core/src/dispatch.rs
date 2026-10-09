@@ -7,7 +7,9 @@ use wisp_common::paths::DataPaths;
 use wisp_database::Database;
 use wisp_ipc::{
     IpcError, Method,
-    methods::{AppInfoMethod, FocusLatest, SettingsChanged, SettingsGet, SettingsUpdate},
+    methods::{
+        AccessibilityRank, AppInfoMethod, FocusLatest, SettingsChanged, SettingsGet, SettingsUpdate,
+    },
     types::{
         app::AppInfo,
         focus::{FocusRegion, LatestFocus},
@@ -84,6 +86,22 @@ impl Core {
                         .await?;
                     c.inner.events.publish::<SettingsChanged>(&settings);
                     Ok(settings)
+                })
+                .await
+            }
+            AccessibilityRank::NAME => {
+                self.call::<AccessibilityRank, _, _>(params, |_, p| async move {
+                    if !(1..=100).contains(&p.limit) || p.snapshot.nodes.len() > 600 {
+                        return Err(IpcError::invalid_params(
+                            "limit must be 1–100 and at most 600 nodes",
+                        ));
+                    }
+                    Ok(wisp_accessibility::rank(
+                        p.snapshot,
+                        p.region,
+                        p.cursor,
+                        p.limit as usize,
+                    ))
                 })
                 .await
             }

@@ -121,6 +121,7 @@ mod tests {
             }),
             application: None,
             window: None,
+            accessibility: None,
             created_at_ms: 0,
         }
     }

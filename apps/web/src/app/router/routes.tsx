@@ -2,6 +2,7 @@ import { createHashRouter, Navigate } from "react-router";
 import { AppShell } from "../../components/shell/AppShell";
 import { AssistantPanel } from "../../features/assistant/AssistantPanel";
 import { HomePage } from "../../features/home/HomePage";
+import { PermissionsPage } from "../../features/permissions/PermissionsPage";
 import { UnavailablePage } from "../../features/placeholders/UnavailablePage";
 import { SettingsPage } from "../../features/settings/SettingsPage";
 import { sections } from "./sections";
@@ -9,6 +10,7 @@ import { sections } from "./sections";
 const built: Record<string, React.ReactNode> = {
   "/home": <HomePage />,
   "/settings": <SettingsPage />,
+  "/permissions": <PermissionsPage />,
 };
 
 /** Hash routing: works identically under wisp:// in the app and the Vite dev server. */

@@ -16,6 +16,7 @@ wisp-ipc.workspace = true
 wisp-database.workspace = true
 wisp-security.workspace = true
 wisp-screen.workspace = true
+wisp-accessibility.workspace = true
 wisp-permissions.workspace = true
 serde.workspace = true
 serde_json.workspace = true

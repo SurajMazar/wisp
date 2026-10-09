@@ -16,6 +16,18 @@
       ],
       "type": "string"
     },
+    "AccessibilityStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "#/definitions/PermissionState"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "type": "object"
+    },
     "AnimationLevel": {
       "description": "How lively the buddy's motion is. Reduced Motion in macOS always wins.",
       "enum": [
@@ -240,6 +252,282 @@
       },
       "required": [
         "visible"
+      ],
+      "type": "object"
+    },
+    "AxContext": {
+      "additionalProperties": false,
+      "description": "Model-ready accessibility context: the few elements that matter, plus a compact text form.",
+      "properties": {
+        "focused": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AxNode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/definitions/AxNode"
+          },
+          "type": "array"
+        },
+        "summary": {
+          "description": "One line per element, e.g. `button \"Submit\" at (820,440) 120×32`.",
+          "type": "string"
+        },
+        "underPointer": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AxNode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "nodes",
+        "summary"
+      ],
+      "type": "object"
+    },
+    "AxNode": {
+      "additionalProperties": false,
+      "description": "One normalized accessibility element. Secure text field values are never populated.",
+      "properties": {
+        "actions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "depth": {
+          "description": "Depth below the window (0 = window).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "focused": {
+          "type": "boolean"
+        },
+        "frame": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Rect"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Global points, top-left origin."
+        },
+        "identifier": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "description": "AXRole without the \"AX\" prefix, e.g. \"Button\", \"TextField\".",
+          "type": "string"
+        },
+        "selected": {
+          "type": "boolean"
+        },
+        "subrole": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "role",
+        "enabled",
+        "focused",
+        "selected",
+        "depth"
+      ],
+      "type": "object"
+    },
+    "AxRankParams": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Point"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "description": "1–100.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Rect"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapshot": {
+          "$ref": "#/definitions/AxSnapshot"
+        }
+      },
+      "required": [
+        "snapshot",
+        "limit"
+      ],
+      "type": "object"
+    },
+    "AxSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "ancestors": {
+          "description": "Parents of `under_pointer`, nearest first.",
+          "items": {
+            "$ref": "#/definitions/AxNode"
+          },
+          "type": "array"
+        },
+        "application": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ApplicationInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "elapsedMs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "focused": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AxNode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "nodes": {
+          "description": "Elements inside the requested region (bounded traversal).",
+          "items": {
+            "$ref": "#/definitions/AxNode"
+          },
+          "type": "array"
+        },
+        "selectedText": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "truncated": {
+          "description": "Traversal hit its node or time budget.",
+          "type": "boolean"
+        },
+        "underPointer": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AxNode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "window": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/WindowInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "truncated",
+        "elapsedMs"
+      ],
+      "type": "object"
+    },
+    "AxSnapshotParams": {
+      "additionalProperties": false,
+      "properties": {
+        "maxNodes": {
+          "description": "1–600.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "point": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Point"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Element under this point (global points). Defaults to the pointer."
+        },
+        "region": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Rect"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Collect elements intersecting this region."
+        }
+      },
+      "required": [
+        "maxNodes"
       ],
       "type": "object"
     },
@@ -507,6 +795,17 @@
       "additionalProperties": false,
       "description": "What the user pointed the assistant at (spec §34).",
       "properties": {
+        "accessibility": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AxContext"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Relevant UI elements in the region, when Accessibility is allowed."
+        },
         "application": {
           "anyOf": [
             {
@@ -856,6 +1155,18 @@
           ]
         }
       },
+      "type": "object"
+    },
+    "MicrophoneStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "#/definitions/PermissionState"
+        }
+      },
+      "required": [
+        "state"
+      ],
       "type": "object"
     },
     "Modifier": {
@@ -1503,6 +1814,66 @@
         "$ref": "#/definitions/ScreenPermissionStatus"
       },
       "target": "host"
+    },
+    {
+      "name": "host.ax.status",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/AccessibilityStatus"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.ax.requestPermission",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/AccessibilityStatus"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.ax.snapshot",
+      "params": {
+        "$ref": "#/definitions/AxSnapshotParams"
+      },
+      "result": {
+        "$ref": "#/definitions/AxSnapshot"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.mic.permission",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/MicrophoneStatus"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.mic.requestPermission",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/MicrophoneStatus"
+      },
+      "target": "host"
+    },
+    {
+      "name": "accessibility.rank",
+      "params": {
+        "$ref": "#/definitions/AxRankParams"
+      },
+      "result": {
+        "$ref": "#/definitions/AxContext"
+      },
+      "target": "core"
     },
     {
       "name": "focus.latest",
