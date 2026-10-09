@@ -300,3 +300,14 @@ automatically — no background network traffic and no self-modifying binary. Th
 SQLite `VACUUM INTO` (consistent while running), keeping seven; data export writes JSON (conversations, memories,
 skills, agents, routines, settings) to the data folder's `exports/`. Restoring is a documented manual copy.
 
+
+## D-038 — Holding the shortcut turns the pointer into a pen
+**Status** accepted (2026-10-09)
+While the invocation shortcut is held, a capture-excluded overlay claims the mouse (it must set
+`ignoresMouseEvents = false` and keep a near-invisible fill, or macOS sends clicks on transparent pixels to the app
+underneath). The user can draw any number of freehand marks while talking: a glowing screen edge, a crosshair and a
+"Listening · draw to point" tip that follows the pointer show the mode. Releasing the keys sends: one closed loop
+becomes a lasso region, clicks a point, anything else the box around all marks. Because the overlay is excluded from
+capture, the strokes are burned into the captured image so the model sees what was marked. Voice waits (≤3 s) for
+that capture before sending, so the drawing is attached to what was said. The box/lasso/circle styles remain for the
+panel's Area button.

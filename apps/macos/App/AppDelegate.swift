@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.voice = voice
         let focus = FocusCoordinator(router: deps.router, assistant: assistant)
         focus.onCompleted = { [weak voice] in voice?.lastFocusAt = Date() }
+        voice.settleFocus = { [weak focus] in await focus?.settle() }
         self.focus = focus
 
         let menuBar = MenuBarController(actions: .init(

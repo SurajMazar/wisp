@@ -17,6 +17,8 @@ final class VoiceCoordinator {
     private var startedAt = Date.distantPast
     /// When a focus region completed (to attach it if it happened during this hold).
     var lastFocusAt = Date.distantPast
+    /// Waits for a drawing the user just finished to be captured (set by the app delegate).
+    var settleFocus: (() async -> Void)?
 
     init(router: IPCRouter, assistant: AssistantCoordinator) {
         self.router = router
@@ -120,9 +122,10 @@ final class VoiceCoordinator {
         guard let session = capture.sessionId else {
             return VoiceFinishResult(audioMs: 0, noSpeech: .silence, sent: nil, sttMs: 0, transcript: nil)
         }
-        let includeFocus = lastFocusAt >= startedAt
         let testOnly = purpose == .test
         capture.stop()
+        await settleFocus?()
+        let includeFocus = lastFocusAt >= startedAt
         assistant.set(state: .thinking)
         // Let the final chunk reach the core before asking it to finish.
         try? await Task.sleep(for: .milliseconds(60))

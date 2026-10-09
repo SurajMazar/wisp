@@ -21,6 +21,17 @@ final class FocusOverlayView: NSView {
     var onCancel: (() -> Void)?
     var onPhase: ((Phase) -> Void)?
     var reduceMotion = false
+    /// Freehand pen while the shortcut is held: several strokes, finished by releasing the keys
+    /// (`finishInk`) rather than by lifting the mouse.
+    var ink = false
+
+    /// Finished pen strokes (view-local points).
+    private(set) var strokes: [[CGPoint]] = []
+    private var strokeLayers: [CAShapeLayer] = []
+    private let edge = CAShapeLayer()
+    private let tip = CATextLayer()
+    private let tipBackground = CALayer()
+    private var tracking: NSTrackingArea?
 
     private(set) var phase: Phase = .armed
     private var start: CGPoint = .zero
@@ -35,7 +46,12 @@ final class FocusOverlayView: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
-        layer?.backgroundColor = .clear
+        // Nearly invisible, not clear: macOS sends clicks on fully transparent pixels to the app
+        // underneath, so a clear overlay would let the drag go through.
+        layer?.backgroundColor = NSColor.black.withAlphaComponent(0.002).cgColor
+        edge.fillColor = .clear
+        edge.lineWidth = 3
+        edge.opacity = 0
         dimLayer.fillRule = .evenOdd
         dimLayer.fillColor = NSColor.black.withAlphaComponent(0.26).cgColor
         dimLayer.opacity = 0
@@ -45,8 +61,8 @@ final class FocusOverlayView: NSView {
         outline.shadowOffset = .zero
         outline.shadowRadius = 6
         outline.shadowOpacity = 0.6
-        for l in [dimLayer, outline, hintBackground, focusedBackground] { layer?.addSublayer(l) }
-        for (text, bg) in [(hint, hintBackground), (focused, focusedBackground)] {
+        for l in [dimLayer, edge, outline, hintBackground, focusedBackground, tipBackground] { layer?.addSublayer(l) }
+        for (text, bg) in [(hint, hintBackground), (focused, focusedBackground), (tip, tipBackground)] {
             bg.backgroundColor = NSColor(white: 0.08, alpha: 0.86).cgColor
             bg.cornerRadius = 11
             bg.opacity = 0
@@ -73,6 +89,10 @@ final class FocusOverlayView: NSView {
         outline.shadowColor = accent.cgColor
         dimLayer.frame = bounds
         outline.frame = bounds
+        if ink {
+            prepareInk()
+            return
+        }
         if showHint {
             let s: String
             switch style {
@@ -91,10 +111,106 @@ final class FocusOverlayView: NSView {
         dimLayer.opacity = on ? 1 : 0
     }
 
+    // MARK: Ink mode
+
+    private func prepareInk() {
+        // A glowing frame says "Wisp is listening and you can draw"; a tip follows the pointer.
+        edge.frame = bounds
+        edge.path = CGPath(rect: bounds.insetBy(dx: 1.5, dy: 1.5), transform: nil)
+        edge.strokeColor = accent.withAlphaComponent(0.75).cgColor
+        edge.shadowColor = accent.cgColor
+        edge.shadowRadius = 10
+        edge.shadowOpacity = 0.9
+        edge.shadowOffset = .zero
+        edge.opacity = 1
+        if !reduceMotion {
+            let breathe = CABasicAnimation(keyPath: "opacity")
+            breathe.fromValue = 1
+            breathe.toValue = 0.45
+            breathe.duration = 0.9
+            breathe.autoreverses = true
+            breathe.repeatCount = .infinity
+            edge.add(breathe, forKey: "breathe")
+        }
+        tipBackground.backgroundColor = accent.withAlphaComponent(0.92).cgColor
+        if let w = window {
+            let p = convert(w.mouseLocationOutsideOfEventStream, from: nil)
+            if bounds.contains(p) { moveTip(to: p) }
+        }
+    }
+
+    private func moveTip(to p: CGPoint) {
+        let text = strokes.isEmpty && phase != .drawing ? "Listening · draw to point" : "Release keys to send"
+        place(text: text, in: tip, background: tipBackground, at: CGPoint(x: p.x + 18, y: p.y - 26), centered: false)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking { removeTrackingArea(tracking) }
+        let t = NSTrackingArea(rect: .zero, options: [.activeAlways, .mouseMoved, .cursorUpdate, .inVisibleRect], owner: self)
+        addTrackingArea(t)
+        tracking = t
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        NSCursor.crosshair.set()
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        NSCursor.crosshair.set()
+        if ink { moveTip(to: convert(event.locationInWindow, from: nil)) }
+    }
+
+    private func newStrokeLayer() -> CAShapeLayer {
+        let l = CAShapeLayer()
+        l.frame = bounds
+        l.fillColor = .clear
+        l.strokeColor = accent.cgColor
+        l.lineWidth = 4
+        l.lineCap = .round
+        l.lineJoin = .round
+        l.shadowColor = accent.cgColor
+        l.shadowRadius = 5
+        l.shadowOpacity = 0.7
+        l.shadowOffset = .zero
+        layer?.insertSublayer(l, below: tipBackground)
+        return l
+    }
+
+    /// Everything drawn so far, including a stroke still in progress; nil if nothing was drawn.
+    func finishInk() -> Selection? {
+        if phase == .drawing, points.count > 0 { strokes.append(points) }
+        phase = .done
+        let all = strokes.flatMap { $0 }
+        guard let last = all.last else { return nil }
+        let isTap = strokes.allSatisfy { s in
+            guard let box = FocusGeometry.bounds(of: s) else { return true }
+            return max(box.width, box.height) < 6
+        }
+        if isTap { return Selection(kind: .point, rect: CGRect(origin: last, size: .zero), path: [last]) }
+        // One closed-ish loop reads as "this area"; anything else (arrows, underlines, several
+        // marks) selects the box around all of it.
+        if strokes.count == 1, let s = strokes.first, let a = s.first, let b = s.last, let box = FocusGeometry.bounds(of: s),
+           hypot(a.x - b.x, a.y - b.y) < max(24, 0.3 * max(box.width, box.height)) {
+            return Selection(kind: .lasso, rect: box, path: s)
+        }
+        let box = (FocusGeometry.bounds(of: all) ?? .zero).insetBy(dx: -12, dy: -12)
+        return Selection(kind: .rectangle, rect: box, path: [])
+    }
+
     // MARK: Input
 
     override func mouseDown(with event: NSEvent) {
         guard phase != .done else { return }
+        if ink {
+            start = convert(event.locationInWindow, from: nil)
+            points = [start]
+            strokeLayers.append(newStrokeLayer())
+            phase = .drawing
+            onPhase?(.drawing)
+            moveTip(to: start)
+            return
+        }
         start = convert(event.locationInWindow, from: nil)
         points = [start]
         phase = .drawing
@@ -107,6 +223,16 @@ final class FocusOverlayView: NSView {
         let p = convert(event.locationInWindow, from: nil)
         if let last = points.last, hypot(p.x - last.x, p.y - last.y) < 1.5 { return }
         points.append(p)
+        if ink {
+            let path = CGMutablePath()
+            path.addLines(between: points)
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            strokeLayers.last?.path = path
+            CATransaction.commit()
+            moveTip(to: p)
+            return
+        }
         render(current: p)
     }
 
@@ -114,6 +240,19 @@ final class FocusOverlayView: NSView {
         guard phase == .drawing else { return }
         let end = convert(event.locationInWindow, from: nil)
         points.append(end)
+        if ink {
+            // Keep the mark and stay ready for more; releasing the keys sends.
+            if !FocusGeometry.isDrag(from: start, to: end), points.count < 4 {
+                // A click: show a dot.
+                strokeLayers.last?.path = CGPath(ellipseIn: CGRect(x: end.x - 5, y: end.y - 5, width: 10, height: 10), transform: nil)
+                strokeLayers.last?.fillColor = accent.cgColor
+            }
+            strokes.append(points)
+            points = []
+            phase = .armed
+            moveTip(to: end)
+            return
+        }
         phase = .done
         if FocusGeometry.isDrag(from: start, to: end) || (style == .lasso && pathLength() > 24) {
             let sel: Selection
@@ -178,6 +317,9 @@ final class FocusOverlayView: NSView {
     func showFocused(rect: CGRect, path: [CGPoint], kind: FocusKind, completion: @escaping () -> Void) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        tipBackground.opacity = 0
+        edge.removeAllAnimations()
+        edge.opacity = 0
         let shape: CGPath
         switch kind {
         case .circle: shape = CGPath(ellipseIn: rect, transform: nil)
@@ -213,7 +355,7 @@ final class FocusOverlayView: NSView {
             CATransaction.begin()
             CATransaction.setAnimationDuration(self.reduceMotion ? 0 : 0.2)
             CATransaction.setCompletionBlock(completion)
-            for l in [self.dimLayer, self.outline, self.focusedBackground] { l.opacity = 0 }
+            for l in [self.dimLayer, self.outline, self.focusedBackground] + self.strokeLayers { l.opacity = 0 }
             CATransaction.commit()
         }
     }

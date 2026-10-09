@@ -18,6 +18,8 @@ final class FocusCoordinator {
     private var accent = BuddyTheme.color(for: .default, custom: nil)
     private(set) var latest: FocusRegion?
     private var holdSession = false
+    /// A capture started by releasing the keys; voice waits for it so the drawing is attached.
+    private var pending: Task<Void, Never>?
     var onCompleted: (() -> Void)?
 
     init(router: IPCRouter, assistant: AssistantCoordinator) {
@@ -43,16 +45,33 @@ final class FocusCoordinator {
             return
         }
         holdSession = true
-        start(kind: FocusKind(settings.drawStyle), showHint: true)
+        router.emit(IPCEvents.focusStarted, FocusStarted(kind: .lasso))
+        // While the shortcut is held, the pointer is a pen: draw, circle, underline or click as
+        // many times as you like while talking. Releasing the keys sends it with what you said.
+        overlay.begin(style: .lasso, dim: false, accent: accent, showHint: true, ink: true) { [weak self] result in
+            guard let self else { return }
+            if let result {
+                self.pending = Task { await self.complete(result) }
+            } else {
+                self.end(.cancelled)
+            }
+        }
     }
 
-    /// Releasing the shortcut: if nothing was drawn, quietly put the overlay away.
+    /// Releasing the shortcut sends what was drawn (nothing drawn: the overlay just goes away).
     func holdEnded() {
         guard holdSession else { return }
         holdSession = false
-        if overlay.isActive, !overlay.isDrawing {
-            overlay.cancel()
-        }
+        if overlay.isActive { overlay.finishInk() }
+    }
+
+    /// Wait for a capture that releasing the keys started (bounded, so voice never hangs on it).
+    func settle() async {
+        guard let pending else { return }
+        let timeout = Task { try? await Task.sleep(for: .seconds(3)); pending.cancel() }
+        await pending.value
+        timeout.cancel()
+        self.pending = nil
     }
 
     func start(kind: FocusKind, showHint: Bool = true) {
@@ -141,7 +160,10 @@ final class FocusCoordinator {
         let found = WindowLocator.window(at: center)
 
         do {
-            let image = try await ScreenCapturer.capture(rect: crop, display: display)
+            var image = try await ScreenCapturer.capture(rect: crop, display: display)
+            if !r.strokes.isEmpty, let inked = InkRenderer.burn(r.strokes, into: image, crop: crop, color: accent) {
+                image = inked
+            }
             _ = try ScreenCapturer.save(image, id: id, directory: AppPaths.focusCacheDirectory)
             // Read the text and the UI elements concurrently.
             async let recognized = TextRecognizer.recognize(image, crop: crop)

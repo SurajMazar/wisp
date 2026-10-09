@@ -15,12 +15,16 @@ public final class FocusOverlayController {
         public let selection: CGRect
         public let path: [CGPoint]
         public let screen: NSScreen
+        /// Pen strokes drawn while holding the shortcut (global CG points), burned into the capture
+        /// so the model sees what was marked.
+        public let strokes: [[CGPoint]]
 
-        public init(kind: FocusKind, selection: CGRect, path: [CGPoint], screen: NSScreen) {
+        public init(kind: FocusKind, selection: CGRect, path: [CGPoint], screen: NSScreen, strokes: [[CGPoint]] = []) {
             self.kind = kind
             self.selection = selection
             self.path = path
             self.screen = screen
+            self.strokes = strokes
         }
     }
 
@@ -37,7 +41,7 @@ public final class FocusOverlayController {
     public private(set) var isDrawing = false
 
     /// Show the overlay. `completion` receives the selection, or nil if cancelled.
-    public func begin(style: DrawStyle, dim: Bool, accent: NSColor, showHint: Bool, completion: @escaping (Result?) -> Void) {
+    public func begin(style: DrawStyle, dim: Bool, accent: NSColor, showHint: Bool, ink: Bool = false, completion: @escaping (Result?) -> Void) {
         cancel()
         self.completion = completion
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -53,6 +57,10 @@ public final class FocusOverlayController {
             panel.isReleasedWhenClosed = false
             panel.sharingType = .none
             panel.animationBehavior = .none
+            // Claim every click, even over transparent pixels, so drags draw instead of reaching
+            // the app underneath.
+            panel.ignoresMouseEvents = false
+            panel.acceptsMouseMovedEvents = true
             panel.setFrame(screen.frame, display: false)
 
             let view = FocusOverlayView(frame: NSRect(origin: .zero, size: screen.frame.size))
@@ -60,13 +68,16 @@ public final class FocusOverlayController {
             view.dimSurroundings = dim
             view.accent = accent
             view.reduceMotion = reduceMotion
+            view.ink = ink
             view.onCancel = { [weak self] in self?.cancel() }
             view.onPhase = { [weak self] phase in
                 guard let self else { return }
                 if phase == .drawing {
                     self.isDrawing = true
                     self.onPhase?(.drawing)
-                    for w in self.windows where w !== panel { (w.contentView as? FocusOverlayView)?.dimAll(true) }
+                    if !ink {
+                        for w in self.windows where w !== panel { (w.contentView as? FocusOverlayView)?.dimAll(true) }
+                    }
                 }
             }
             view.onFinish = { [weak self, weak panel] sel in
@@ -82,7 +93,8 @@ public final class FocusOverlayController {
             }
             windows.append(panel)
         }
-        onPhase?(.selecting)
+        onPhase?(ink ? .listening : .selecting)
+        NSCursor.crosshair.set()
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.cancel() } }
@@ -90,6 +102,23 @@ public final class FocusOverlayController {
             try? await Task.sleep(for: .seconds(60))
             self?.cancel()
         }
+    }
+
+    /// Ink mode: the keys were released. Send what was drawn, or put the overlay away if nothing was.
+    public func finishInk() {
+        guard completion != nil else { return }
+        var best: (FocusOverlayView, NSPanel, FocusOverlayView.Selection)?
+        for w in windows {
+            guard let v = w.contentView as? FocusOverlayView else { continue }
+            let count = v.strokes.reduce(0) { $0 + $1.count }
+            if let sel = v.finishInk(), best == nil || count > (best?.0.strokes.reduce(0) { $0 + $1.count } ?? 0) {
+                best = (v, w, sel)
+            }
+        }
+        guard let (view, panel, sel) = best, let screen = panel.screen ?? NSScreen.screens.first(where: { $0.frame == panel.frame }) else {
+            return cancel()
+        }
+        finish(sel, on: screen, panel: panel, strokes: view.strokes)
     }
 
     /// Remove the overlay without a selection.
@@ -101,7 +130,7 @@ public final class FocusOverlayController {
         done?(nil)
     }
 
-    private func finish(_ sel: FocusOverlayView.Selection, on screen: NSScreen, panel: NSPanel) {
+    private func finish(_ sel: FocusOverlayView.Selection, on screen: NSScreen, panel: NSPanel, strokes: [[CGPoint]] = []) {
         let done = completion
         completion = nil
         timeout?.cancel()
@@ -111,7 +140,8 @@ public final class FocusOverlayController {
             FocusGeometry.cgPoint(fromAppKit: CGPoint(x: $0.x + origin.x, y: $0.y + origin.y), primaryHeight: h)
         }
         let rectCG = FocusGeometry.cgRect(fromAppKit: sel.rect.offsetBy(dx: origin.x, dy: origin.y), primaryHeight: h)
-        let result = Result(kind: sel.kind, selection: rectCG, path: sel.path.map(toGlobalCG), screen: screen)
+        let result = Result(kind: sel.kind, selection: rectCG, path: sel.path.map(toGlobalCG), screen: screen,
+                            strokes: strokes.map { $0.map(toGlobalCG) })
 
         // Hand the selection over immediately (capture excludes Wisp's windows), then animate out.
         done?(result)
@@ -132,6 +162,7 @@ public final class FocusOverlayController {
 
     private func teardown() {
         isDrawing = false
+        NSCursor.arrow.set()
         timeout?.cancel()
         timeout = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
