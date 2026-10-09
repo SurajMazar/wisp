@@ -223,3 +223,14 @@ actions and an estimated token budget; the same action three times in a row paus
 users can pause, resume, continue, answer questions and stop. Runs and steps are persisted; interrupted runs are
 marked cancelled at startup. The chat's "Do it" mode starts a one-off run with default limits.
 
+## D-031 — Skills are versioned SKILL.md text, offered by relevance, never executed
+**Status** accepted (2026-10-09)
+A skill is a SKILL.md: front matter (`name`, `description`, `activation: auto|always|manual`, `triggers`, `tools`)
+and a markdown body (instructions, workflows, reference, examples), at most 50 KB of text. The database is the
+source of truth (every edit is a new version with its SHA-256; restore makes an old version current as a new one);
+files are mirrored to `<data>/skills/<slug>/SKILL.md` and folders added there are picked up at startup. Activation:
+enabled skills only — always-on, attached to the running agent, or `auto` with triggers/name matching the request;
+at most two (plus attached) within a 6 000-character budget, added to the system prompt and named in the answer's
+Context. Imported skills (file, paste or folder) start disabled (spec §103, §118); skills are never run as code.
+A built-in "Mac keyboard shortcuts" skill is seeded as the sample.
+

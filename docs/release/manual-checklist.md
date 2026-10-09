@@ -150,5 +150,15 @@ Prerequisite: Computer control on (Settings), Accessibility, Screen Recording.
 - [ ] Watch for loops: an agent repeating itself pauses with "The assistant may be stuck…" and Continue / Stop.
 - [ ] Activity lists every action an agent took.
 
+## Phase 14 — Skills
+- [ ] Skills lists "Mac keyboard shortcuts" (Built in, on). Ask "is there a shortcut to copy?": the answer uses it and Context lists the skill.
+- [ ] Turn it off and ask again: the skill isn't used.
+- [ ] Edit it (add a line), save: version 2; restore v1 from the editor.
+- [ ] Import a SKILL.md file: it appears as Imported and off; it's only used after you turn it on.
+- [ ] Export copies the SKILL.md to the clipboard.
+- [ ] Quit and reopen Wisp: skills and their on/off state are unchanged.
+- [ ] Drop a folder with a SKILL.md into ~/Library/Application Support/Wisp/skills and reopen: it appears, off.
+- [ ] Attach a skill to an agent: its runs list "Using skills: …".
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

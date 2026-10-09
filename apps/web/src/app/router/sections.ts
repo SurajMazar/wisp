@@ -39,7 +39,6 @@ export const sections: Section[] = [
     path: "/skills",
     label: "Skills",
     icon: SkillsIcon,
-    unavailableNote: "Skills aren't available in this build yet.",
   },
   {
     path: "/routines",

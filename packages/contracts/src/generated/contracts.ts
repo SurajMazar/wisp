@@ -534,6 +534,7 @@ export const ContextInfo = z.strictObject({
   "reusedScreen": z.boolean(),
   "screenTextLines": z.number().int().nonnegative(),
   "selectedText": z.boolean(),
+  "skills": z.array(z.string()).optional(),
   "summarizedMessages": z.number().int().nonnegative(),
   "textOnlyReason": z.string().nullable().optional(),
   "uiElements": z.number().int().nonnegative(),
@@ -1077,6 +1078,75 @@ export const ShortcutRecordResult = z.strictObject({
 });
 export type ShortcutRecordResult = z.output<typeof ShortcutRecordResult>;
 
+export const SkillSource = z.enum(["builtin","user","imported"]);
+export type SkillSource = z.output<typeof SkillSource>;
+
+export const SkillSummary = z.strictObject({
+  "activation": z.string(),
+  "description": z.string(),
+  "enabled": z.boolean(),
+  "id": z.string(),
+  "name": z.string(),
+  "slug": z.string(),
+  "source": SkillSource,
+  "triggers": z.array(z.string()),
+  "updatedAtMs": z.number().int(),
+  "version": z.number().int().nonnegative(),
+});
+export type SkillSummary = z.output<typeof SkillSummary>;
+
+export const Skill = z.strictObject({
+  "content": z.string(),
+  "summary": SkillSummary,
+});
+export type Skill = z.output<typeof Skill>;
+
+export const SkillEnableParams = z.strictObject({
+  "enabled": z.boolean(),
+  "id": z.string(),
+});
+export type SkillEnableParams = z.output<typeof SkillEnableParams>;
+
+export const SkillExport = z.strictObject({
+  "content": z.string(),
+  "filename": z.string(),
+});
+export type SkillExport = z.output<typeof SkillExport>;
+
+export const SkillImportParams = z.strictObject({
+  "content": z.string(),
+});
+export type SkillImportParams = z.output<typeof SkillImportParams>;
+
+export const SkillList = z.strictObject({
+  "skills": z.array(SkillSummary),
+});
+export type SkillList = z.output<typeof SkillList>;
+
+export const SkillRestoreParams = z.strictObject({
+  "id": z.string(),
+  "version": z.number().int().nonnegative(),
+});
+export type SkillRestoreParams = z.output<typeof SkillRestoreParams>;
+
+export const SkillSaveParams = z.strictObject({
+  "content": z.string(),
+  "id": z.string().nullable().optional(),
+});
+export type SkillSaveParams = z.output<typeof SkillSaveParams>;
+
+export const SkillVersion = z.strictObject({
+  "createdAtMs": z.number().int(),
+  "sha256": z.string(),
+  "version": z.number().int().nonnegative(),
+});
+export type SkillVersion = z.output<typeof SkillVersion>;
+
+export const SkillVersions = z.strictObject({
+  "versions": z.array(SkillVersion),
+});
+export type SkillVersions = z.output<typeof SkillVersions>;
+
 export const SpeakParams = z.strictObject({
   "text": z.string(),
 });
@@ -1297,6 +1367,15 @@ export const methods = {
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
   "conversation.regenerate": { target: "core", params: RegenerateParams, result: Message },
+  "skill.list": { target: "core", params: Empty, result: SkillList },
+  "skill.get": { target: "core", params: IdParams, result: Skill },
+  "skill.save": { target: "core", params: SkillSaveParams, result: Skill },
+  "skill.setEnabled": { target: "core", params: SkillEnableParams, result: SkillSummary },
+  "skill.delete": { target: "core", params: IdParams, result: Empty },
+  "skill.import": { target: "core", params: SkillImportParams, result: Skill },
+  "skill.export": { target: "core", params: IdParams, result: SkillExport },
+  "skill.versions": { target: "core", params: IdParams, result: SkillVersions },
+  "skill.restore": { target: "core", params: SkillRestoreParams, result: Skill },
   "agent.list": { target: "core", params: Empty, result: AgentList },
   "agent.save": { target: "core", params: AgentSaveParams, result: AgentDefinition },
   "agent.delete": { target: "core", params: IdParams, result: Empty },

@@ -7,6 +7,7 @@ import { RiskBadge } from "../../components/tools/RiskBadge";
 import { ipc } from "../../services/ipc";
 import { useAgentStore } from "../../stores/agentStore";
 import { useModelsStore } from "../../stores/modelsStore";
+import { useSkillStore } from "../../stores/skillStore";
 
 const templates: AgentSaveParams[] = [
   {
@@ -83,6 +84,10 @@ const field = "w-full rounded-[var(--radius-sm)] border border-border-strong bg-
 function Editor({ initial, onDone }: { initial: AgentSaveParams; onDone: () => void }) {
   const { save, error } = useAgentStore();
   const models = useModelsStore((s) => s.list?.models ?? []);
+  const { skills, load: loadSkills } = useSkillStore();
+  useEffect(() => {
+    void loadSkills().catch(() => {});
+  }, [loadSkills]);
   const [draft, setDraft] = useState(initial);
   const [tools, setTools] = useState<ToolDefinition[]>([]);
   useEffect(() => {
@@ -189,6 +194,30 @@ function Editor({ initial, onDone }: { initial: AgentSaveParams; onDone: () => v
           ))}
         </div>
       </fieldset>
+      {skills.length > 0 && (
+        <fieldset>
+          <legend className="text-xs text-text-muted">Skills this agent always uses</legend>
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            {skills.map((s) => (
+              <label key={s.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={draft.skills.includes(s.id)}
+                  onChange={(e) =>
+                    set({
+                      skills: e.target.checked
+                        ? [...draft.skills, s.id]
+                        : draft.skills.filter((x) => x !== s.id),
+                    })
+                  }
+                />
+                {s.name}
+                {!s.enabled && <span className="text-xs text-text-faint">(off)</span>}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       <fieldset className="grid grid-cols-4 gap-2">
         <legend className="mb-1 text-xs text-text-muted">Limits</legend>
         {(

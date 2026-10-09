@@ -433,3 +433,33 @@ approval pipeline, verify, repeat — visibly, within hard limits, with pause/st
 ## Stop Gate 13
 Automated portions PASS; manual checklist (Phase 13) pending.
 
+---
+
+# Phase 14 — Skills (2026-10-09)
+
+## Summary
+Reusable SKILL.md expertise that Wisp follows when relevant: create, edit (versioned), enable/disable, delete,
+import (off by default), export; mirrored to disk; attachable to agents.
+
+## Implemented
+- `wisp-agents::skills`: SKILL.md parser (front matter, both list styles, strict limits and reasons), renderer,
+  relevance, sample skill
+- Contracts: `SkillSummary`, `Skill`, versions, export; `skill.list|get|save|setEnabled|delete|import|export|versions|
+  restore`; `ContextInfo.skills`
+- Database: skills + versions (SHA-256, dedupe unchanged edits, unique slugs)
+- Core: startup seeding and folder scan (no symlinks, size-checked), disk mirror with safe slugs, activation into
+  answers, lessons and agent runs
+- UI: Skills page (list with source/activation/triggers/version, toggle, editor with version restore, import from
+  file, export to clipboard), agent editor attaches skills, Context names skills used; MockTransport passes engine
+  errors through
+
+## Tests Added
+- Rust: parser (sample, list styles, 6 invalid files with reasons, size), relevance (auto/always/manual), render
+  round trip (4); repository (versions, slugs, toggles) (1); stop gate end to end — sample loads and is mirrored,
+  instructions reach the model only when relevant, disabled skills unused, edit/restore versions, import disabled,
+  invalid import explained, export name, survives restart, disk folder found disabled, no duplicates (1)
+- React: list + toggle, edit with save error, Context names skills (3)
+
+## Stop Gate 14
+PASS on automated evidence (skill loads, affects behavior, can be disabled, edited, survives restart).
+

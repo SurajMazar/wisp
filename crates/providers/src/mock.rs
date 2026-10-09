@@ -69,7 +69,9 @@ impl AiProvider for MockProvider {
             .copied()
             .unwrap_or_default()
             .to_owned();
-        let source = if reply == "<echo>" {
+        let source = if reply == "<echo-system>" {
+            req.system.clone().unwrap_or_default()
+        } else if reply == "<echo>" {
             req.messages
                 .last()
                 .map(|m| m.content.clone())

@@ -10,7 +10,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
     accessibility::*, agents::*, app::*, conversations::*, cursor::*, focus::*, guidance::*,
-    invocation::*, models::*, settings::*, teacher::*, tools::*, voice::*,
+    invocation::*, models::*, settings::*, skills::*, teacher::*, tools::*, voice::*,
 };
 
 /// Which side implements a method.
@@ -169,6 +169,19 @@ define_methods! {
     ConversationDelete = "conversation.delete", Core, IdParams => Empty;
     /// Answer the same question again, replacing an assistant message.
     ConversationRegenerate = "conversation.regenerate", Core, RegenerateParams => Message;
+    /// Installed skills.
+    SkillListMethod = "skill.list", Core, Empty => SkillList;
+    SkillGet = "skill.get", Core, IdParams => Skill;
+    /// Create or edit a skill from its SKILL.md (each edit is a new version).
+    SkillSave = "skill.save", Core, SkillSaveParams => Skill;
+    SkillSetEnabled = "skill.setEnabled", Core, SkillEnableParams => SkillSummary;
+    SkillDelete = "skill.delete", Core, IdParams => Empty;
+    /// Import a SKILL.md. Imported skills start disabled and are never executed.
+    SkillImport = "skill.import", Core, SkillImportParams => Skill;
+    SkillExportMethod = "skill.export", Core, IdParams => SkillExport;
+    SkillVersionsMethod = "skill.versions", Core, IdParams => SkillVersions;
+    /// Make an earlier version current again (as a new version).
+    SkillRestore = "skill.restore", Core, SkillRestoreParams => Skill;
     /// Saved agents.
     AgentListMethod = "agent.list", Core, Empty => AgentList;
     /// Create or update an agent.

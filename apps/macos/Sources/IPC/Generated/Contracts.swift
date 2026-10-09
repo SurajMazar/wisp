@@ -1016,17 +1016,19 @@ public struct ContextInfo: Codable, Sendable, Equatable {
     public var reusedScreen: Bool
     public var screenTextLines: UInt32
     public var selectedText: Bool
+    public var skills: [String]?
     public var summarizedMessages: UInt32
     public var textOnlyReason: String?
     public var uiElements: UInt32
 
-    public init(estimatedTokens: UInt32, historyMessages: UInt32, imageBytes: UInt32? = nil, reusedScreen: Bool, screenTextLines: UInt32, selectedText: Bool, summarizedMessages: UInt32, textOnlyReason: String? = nil, uiElements: UInt32) {
+    public init(estimatedTokens: UInt32, historyMessages: UInt32, imageBytes: UInt32? = nil, reusedScreen: Bool, screenTextLines: UInt32, selectedText: Bool, skills: [String]? = nil, summarizedMessages: UInt32, textOnlyReason: String? = nil, uiElements: UInt32) {
         self.estimatedTokens = estimatedTokens
         self.historyMessages = historyMessages
         self.imageBytes = imageBytes
         self.reusedScreen = reusedScreen
         self.screenTextLines = screenTextLines
         self.selectedText = selectedText
+        self.skills = skills
         self.summarizedMessages = summarizedMessages
         self.textOnlyReason = textOnlyReason
         self.uiElements = uiElements
@@ -2057,6 +2059,124 @@ public struct ShortcutRecordResult: Codable, Sendable, Equatable {
     }
 }
 
+public enum SkillSource: String, Codable, Sendable, Equatable, CaseIterable {
+    case builtin = "builtin"
+    case user = "user"
+    case imported = "imported"
+}
+
+public struct SkillSummary: Codable, Sendable, Equatable {
+    public var activation: String
+    public var description: String
+    public var enabled: Bool
+    public var id: String
+    public var name: String
+    public var slug: String
+    public var source: SkillSource
+    public var triggers: [String]
+    public var updatedAtMs: Int64
+    public var version: UInt32
+
+    public init(activation: String, description: String, enabled: Bool, id: String, name: String, slug: String, source: SkillSource, triggers: [String], updatedAtMs: Int64, version: UInt32) {
+        self.activation = activation
+        self.description = description
+        self.enabled = enabled
+        self.id = id
+        self.name = name
+        self.slug = slug
+        self.source = source
+        self.triggers = triggers
+        self.updatedAtMs = updatedAtMs
+        self.version = version
+    }
+}
+
+public struct Skill: Codable, Sendable, Equatable {
+    public var content: String
+    public var summary: SkillSummary
+
+    public init(content: String, summary: SkillSummary) {
+        self.content = content
+        self.summary = summary
+    }
+}
+
+public struct SkillEnableParams: Codable, Sendable, Equatable {
+    public var enabled: Bool
+    public var id: String
+
+    public init(enabled: Bool, id: String) {
+        self.enabled = enabled
+        self.id = id
+    }
+}
+
+public struct SkillExport: Codable, Sendable, Equatable {
+    public var content: String
+    public var filename: String
+
+    public init(content: String, filename: String) {
+        self.content = content
+        self.filename = filename
+    }
+}
+
+public struct SkillImportParams: Codable, Sendable, Equatable {
+    public var content: String
+
+    public init(content: String) {
+        self.content = content
+    }
+}
+
+public struct SkillList: Codable, Sendable, Equatable {
+    public var skills: [SkillSummary]
+
+    public init(skills: [SkillSummary]) {
+        self.skills = skills
+    }
+}
+
+public struct SkillRestoreParams: Codable, Sendable, Equatable {
+    public var id: String
+    public var version: UInt32
+
+    public init(id: String, version: UInt32) {
+        self.id = id
+        self.version = version
+    }
+}
+
+public struct SkillSaveParams: Codable, Sendable, Equatable {
+    public var content: String
+    public var id: String?
+
+    public init(content: String, id: String? = nil) {
+        self.content = content
+        self.id = id
+    }
+}
+
+public struct SkillVersion: Codable, Sendable, Equatable {
+    public var createdAtMs: Int64
+    public var sha256: String
+    public var version: UInt32
+
+    public init(createdAtMs: Int64, sha256: String, version: UInt32) {
+        self.createdAtMs = createdAtMs
+        self.sha256 = sha256
+        self.version = version
+    }
+}
+
+public struct SkillVersions: Codable, Sendable, Equatable {
+    public var versions: [SkillVersion]
+
+    public init(versions: [SkillVersion]) {
+        self.versions = versions
+    }
+}
+
 public struct SpeakParams: Codable, Sendable, Equatable {
     public var text: String
 
@@ -2516,6 +2636,15 @@ public enum IPCMethods {
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
     public static let conversationRegenerate = IPCMethod<RegenerateParams, Message>(name: "conversation.regenerate", target: .core)
+    public static let skillList = IPCMethod<Empty, SkillList>(name: "skill.list", target: .core)
+    public static let skillGet = IPCMethod<IdParams, Skill>(name: "skill.get", target: .core)
+    public static let skillSave = IPCMethod<SkillSaveParams, Skill>(name: "skill.save", target: .core)
+    public static let skillSetEnabled = IPCMethod<SkillEnableParams, SkillSummary>(name: "skill.setEnabled", target: .core)
+    public static let skillDelete = IPCMethod<IdParams, Empty>(name: "skill.delete", target: .core)
+    public static let skillImport = IPCMethod<SkillImportParams, Skill>(name: "skill.import", target: .core)
+    public static let skillExport = IPCMethod<IdParams, SkillExport>(name: "skill.export", target: .core)
+    public static let skillVersions = IPCMethod<IdParams, SkillVersions>(name: "skill.versions", target: .core)
+    public static let skillRestore = IPCMethod<SkillRestoreParams, Skill>(name: "skill.restore", target: .core)
     public static let agentList = IPCMethod<Empty, AgentList>(name: "agent.list", target: .core)
     public static let agentSave = IPCMethod<AgentSaveParams, AgentDefinition>(name: "agent.save", target: .core)
     public static let agentDelete = IPCMethod<IdParams, Empty>(name: "agent.delete", target: .core)
@@ -2593,6 +2722,15 @@ public enum IPCMethods {
         "conversation.pin": .core,
         "conversation.delete": .core,
         "conversation.regenerate": .core,
+        "skill.list": .core,
+        "skill.get": .core,
+        "skill.save": .core,
+        "skill.setEnabled": .core,
+        "skill.delete": .core,
+        "skill.import": .core,
+        "skill.export": .core,
+        "skill.versions": .core,
+        "skill.restore": .core,
         "agent.list": .core,
         "agent.save": .core,
         "agent.delete": .core,

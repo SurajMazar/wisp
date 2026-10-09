@@ -464,6 +464,12 @@ impl Core {
             system.push_str("\n\n");
             system.push_str(&s);
         }
+        let (skill_names, skill_section) = self.active_skills(question, &[]).await;
+        if let Some(section) = skill_section {
+            system.push_str("\n\n");
+            system.push_str(&section);
+        }
+        info.skills = skill_names;
         let mut messages = h.messages;
         messages.push(ChatMessage {
             role: Role::User,

@@ -4,4 +4,5 @@ pub mod agents;
 pub mod conversations;
 pub mod events;
 pub mod settings;
+pub mod skills;
 pub mod tools;

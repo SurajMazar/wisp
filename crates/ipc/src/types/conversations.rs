@@ -96,6 +96,9 @@ pub struct ContextInfo {
     pub summarized_messages: u32,
     /// Rough size of the prompt.
     pub estimated_tokens: u32,
+    /// Skills whose instructions were included.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skills: Vec<String>,
     /// Why the screenshot wasn't sent even though one was attached.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_only_reason: Option<String>,

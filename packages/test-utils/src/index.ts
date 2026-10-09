@@ -51,11 +51,22 @@ export class MockTransport implements Transport {
         const result = await handler(envelope.params);
         this.deliver({ kind: "response", v: PROTOCOL_VERSION, id: envelope.id, result });
       } catch (e) {
+        // A handler can throw a WispError to simulate a specific engine error.
+        const known =
+          e instanceof Error && "code" in e && typeof (e as { code: unknown }).code === "string"
+            ? (e as Error & { code: string; details?: string })
+            : null;
         this.deliver({
           kind: "response",
           v: PROTOCOL_VERSION,
           id: envelope.id,
-          error: { code: "internal", message: "Mock handler failed.", details: String(e) },
+          error: known
+            ? ({
+                code: known.code,
+                message: known.message,
+                ...(known.details ? { details: known.details } : {}),
+              } as never)
+            : { code: "internal", message: "Mock handler failed.", details: String(e) },
         });
       }
     })();

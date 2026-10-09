@@ -439,6 +439,20 @@ impl Core {
             system.push_str("\n\nYour instructions:\n");
             system.push_str(a.instructions.trim());
         }
+        let attached = agent.as_ref().map(|a| a.skills.clone()).unwrap_or_default();
+        let (skill_names, skill_section) = self.active_skills(&run.goal, &attached).await;
+        if let Some(section) = skill_section {
+            system.push_str("\n\n");
+            system.push_str(&section);
+            self.push_step(
+                &mut run,
+                StepKind::Message,
+                format!("Using skills: {}", skill_names.join(", ")),
+                RunStepStatus::Succeeded,
+                None,
+            )
+            .await;
+        }
 
         // Plan from the first look at the screen.
         let seq = self

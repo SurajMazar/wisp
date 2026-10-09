@@ -10,6 +10,7 @@ pub mod guidance;
 pub mod invocation;
 pub mod models;
 pub mod settings;
+pub mod skills;
 pub mod teacher;
 pub mod tools;
 pub mod voice;

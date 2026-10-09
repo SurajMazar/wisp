@@ -16,6 +16,8 @@ export function contextLines(c: Info): string[] {
     lines.push(`${c.historyMessages} earlier message${c.historyMessages === 1 ? "" : "s"}`);
   if (c.summarizedMessages)
     lines.push(`${c.summarizedMessages} older message${c.summarizedMessages === 1 ? "" : "s"}, condensed`);
+  if (c.skills && c.skills.length > 0)
+    lines.push(`Skill${c.skills.length === 1 ? "" : "s"}: ${c.skills.join(", ")}`);
   if (lines.length === 0) lines.push("Just your question");
   return lines;
 }

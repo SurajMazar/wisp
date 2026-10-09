@@ -69,7 +69,7 @@ impl Core {
             data_dir: paths.root().display().to_string(),
             started_at_ms: wisp_common::time::now_ms(),
         };
-        Ok(Self {
+        let core = Self {
             inner: Arc::new(Inner {
                 db,
                 ai: Arc::new(crate::ai::AiServices::default()),
@@ -82,7 +82,9 @@ impl Core {
                 teacher: Default::default(),
                 agents: Default::default(),
             }),
-        })
+        };
+        core.startup_skills();
+        Ok(core)
     }
 
     pub fn info(&self) -> &AppInfo {
@@ -224,6 +226,61 @@ impl Core {
             ConversationSend::NAME => {
                 self.call::<ConversationSend, _, _>(params, |c, p| async move { c.send(p).await })
                     .await
+            }
+            wisp_ipc::methods::SkillListMethod::NAME => {
+                self.call::<wisp_ipc::methods::SkillListMethod, _, _>(params, |c, _| async move {
+                    c.skill_list().await
+                })
+                .await
+            }
+            wisp_ipc::methods::SkillGet::NAME => {
+                self.call::<wisp_ipc::methods::SkillGet, _, _>(params, |c, p| async move {
+                    c.skill_get(&p.id).await
+                })
+                .await
+            }
+            wisp_ipc::methods::SkillSave::NAME => {
+                self.call::<wisp_ipc::methods::SkillSave, _, _>(params, |c, p| async move {
+                    c.skill_save(p.id, p.content).await
+                })
+                .await
+            }
+            wisp_ipc::methods::SkillSetEnabled::NAME => {
+                self.call::<wisp_ipc::methods::SkillSetEnabled, _, _>(params, |c, p| async move {
+                    c.skill_set_enabled(p.id, p.enabled).await
+                })
+                .await
+            }
+            wisp_ipc::methods::SkillDelete::NAME => {
+                self.call::<wisp_ipc::methods::SkillDelete, _, _>(params, |c, p| async move {
+                    c.skill_delete(p.id).await
+                })
+                .await
+            }
+            wisp_ipc::methods::SkillImport::NAME => {
+                self.call::<wisp_ipc::methods::SkillImport, _, _>(params, |c, p| async move {
+                    c.skill_import(p.content).await
+                })
+                .await
+            }
+            wisp_ipc::methods::SkillExportMethod::NAME => {
+                self.call::<wisp_ipc::methods::SkillExportMethod, _, _>(params, |c, p| async move {
+                    c.skill_export(p.id).await
+                })
+                .await
+            }
+            wisp_ipc::methods::SkillVersionsMethod::NAME => {
+                self.call::<wisp_ipc::methods::SkillVersionsMethod, _, _>(
+                    params,
+                    |c, p| async move { c.skill_versions(p.id).await },
+                )
+                .await
+            }
+            wisp_ipc::methods::SkillRestore::NAME => {
+                self.call::<wisp_ipc::methods::SkillRestore, _, _>(params, |c, p| async move {
+                    c.skill_restore(p.id, p.version).await
+                })
+                .await
             }
             wisp_ipc::methods::AgentListMethod::NAME => {
                 self.call::<wisp_ipc::methods::AgentListMethod, _, _>(params, |c, _| async move {
@@ -491,6 +548,10 @@ impl Core {
             .events
             .publish::<wisp_ipc::methods::ConversationUpdated>(&s);
         Ok(s)
+    }
+
+    pub(crate) fn db(&self) -> &Database {
+        &self.inner.db
     }
 
     pub(crate) fn agent_runtime(&self) -> &crate::agents::AgentRuntime {

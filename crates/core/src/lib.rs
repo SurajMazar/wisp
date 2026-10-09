@@ -8,6 +8,7 @@ pub mod conversations;
 pub mod dispatch;
 pub mod events;
 pub mod logging;
+pub mod skills;
 pub mod teacher;
 pub mod tools;
 pub mod transport;

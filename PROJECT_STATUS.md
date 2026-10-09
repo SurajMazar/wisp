@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Phase
-Phase 14 — Skills (in progress). Phases 9–13 implemented; **manual stop gates 2–13 pending on the Mac**
+Phase 15 — Memory (in progress). Phases 9–14 implemented; **manual stop gates 2–13 pending on the Mac**
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +18,8 @@ Phase 14 — Skills (in progress). Phases 9–13 implemented; **manual stop gate
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- **14 Skills:** versioned SKILL.md, used when relevant (never executed), import off by default, disk mirror,
+  attachable to agents (gate PASS)
 - **13 Agents:** saved agents + chat "Do it": plan → observe → one action via the approval pipeline → verify;
   limits, loop detection, pause/stop, live run card, Agents page
 - **12 Teacher mode:** "teach me how to…" → observe, one highlighted and spoken step at a time, notice when the user
