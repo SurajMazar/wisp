@@ -1,5 +1,7 @@
 import { Outlet, useLocation } from "react-router";
 import { ApprovalStack } from "../tools/ApprovalCard";
+import { OnboardingFlow } from "../../features/onboarding/OnboardingFlow";
+import { useSettingsStore } from "../../stores/settingsStore";
 import { Sidebar } from "./Sidebar";
 
 /** Chat surfaces own their full height (pinned composer, scrolling thread). */
@@ -7,6 +9,8 @@ const fullBleed = (path: string) => path === "/home" || path.startsWith("/conver
 
 export function AppShell() {
   const { pathname } = useLocation();
+  const onboarded = useSettingsStore((s) => s.settings?.onboarding.completed ?? true);
+  if (!onboarded) return <OnboardingFlow />;
   return (
     <div className="relative flex h-full">
       <Sidebar />

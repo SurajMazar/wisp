@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Phase
-Phase 20 — Polish & UX (in progress). Phases 9–19 implemented; **manual stop gates 2–13 pending on the Mac**
+Phase 21 — Release (in progress). Phases 9–20 implemented; **manual stop gates 2–13 pending on the Mac**
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +18,7 @@ Phase 20 — Polish & UX (in progress). Phases 9–19 implemented; **manual stop
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- **20 Polish:** first-run flow (one permission at a time), accessibility sweep of every screen
 - **19 Performance:** search 139 → 9 ms, bundle 664 → 378 KB, idle model release, latency-aware routing
 - **18 Security:** audit + fixes (UI host allow-list, debug-only overrides, real-element risk, bound approvals,
   strict loopback, fences, bounded IPC) (gate PASS)

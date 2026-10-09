@@ -627,3 +627,26 @@ PASS on automated evidence; manual checks listed (Phase 18).
 ## Stop Gate 19
 PASS on automated evidence; app-level timings above (manual feel checks in the checklist).
 
+---
+
+# Phase 20 — Polish & UX (2026-10-09)
+
+## Summary
+A friendly first run, and an automated sweep that every screen renders in its failure/empty state with every control
+named for assistive technology.
+
+## Implemented
+- First-run flow (spec §19–20): Welcome → Microphone → Screen Recording → Accessibility → Shortcut → Voice models (with
+  download progress) → Theme → Ready; one permission at a time in plain language, every step skippable, re-checks
+  permissions when the user returns from System Settings, "I'll do this later"
+- Screen sweep test: Home, Conversations, panel, Agents, Skills, Memory, Files, Routines, Activity, Onboarding all
+  render with a failing engine; no unnamed buttons, inputs, switches or radios; every image has alt text
+- (From earlier phases) loading, empty, error, success, disabled, permission and offline states on each page;
+  Reduce Motion respected by the cursor and guidance overlay
+
+## Tests Added
+- React: first-run walk-through (permission request, skip, finish persists completion); 10-screen accessibility sweep
+
+## Stop Gate 20
+Automated portions PASS; manual first-run and VoiceOver checks listed (Phase 20).
+

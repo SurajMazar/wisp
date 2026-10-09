@@ -31,6 +31,7 @@
     "@vitejs/plugin-react": "6.1.2",
     "@wisp/config": "workspace:*",
     "@wisp/test-utils": "workspace:*",
+    "dom-accessibility-api": "0.5.16",
     "jsdom": "30.1.2",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3",

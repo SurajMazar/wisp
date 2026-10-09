@@ -196,5 +196,12 @@ Prerequisite: Computer control on (Settings), Accessibility, Screen Recording.
 - [ ] After Wisp has answered slowly with one model a few times, short questions go to a faster local model.
 - [ ] Leave Wisp idle 15+ minutes: Activity Monitor shows wisp-core's memory drop; the next push-to-talk still works.
 
+## Phase 20 — First run & polish
+- [ ] On a fresh data folder Wisp opens to "Welcome. Meet your AI companion." with Set Up My Assistant / I'll do this later.
+- [ ] Each step explains one permission in plain words; "Allow…" opens the right macOS prompt; returning shows "Allowed".
+- [ ] The voice step downloads the speech models with progress; the theme step changes the accent live.
+- [ ] "Start using Wisp" lands on Home; reopening Wisp doesn't show the flow again.
+- [ ] VoiceOver: every button and field on every page is announced with a name.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).
