@@ -46,6 +46,8 @@ pub struct GenerateRequest {
     pub temperature: f64,
     pub max_tokens: u32,
     pub context_length: u32,
+    /// Ask the model to reason before answering (providers that support it).
+    pub think: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

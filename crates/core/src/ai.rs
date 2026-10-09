@@ -280,6 +280,19 @@ impl AiServices {
                 Ok(r) => r,
                 Err(e) => return Err(last_err.unwrap_or(e)),
             };
+            let mut route = route;
+            if !settings.deep_thinking
+                && let Some(twin) = non_thinking_twin(&route.model.model)
+                && provider
+                    .models()
+                    .await
+                    .is_ok_and(|ms| ms.iter().any(|m| m.id == twin))
+            {
+                // Some models (e.g. `qwen3-vl:8b`) think even when asked not to; their instruct
+                // twin answers directly.
+                route.model_name = twin.clone();
+                route.model.model = twin;
+            }
             // Report the choice before the (possibly long) model load so the UI can explain the wait.
             on_route(&route, provider.is_loaded(&route.model.model).await);
             let req = GenerateRequest {
@@ -289,6 +302,7 @@ impl AiServices {
                 temperature: settings.temperature,
                 max_tokens: settings.max_tokens,
                 context_length: settings.context_length,
+                think: settings.deep_thinking,
             };
             let mut stream = match provider.generate(req, cancel.clone()).await {
                 Ok(s) => s,
@@ -465,4 +479,34 @@ pub fn estimate_tokens(system: Option<&str>, messages: &[ChatMessage]) -> u32 {
         system.map(str::len).unwrap_or(0) + messages.iter().map(|m| m.content.len()).sum::<usize>();
     let images: usize = messages.iter().map(|m| m.images.len()).sum();
     (chars / 4 + images * 1000) as u32
+}
+
+/// The non-thinking sibling of a model that reasons by default, as Ollama names them:
+/// `qwen3-vl:8b` / `qwen3-vl:8b-thinking` → `qwen3-vl:8b-instruct`.
+fn non_thinking_twin(model: &str) -> Option<String> {
+    let (name, tag) = model.split_once(':')?;
+    if tag.contains("instruct") {
+        return None;
+    }
+    let base = tag.strip_suffix("-thinking").unwrap_or(tag);
+    Some(format!("{name}:{base}-instruct"))
+}
+
+#[cfg(test)]
+mod twin_tests {
+    use super::non_thinking_twin;
+
+    #[test]
+    fn finds_the_instruct_twin() {
+        assert_eq!(
+            non_thinking_twin("qwen3-vl:8b").as_deref(),
+            Some("qwen3-vl:8b-instruct")
+        );
+        assert_eq!(
+            non_thinking_twin("qwen3-vl:8b-thinking").as_deref(),
+            Some("qwen3-vl:8b-instruct")
+        );
+        assert_eq!(non_thinking_twin("qwen3-vl:8b-instruct"), None);
+        assert_eq!(non_thinking_twin("llama3"), None);
+    }
 }

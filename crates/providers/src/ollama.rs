@@ -444,7 +444,7 @@ impl AiProvider for OllamaProvider {
             "model": req.model,
             "messages": messages,
             "stream": true,
-            "think": false,
+            "think": req.think,
             "keep_alive": "15m",
             "options": { "temperature": req.temperature, "num_predict": req.max_tokens, "num_ctx": req.context_length },
         });

@@ -7,7 +7,7 @@ import type {
   RouteInfo,
 } from "@wisp/contracts";
 import { WispError } from "@wisp/contracts";
-import { Button, ErrorNotice, SettingsGroup, SettingsRow, Slider, Spinner, cn } from "@wisp/ui";
+import { Button, ErrorNotice, SettingsGroup, SettingsRow, Slider, Spinner, Switch, cn } from "@wisp/ui";
 import { useEffect, useState } from "react";
 import { modelKey, useModelsStore } from "../../stores/modelsStore";
 import { useSettingsStore } from "../../stores/settingsStore";
@@ -316,6 +316,17 @@ export function ModelsPage() {
 
       {draft && (
         <SettingsGroup title="Generation">
+          <SettingsRow
+            label="Deep thinking"
+            hint="Let the model reason step by step before answering. Slower, sometimes better for hard questions. When off, a model that always thinks is swapped for its installed “instruct” version."
+            control={
+              <Switch
+                label="Deep thinking"
+                checked={draft.deepThinking}
+                onCheckedChange={(deepThinking) => save({ deepThinking })}
+              />
+            }
+          />
           <SettingsRow
             label="Creativity"
             hint={`Temperature ${draft.temperature.toFixed(1)} — lower is more precise`}

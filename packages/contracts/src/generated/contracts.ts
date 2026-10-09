@@ -310,6 +310,7 @@ export type EndpointConfig = z.output<typeof EndpointConfig>;
 
 export const ModelSettings = z.strictObject({
   "contextLength": z.number().int().nonnegative().default(8192),
+  "deepThinking": z.boolean().default(false),
   "endpoints": z.array(EndpointConfig).default([]),
   "general": ModelRef.nullable().optional(),
   "maxTokens": z.number().int().nonnegative().default(1024),
@@ -357,7 +358,7 @@ export const AppSettings = z.strictObject({
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
   "invocation": InvocationSettings.default(() => InvocationSettings.parse({"behavior":"hold","holdDelayMs":150,"mouseAction":"focusCursor","mouseButton":"none","shortcut":{"modifiers":["option","command"]}})),
   "memory": MemorySettings.default(() => MemorySettings.parse({"enabled":true,"learnFromChats":true})),
-  "models": ModelSettings.default(() => ModelSettings.parse({"contextLength":8192,"endpoints":[],"maxTokens":1024,"ollamaUrl":"http://127.0.0.1:11434","temperature":0.4})),
+  "models": ModelSettings.default(() => ModelSettings.parse({"contextLength":8192,"deepThinking":false,"endpoints":[],"maxTokens":1024,"ollamaUrl":"http://127.0.0.1:11434","temperature":0.4})),
   "onboarding": OnboardingSettings.default(() => OnboardingSettings.parse({"completed":false})),
   "privacy": PrivacySettings.default(() => PrivacySettings.parse({"mode":"localOnly"})),
   "voice": VoiceSettings.default(() => VoiceSettings.parse({"enabled":true,"language":"auto","speakAnswers":"voiceQuestions","speed":1,"sttModel":"whisper-base.en","vadSensitivity":0.5,"voice":"af_heart","volume":1})),

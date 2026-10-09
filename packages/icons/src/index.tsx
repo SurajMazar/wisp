@@ -9,6 +9,7 @@ export {
   BookOpen as SkillsIcon,
   CalendarClock as RoutinesIcon,
   Brain as MemoryIcon,
+  Lightbulb as ThinkIcon,
   FolderOpen as FilesIcon,
   Cpu as ModelsIcon,
   AudioLines as VoiceIcon,

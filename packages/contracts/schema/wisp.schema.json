@@ -635,6 +635,7 @@
           "$ref": "#/definitions/ModelSettings",
           "default": {
             "contextLength": 8192,
+            "deepThinking": false,
             "endpoints": [],
             "maxTokens": 1024,
             "ollamaUrl": "http://127.0.0.1:11434",
@@ -3643,6 +3644,11 @@
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
+        },
+        "deepThinking": {
+          "default": false,
+          "description": "Let models reason step by step before answering (\"deep thinking\"). Off: faster answers;\na model that always thinks is swapped for its installed `-instruct` twin.",
+          "type": "boolean"
         },
         "endpoints": {
           "default": [],

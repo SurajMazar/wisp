@@ -611,6 +611,7 @@ public struct EndpointConfig: Codable, Sendable, Equatable {
 
 public struct ModelSettings: Codable, Sendable, Equatable {
     public var contextLength: UInt32
+    public var deepThinking: Bool
     public var endpoints: [EndpointConfig]
     public var general: ModelRef?
     public var maxTokens: UInt32
@@ -618,8 +619,9 @@ public struct ModelSettings: Codable, Sendable, Equatable {
     public var temperature: Double
     public var vision: ModelRef?
 
-    public init(contextLength: UInt32, endpoints: [EndpointConfig], general: ModelRef? = nil, maxTokens: UInt32, ollamaUrl: String, temperature: Double, vision: ModelRef? = nil) {
+    public init(contextLength: UInt32, deepThinking: Bool, endpoints: [EndpointConfig], general: ModelRef? = nil, maxTokens: UInt32, ollamaUrl: String, temperature: Double, vision: ModelRef? = nil) {
         self.contextLength = contextLength
+        self.deepThinking = deepThinking
         self.endpoints = endpoints
         self.general = general
         self.maxTokens = maxTokens

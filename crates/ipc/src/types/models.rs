@@ -115,6 +115,9 @@ pub struct ModelSettings {
     pub context_length: u32,
     pub ollama_url: String,
     pub endpoints: Vec<EndpointConfig>,
+    /// Let models reason step by step before answering ("deep thinking"). Off: faster answers;
+    /// a model that always thinks is swapped for its installed `-instruct` twin.
+    pub deep_thinking: bool,
 }
 
 impl Default for ModelSettings {
@@ -126,6 +129,7 @@ impl Default for ModelSettings {
             max_tokens: 1024,
             context_length: 8192,
             ollama_url: "http://127.0.0.1:11434".into(),
+            deep_thinking: false,
             endpoints: vec![],
         }
     }

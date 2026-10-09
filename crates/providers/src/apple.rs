@@ -223,6 +223,7 @@ mod tests {
             temperature: 0.2,
             max_tokens: 64,
             context_length: 4096,
+            think: false,
         };
         let (i, p) = render_prompt(&req);
         assert_eq!(i, "Be brief.");

@@ -18,6 +18,7 @@ import { quickActions } from "../../lib/quickActions";
 import { useFocusStore } from "../../stores/focusStore";
 import { MicButton } from "./MicButton";
 import { ModelPicker } from "./ModelPicker";
+import { ThinkToggle } from "./ThinkToggle";
 import { MenuItem, Popover } from "./Popover";
 
 const focusActions: { kind: FocusKind; label: string; hint: string; icon: ReactNode }[] = [
@@ -259,6 +260,7 @@ export function Composer({
           {(act || !compact) && <span>Do it</span>}
         </button>
         <span className="ml-auto" />
+        <ThinkToggle compact={compact} />
         <ModelPicker />
         {streaming ? (
           <button
