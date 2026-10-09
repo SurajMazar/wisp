@@ -44,7 +44,6 @@ export const sections: Section[] = [
     path: "/routines",
     label: "Routines",
     icon: RoutinesIcon,
-    unavailableNote: "Routines aren't available in this build yet.",
   },
   {
     path: "/memory",

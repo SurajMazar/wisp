@@ -529,3 +529,33 @@ grounded in them with citations — never uploaded in Local Only.
 ## Stop Gate 16
 PASS on automated evidence (correct document, relevant chunk, grounded answer, Local Only stays local).
 
+---
+
+# Phase 17 — Routines (2026-10-09)
+
+## Summary
+Scheduled automation: prompts or agents on a cron schedule in the user's timezone, with retries, notifications and
+run history.
+
+## Implemented
+- `wisp-agents::schedule`: cron parser (lists, ranges, steps, Sunday 0/7, classic day-field OR), next-run search on
+  the local wall clock with DST handling, plain descriptions
+- Contracts: `Routine`, retry/notify policies, `RoutineRun`; `routine.list|save|delete|runNow|runs`, `host.notify`,
+  `routine.runUpdated`; migration 0008 (run → conversation)
+- Database: routines (agent links checked), due query, runs + history, startup recovery
+- Core: validation with explanations, scheduler (tick, reschedule-before-run, catch-up once), prompt routines into
+  "Routine: …" conversations, agent routines with limits, retries with backoff, notifications
+- Host: `Notifier` (UserNotifications, asks once)
+- UI: Routines page (presets + cron, timezone default, run as question or agent, tries, notify options, enable switch,
+  Run now, history with links to results)
+
+## Tests Added
+- Rust: every 5 minutes, weekdays at 9 in Asia/Kathmandu, DST night is 25 h, month/day fields, invalid expressions (5);
+  repository (1); stop gate — every-5-minutes routine triggers at its time, records the run, answer in its
+  conversation, notification, reschedules forward, never fires twice; retries then one failure notification;
+  schedule/timezone errors explained (2)
+- React: list/history/run now, create from preset in local timezone (2)
+
+## Stop Gate 17
+PASS on automated evidence (scheduler triggers, run recorded).
+

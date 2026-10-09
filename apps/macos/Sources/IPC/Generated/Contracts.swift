@@ -2004,6 +2004,26 @@ public enum NoSpeechReason: String, Codable, Sendable, Equatable, CaseIterable {
     case tooShort = "tooShort"
 }
 
+public struct NotifyParams: Codable, Sendable, Equatable {
+    public var body: String
+    public var title: String
+
+    public init(body: String, title: String) {
+        self.body = body
+        self.title = title
+    }
+}
+
+public struct NotifyPolicy: Codable, Sendable, Equatable {
+    public var onFailure: Bool
+    public var onSuccess: Bool
+
+    public init(onFailure: Bool, onSuccess: Bool) {
+        self.onFailure = onFailure
+        self.onSuccess = onSuccess
+    }
+}
+
 /// System Settings panes Wisp may open for the user.
 public enum SettingsPane: String, Codable, Sendable, Equatable, CaseIterable {
     case accessibility = "accessibility"
@@ -2091,6 +2111,16 @@ public struct RequestIdParams: Codable, Sendable, Equatable {
     }
 }
 
+public struct RetryPolicy: Codable, Sendable, Equatable {
+    public var backoffMinutes: UInt32
+    public var maxAttempts: UInt32
+
+    public init(backoffMinutes: UInt32, maxAttempts: UInt32) {
+        self.backoffMinutes = backoffMinutes
+        self.maxAttempts = maxAttempts
+    }
+}
+
 public struct RouteInfo: Codable, Sendable, Equatable {
     public var locality: Locality
     public var model: ModelRef
@@ -2114,6 +2144,124 @@ public struct RouteParams: Codable, Sendable, Equatable {
     public init(allowCloud: Bool, needsVision: Bool) {
         self.allowCloud = allowCloud
         self.needsVision = needsVision
+    }
+}
+
+public enum RoutineRunStatus: String, Codable, Sendable, Equatable, CaseIterable {
+    case running = "running"
+    case succeeded = "succeeded"
+    case failed = "failed"
+}
+
+public struct Routine: Codable, Sendable, Equatable {
+    public var agentId: String?
+    public var createdAtMs: Int64
+    public var enabled: Bool
+    public var id: String
+    public var lastRunAtMs: Int64?
+    public var lastStatus: RoutineRunStatus?
+    public var name: String
+    public var nextRunAtMs: Int64?
+    public var notify: NotifyPolicy
+    public var prompt: String
+    public var retry: RetryPolicy
+    public var schedule: String
+    public var scheduleText: String
+    public var timezone: String
+    public var updatedAtMs: Int64
+
+    public init(agentId: String? = nil, createdAtMs: Int64, enabled: Bool, id: String, lastRunAtMs: Int64? = nil, lastStatus: RoutineRunStatus? = nil, name: String, nextRunAtMs: Int64? = nil, notify: NotifyPolicy, prompt: String, retry: RetryPolicy, schedule: String, scheduleText: String, timezone: String, updatedAtMs: Int64) {
+        self.agentId = agentId
+        self.createdAtMs = createdAtMs
+        self.enabled = enabled
+        self.id = id
+        self.lastRunAtMs = lastRunAtMs
+        self.lastStatus = lastStatus
+        self.name = name
+        self.nextRunAtMs = nextRunAtMs
+        self.notify = notify
+        self.prompt = prompt
+        self.retry = retry
+        self.schedule = schedule
+        self.scheduleText = scheduleText
+        self.timezone = timezone
+        self.updatedAtMs = updatedAtMs
+    }
+}
+
+public struct RoutineList: Codable, Sendable, Equatable {
+    public var routines: [Routine]
+
+    public init(routines: [Routine]) {
+        self.routines = routines
+    }
+}
+
+public struct RoutineRun: Codable, Sendable, Equatable {
+    public var agentRunId: String?
+    public var attempt: UInt32
+    public var conversationId: String?
+    public var error: String?
+    public var finishedAtMs: Int64?
+    public var id: String
+    public var routineId: String
+    public var scheduledForMs: Int64
+    public var startedAtMs: Int64
+    public var status: RoutineRunStatus
+
+    public init(agentRunId: String? = nil, attempt: UInt32, conversationId: String? = nil, error: String? = nil, finishedAtMs: Int64? = nil, id: String, routineId: String, scheduledForMs: Int64, startedAtMs: Int64, status: RoutineRunStatus) {
+        self.agentRunId = agentRunId
+        self.attempt = attempt
+        self.conversationId = conversationId
+        self.error = error
+        self.finishedAtMs = finishedAtMs
+        self.id = id
+        self.routineId = routineId
+        self.scheduledForMs = scheduledForMs
+        self.startedAtMs = startedAtMs
+        self.status = status
+    }
+}
+
+public struct RoutineRunList: Codable, Sendable, Equatable {
+    public var runs: [RoutineRun]
+
+    public init(runs: [RoutineRun]) {
+        self.runs = runs
+    }
+}
+
+public struct RoutineRunsParams: Codable, Sendable, Equatable {
+    public var limit: UInt32
+    public var routineId: String
+
+    public init(limit: UInt32, routineId: String) {
+        self.limit = limit
+        self.routineId = routineId
+    }
+}
+
+public struct RoutineSaveParams: Codable, Sendable, Equatable {
+    public var agentId: String?
+    public var enabled: Bool
+    public var id: String?
+    public var name: String
+    public var notify: NotifyPolicy
+    public var prompt: String
+    public var retry: RetryPolicy
+    public var schedule: String
+    public var timezone: String
+
+    public init(agentId: String? = nil, enabled: Bool, id: String? = nil, name: String, notify: NotifyPolicy, prompt: String, retry: RetryPolicy, schedule: String, timezone: String) {
+        self.agentId = agentId
+        self.enabled = enabled
+        self.id = id
+        self.name = name
+        self.notify = notify
+        self.prompt = prompt
+        self.retry = retry
+        self.schedule = schedule
+        self.timezone = timezone
     }
 }
 
@@ -2927,6 +3075,11 @@ public enum IPCMethods {
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
     public static let conversationRegenerate = IPCMethod<RegenerateParams, Message>(name: "conversation.regenerate", target: .core)
+    public static let routineList = IPCMethod<Empty, RoutineList>(name: "routine.list", target: .core)
+    public static let routineSave = IPCMethod<RoutineSaveParams, Routine>(name: "routine.save", target: .core)
+    public static let routineDelete = IPCMethod<IdParams, Empty>(name: "routine.delete", target: .core)
+    public static let routineRunNow = IPCMethod<IdParams, RoutineRun>(name: "routine.runNow", target: .core)
+    public static let routineRuns = IPCMethod<RoutineRunsParams, RoutineRunList>(name: "routine.runs", target: .core)
     public static let fileList = IPCMethod<Empty, FileList>(name: "file.list", target: .core)
     public static let fileImport = IPCMethod<Empty, FileList>(name: "file.import", target: .core)
     public static let fileImportData = IPCMethod<FileImportData, FileItem>(name: "file.importData", target: .core)
@@ -2964,6 +3117,7 @@ public enum IPCMethods {
     public static let hostClipboardWriteText = IPCMethod<ClipboardText, Empty>(name: "host.clipboard.writeText", target: .host)
     public static let hostGuidanceShow = IPCMethod<GuidanceShow, Empty>(name: "host.guidance.show", target: .host)
     public static let hostGuidanceClear = IPCMethod<Empty, Empty>(name: "host.guidance.clear", target: .host)
+    public static let hostNotify = IPCMethod<NotifyParams, Empty>(name: "host.notify", target: .host)
     public static let hostFilesPick = IPCMethod<Empty, StagedFiles>(name: "host.files.pick", target: .host)
     public static let hostFilesExtract = IPCMethod<FilePathParams, ExtractedText>(name: "host.files.extract", target: .host)
     public static let hostFilesOpen = IPCMethod<FilePathParams, Empty>(name: "host.files.open", target: .host)
@@ -3027,6 +3181,11 @@ public enum IPCMethods {
         "conversation.pin": .core,
         "conversation.delete": .core,
         "conversation.regenerate": .core,
+        "routine.list": .core,
+        "routine.save": .core,
+        "routine.delete": .core,
+        "routine.runNow": .core,
+        "routine.runs": .core,
         "file.list": .core,
         "file.import": .core,
         "file.importData": .core,
@@ -3064,6 +3223,7 @@ public enum IPCMethods {
         "host.clipboard.writeText": .host,
         "host.guidance.show": .host,
         "host.guidance.clear": .host,
+        "host.notify": .host,
         "host.files.pick": .host,
         "host.files.extract": .host,
         "host.files.open": .host,
@@ -3110,6 +3270,7 @@ public enum IPCEvents {
     public static let teachUpdated = IPCEvent<Lesson>(name: "teach.updated")
     public static let agentRunUpdated = IPCEvent<AgentRun>(name: "agent.runUpdated")
     public static let fileUpdated = IPCEvent<FileItem>(name: "file.updated")
+    public static let routineRunUpdated = IPCEvent<RoutineRun>(name: "routine.runUpdated")
     public static let audioChunk = IPCEvent<AudioChunk>(name: "audio.chunk")
     public static let voiceSpeechChunk = IPCEvent<SpeechChunk>(name: "voice.speechChunk")
     public static let voiceModelProgress = IPCEvent<SpeechModelProgress>(name: "voice.modelProgress")

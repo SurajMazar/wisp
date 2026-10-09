@@ -1082,6 +1082,18 @@ export type ModelsList = z.output<typeof ModelsList>;
 export const NoSpeechReason = z.enum(["silence","tooShort"]);
 export type NoSpeechReason = z.output<typeof NoSpeechReason>;
 
+export const NotifyParams = z.strictObject({
+  "body": z.string(),
+  "title": z.string(),
+});
+export type NotifyParams = z.output<typeof NotifyParams>;
+
+export const NotifyPolicy = z.strictObject({
+  "onFailure": z.boolean().default(true),
+  "onSuccess": z.boolean().default(true),
+});
+export type NotifyPolicy = z.output<typeof NotifyPolicy>;
+
 /** System Settings panes Wisp may open for the user. */
 export const SettingsPane = z.enum(["accessibility","inputMonitoring","screenRecording","microphone","automation","notifications","keyboard"]);
 export type SettingsPane = z.output<typeof SettingsPane>;
@@ -1131,6 +1143,12 @@ export const RequestIdParams = z.strictObject({
 });
 export type RequestIdParams = z.output<typeof RequestIdParams>;
 
+export const RetryPolicy = z.strictObject({
+  "backoffMinutes": z.number().int().nonnegative().default(5),
+  "maxAttempts": z.number().int().nonnegative().default(2),
+});
+export type RetryPolicy = z.output<typeof RetryPolicy>;
+
 export const RouteInfo = z.strictObject({
   "locality": Locality,
   "model": ModelRef,
@@ -1145,6 +1163,71 @@ export const RouteParams = z.strictObject({
   "needsVision": z.boolean(),
 });
 export type RouteParams = z.output<typeof RouteParams>;
+
+export const RoutineRunStatus = z.enum(["running","succeeded","failed"]);
+export type RoutineRunStatus = z.output<typeof RoutineRunStatus>;
+
+export const Routine = z.strictObject({
+  "agentId": z.string().nullable().optional(),
+  "createdAtMs": z.number().int(),
+  "enabled": z.boolean(),
+  "id": z.string(),
+  "lastRunAtMs": z.number().int().nullable().optional(),
+  "lastStatus": RoutineRunStatus.nullable().optional(),
+  "name": z.string(),
+  "nextRunAtMs": z.number().int().nullable().optional(),
+  "notify": NotifyPolicy,
+  "prompt": z.string(),
+  "retry": RetryPolicy,
+  "schedule": z.string(),
+  "scheduleText": z.string(),
+  "timezone": z.string(),
+  "updatedAtMs": z.number().int(),
+});
+export type Routine = z.output<typeof Routine>;
+
+export const RoutineList = z.strictObject({
+  "routines": z.array(Routine),
+});
+export type RoutineList = z.output<typeof RoutineList>;
+
+export const RoutineRun = z.strictObject({
+  "agentRunId": z.string().nullable().optional(),
+  "attempt": z.number().int().nonnegative(),
+  "conversationId": z.string().nullable().optional(),
+  "error": z.string().nullable().optional(),
+  "finishedAtMs": z.number().int().nullable().optional(),
+  "id": z.string(),
+  "routineId": z.string(),
+  "scheduledForMs": z.number().int(),
+  "startedAtMs": z.number().int(),
+  "status": RoutineRunStatus,
+});
+export type RoutineRun = z.output<typeof RoutineRun>;
+
+export const RoutineRunList = z.strictObject({
+  "runs": z.array(RoutineRun),
+});
+export type RoutineRunList = z.output<typeof RoutineRunList>;
+
+export const RoutineRunsParams = z.strictObject({
+  "limit": z.number().int().nonnegative(),
+  "routineId": z.string(),
+});
+export type RoutineRunsParams = z.output<typeof RoutineRunsParams>;
+
+export const RoutineSaveParams = z.strictObject({
+  "agentId": z.string().nullable().optional(),
+  "enabled": z.boolean().default(true),
+  "id": z.string().nullable().optional(),
+  "name": z.string(),
+  "notify": NotifyPolicy.default(() => NotifyPolicy.parse({"onFailure":true,"onSuccess":true})),
+  "prompt": z.string(),
+  "retry": RetryPolicy.default(() => RetryPolicy.parse({"backoffMinutes":5,"maxAttempts":2})),
+  "schedule": z.string(),
+  "timezone": z.string(),
+});
+export type RoutineSaveParams = z.output<typeof RoutineSaveParams>;
 
 export const RunAction = z.enum(["pause","resume","stop","continue"]);
 export type RunAction = z.output<typeof RunAction>;
@@ -1530,6 +1613,11 @@ export const methods = {
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
   "conversation.regenerate": { target: "core", params: RegenerateParams, result: Message },
+  "routine.list": { target: "core", params: Empty, result: RoutineList },
+  "routine.save": { target: "core", params: RoutineSaveParams, result: Routine },
+  "routine.delete": { target: "core", params: IdParams, result: Empty },
+  "routine.runNow": { target: "core", params: IdParams, result: RoutineRun },
+  "routine.runs": { target: "core", params: RoutineRunsParams, result: RoutineRunList },
   "file.list": { target: "core", params: Empty, result: FileList },
   "file.import": { target: "core", params: Empty, result: FileList },
   "file.importData": { target: "core", params: FileImportData, result: FileItem },
@@ -1567,6 +1655,7 @@ export const methods = {
   "host.clipboard.writeText": { target: "host", params: ClipboardText, result: Empty },
   "host.guidance.show": { target: "host", params: GuidanceShow, result: Empty },
   "host.guidance.clear": { target: "host", params: Empty, result: Empty },
+  "host.notify": { target: "host", params: NotifyParams, result: Empty },
   "host.files.pick": { target: "host", params: Empty, result: StagedFiles },
   "host.files.extract": { target: "host", params: FilePathParams, result: ExtractedText },
   "host.files.open": { target: "host", params: FilePathParams, result: Empty },
@@ -1612,6 +1701,7 @@ export const events = {
   "teach.updated": Lesson,
   "agent.runUpdated": AgentRun,
   "file.updated": FileItem,
+  "routine.runUpdated": RoutineRun,
   "audio.chunk": AudioChunk,
   "voice.speechChunk": SpeechChunk,
   "voice.modelProgress": SpeechModelProgress,

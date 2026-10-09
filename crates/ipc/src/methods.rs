@@ -10,8 +10,8 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
     accessibility::*, agents::*, app::*, conversations::*, cursor::*, files::*, focus::*,
-    guidance::*, invocation::*, memory::*, models::*, settings::*, skills::*, teacher::*, tools::*,
-    voice::*,
+    guidance::*, invocation::*, memory::*, models::*, routines::*, settings::*, skills::*,
+    teacher::*, tools::*, voice::*,
 };
 
 /// Which side implements a method.
@@ -170,6 +170,15 @@ define_methods! {
     ConversationDelete = "conversation.delete", Core, IdParams => Empty;
     /// Answer the same question again, replacing an assistant message.
     ConversationRegenerate = "conversation.regenerate", Core, RegenerateParams => Message;
+    /// Scheduled routines.
+    RoutineListMethod = "routine.list", Core, Empty => RoutineList;
+    /// Create or update a routine (schedule and timezone are validated).
+    RoutineSave = "routine.save", Core, RoutineSaveParams => Routine;
+    RoutineDelete = "routine.delete", Core, IdParams => Empty;
+    /// Run a routine now (outside its schedule).
+    RoutineRunNow = "routine.runNow", Core, IdParams => RoutineRun;
+    /// A routine's run history, newest first.
+    RoutineRuns = "routine.runs", Core, RoutineRunsParams => RoutineRunList;
     /// Imported files, newest first.
     FileListMethod = "file.list", Core, Empty => FileList;
     /// Pick files with the system picker and index them.
@@ -236,6 +245,8 @@ define_methods! {
     HostGuidanceShow = "host.guidance.show", Host, GuidanceShow => Empty;
     /// Remove any guidance from the screen.
     HostGuidanceClear = "host.guidance.clear", Host, Empty => Empty;
+    /// Post a macOS notification.
+    HostNotify = "host.notify", Host, NotifyParams => Empty;
     /// Let the user pick files; the host copies them under `files/` in the data folder.
     HostFilesPick = "host.files.pick", Host, Empty => StagedFiles;
     /// Read text from a PDF, document or image under `files/` (PDFKit, document readers, Vision).
@@ -322,6 +333,8 @@ define_events! {
     AgentRunUpdated = "agent.runUpdated", AgentRun;
     /// A file's indexing status changed.
     FileUpdated = "file.updated", FileItem;
+    /// A routine run started or finished.
+    RoutineRunUpdated = "routine.runUpdated", RoutineRun;
     /// Captured microphone audio (host → core only).
     AudioChunkEvent = "audio.chunk", AudioChunk;
     /// Synthesized speech ready to play (core → host).

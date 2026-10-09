@@ -56,6 +56,11 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
+    // Routines run on their schedules for as long as the engine runs.
+    {
+        let _guard = runtime.enter();
+        core.start_scheduler();
+    }
     match runtime.block_on(transport::serve(
         core,
         tokio::io::stdin(),

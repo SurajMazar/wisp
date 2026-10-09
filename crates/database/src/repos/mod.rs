@@ -5,6 +5,7 @@ pub mod conversations;
 pub mod events;
 pub mod files;
 pub mod memory;
+pub mod routines;
 pub mod settings;
 pub mod skills;
 pub mod tools;

@@ -260,3 +260,15 @@ threshold join the prompt in a fenced `<documents>` block (information, never in
 numbered citations that open the file. Generation still follows the privacy router, so Local Only never sends a
 document anywhere. Unfinished indexing resumes when the host connects.
 
+## D-034 — Routines: cron in the user's IANA timezone, in-process scheduler, no backlog
+**Status** accepted (2026-10-09)
+Schedules are standard 5-field cron (with UI presets) evaluated on the routine's IANA timezone wall clock with
+`chrono-tz` (DST-correct: skipped local times are skipped, repeated ones run once). The engine's scheduler ticks every
+15 s while Wisp runs; it moves `next_run_at` forward from *now* before starting a run, so a slow run, a late tick or a
+long sleep never fires twice and missed runs collapse into one at the next start (no backlog). A routine either asks
+its prompt in a new "Routine: …" conversation (same engine, privacy router, memory, skills and files as chat) or runs
+an attached agent (same limits and approvals — unattended runs simply time out and deny). Retries: 1–5 attempts,
+1–60 minutes apart; notifications on success/failure via UserNotifications. Every attempt is recorded
+(`routine_runs`, linked to its conversation or agent run — migration 0008); interrupted runs are marked failed at
+startup. Routines don't wake a sleeping Mac or run while Wisp is quit (documented in the UI).
+

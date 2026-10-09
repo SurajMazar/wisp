@@ -178,5 +178,12 @@ Prerequisite: Computer control on (Settings), Accessibility, Screen Recording.
 - [ ] Remove a file: it disappears from search and answers.
 - [ ] Local Only with Wi-Fi off: import, search and answers all work.
 
+## Phase 17 — Routines
+- [ ] Routines → New routine "Check-in", prompt "Anything new in my files?", When: Every 5 minutes. It shows "Every 5 minutes · <your timezone> · next …".
+- [ ] Within 5 minutes it runs: a macOS notification appears (allow notifications the first time), History shows "Worked" with "See result" opening the "Routine: Check-in" conversation.
+- [ ] Run now works anytime; turning the switch off stops scheduled runs.
+- [ ] A routine run as an agent shows the agent's run (approvals still apply).
+- [ ] Quit Wisp past a scheduled time and reopen: the missed run happens once, not repeatedly.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

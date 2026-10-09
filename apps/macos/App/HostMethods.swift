@@ -173,6 +173,11 @@ enum HostMethods {
             return Empty()
         }
 
+        router.register(IPCMethods.hostNotify) { params in
+            await Notifier.post(title: params.title, body: params.body)
+            return Empty()
+        }
+
         router.register(IPCMethods.hostFilesPick) { _ in
             FileReader.pick()
         }

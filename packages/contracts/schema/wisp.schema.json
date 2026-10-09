@@ -3683,6 +3683,36 @@
       ],
       "type": "string"
     },
+    "NotifyParams": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "body"
+      ],
+      "type": "object"
+    },
+    "NotifyPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "onFailure": {
+          "default": true,
+          "type": "boolean"
+        },
+        "onSuccess": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "OnboardingSettings": {
       "additionalProperties": false,
       "properties": {
@@ -4044,6 +4074,26 @@
       ],
       "type": "object"
     },
+    "RetryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "backoffMinutes": {
+          "default": 5,
+          "description": "1–60 minutes between attempts.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxAttempts": {
+          "default": 2,
+          "description": "1–5 (1 = no retries).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "RiskLevel": {
       "enum": [
         "safe",
@@ -4097,6 +4147,268 @@
       },
       "required": [
         "needsVision"
+      ],
+      "type": "object"
+    },
+    "Routine": {
+      "additionalProperties": false,
+      "properties": {
+        "agentId": {
+          "description": "Run this agent with the prompt as its goal; otherwise the prompt is answered as a question.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "createdAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastRunAtMs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "lastStatus": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RoutineRunStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "nextRunAtMs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "notify": {
+          "$ref": "#/definitions/NotifyPolicy"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "retry": {
+          "$ref": "#/definitions/RetryPolicy"
+        },
+        "schedule": {
+          "description": "5-field cron, e.g. `0 9 * * 1-5`.",
+          "type": "string"
+        },
+        "scheduleText": {
+          "description": "Plain description of the schedule, e.g. \"Weekdays at 09:00\".",
+          "type": "string"
+        },
+        "timezone": {
+          "description": "IANA timezone, e.g. `Asia/Kathmandu`.",
+          "type": "string"
+        },
+        "updatedAtMs": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "schedule",
+        "scheduleText",
+        "timezone",
+        "prompt",
+        "enabled",
+        "retry",
+        "notify",
+        "createdAtMs",
+        "updatedAtMs"
+      ],
+      "type": "object"
+    },
+    "RoutineList": {
+      "additionalProperties": false,
+      "properties": {
+        "routines": {
+          "items": {
+            "$ref": "#/definitions/Routine"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "routines"
+      ],
+      "type": "object"
+    },
+    "RoutineRun": {
+      "additionalProperties": false,
+      "properties": {
+        "agentRunId": {
+          "description": "The agent run (agent routines).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "attempt": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "conversationId": {
+          "description": "The conversation holding the answer (prompt routines).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finishedAtMs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "routineId": {
+          "type": "string"
+        },
+        "scheduledForMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "startedAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/definitions/RoutineRunStatus"
+        }
+      },
+      "required": [
+        "id",
+        "routineId",
+        "attempt",
+        "status",
+        "scheduledForMs",
+        "startedAtMs"
+      ],
+      "type": "object"
+    },
+    "RoutineRunList": {
+      "additionalProperties": false,
+      "properties": {
+        "runs": {
+          "items": {
+            "$ref": "#/definitions/RoutineRun"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "runs"
+      ],
+      "type": "object"
+    },
+    "RoutineRunStatus": {
+      "enum": [
+        "running",
+        "succeeded",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "RoutineRunsParams": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "1–200.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "routineId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "routineId",
+        "limit"
+      ],
+      "type": "object"
+    },
+    "RoutineSaveParams": {
+      "additionalProperties": false,
+      "properties": {
+        "agentId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "notify": {
+          "$ref": "#/definitions/NotifyPolicy",
+          "default": {
+            "onFailure": true,
+            "onSuccess": true
+          }
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "retry": {
+          "$ref": "#/definitions/RetryPolicy",
+          "default": {
+            "backoffMinutes": 5,
+            "maxAttempts": 2
+          }
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "schedule",
+        "timezone",
+        "prompt"
       ],
       "type": "object"
     },
@@ -6130,6 +6442,12 @@
       }
     },
     {
+      "name": "routine.runUpdated",
+      "payload": {
+        "$ref": "#/definitions/RoutineRun"
+      }
+    },
+    {
       "name": "audio.chunk",
       "payload": {
         "$ref": "#/definitions/AudioChunk"
@@ -6572,6 +6890,56 @@
       "target": "core"
     },
     {
+      "name": "routine.list",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/RoutineList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "routine.save",
+      "params": {
+        "$ref": "#/definitions/RoutineSaveParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Routine"
+      },
+      "target": "core"
+    },
+    {
+      "name": "routine.delete",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "routine.runNow",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/RoutineRun"
+      },
+      "target": "core"
+    },
+    {
+      "name": "routine.runs",
+      "params": {
+        "$ref": "#/definitions/RoutineRunsParams"
+      },
+      "result": {
+        "$ref": "#/definitions/RoutineRunList"
+      },
+      "target": "core"
+    },
+    {
       "name": "file.list",
       "params": {
         "$ref": "#/definitions/Empty"
@@ -6935,6 +7303,16 @@
       "name": "host.guidance.clear",
       "params": {
         "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.notify",
+      "params": {
+        "$ref": "#/definitions/NotifyParams"
       },
       "result": {
         "$ref": "#/definitions/Empty"

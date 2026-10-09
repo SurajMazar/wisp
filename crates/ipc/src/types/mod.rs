@@ -11,6 +11,7 @@ pub mod guidance;
 pub mod invocation;
 pub mod memory;
 pub mod models;
+pub mod routines;
 pub mod settings;
 pub mod skills;
 pub mod teacher;

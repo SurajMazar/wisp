@@ -12,6 +12,7 @@
 //!
 //! Pure — the core runs the loop and every action goes through the tool pipeline.
 
+pub mod schedule;
 pub mod skills;
 
 use wisp_common::geometry::Point;

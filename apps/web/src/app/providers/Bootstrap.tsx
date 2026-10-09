@@ -4,6 +4,7 @@ import { useAssistantStore } from "../../stores/assistantStore";
 import { useConnectionStore } from "../../stores/connectionStore";
 import { useAgentStore } from "../../stores/agentStore";
 import { useFileStore } from "../../stores/fileStore";
+import { useRoutineStore } from "../../stores/routineStore";
 import { useTeachStore } from "../../stores/teachStore";
 import { useToolStore } from "../../stores/toolStore";
 import { useConversationStore } from "../../stores/conversationStore";
@@ -40,6 +41,7 @@ export function Bootstrap({ children }: { children: ReactNode }) {
       client.on("teach.updated", (l) => useTeachStore.getState().receive(l)),
       client.on("agent.runUpdated", (r) => useAgentStore.getState().receiveRun(r)),
       client.on("file.updated", (f) => useFileStore.getState().receive(f)),
+      client.on("routine.runUpdated", (r) => useRoutineStore.getState().receiveRun(r)),
       client.on("voice.level", (l) => useVoiceStore.getState().setLevel(l.level)),
       client.on("voice.modelProgress", (p) => useVoiceStore.getState().receiveProgress(p)),
       client.on("voice.asked", (a) => {

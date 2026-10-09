@@ -44,6 +44,7 @@ struct Inner {
     tools: crate::tools::ToolService,
     teacher: crate::teacher::Teacher,
     agents: crate::agents::AgentRuntime,
+    routine_clock: crate::routines::RoutineClock,
 }
 
 impl Core {
@@ -83,6 +84,7 @@ impl Core {
                 tools: Default::default(),
                 teacher: Default::default(),
                 agents: Default::default(),
+                routine_clock: Default::default(),
             }),
         };
         core.startup_skills();
@@ -228,6 +230,38 @@ impl Core {
             ConversationSend::NAME => {
                 self.call::<ConversationSend, _, _>(params, |c, p| async move { c.send(p).await })
                     .await
+            }
+            wisp_ipc::methods::RoutineListMethod::NAME => {
+                self.call::<wisp_ipc::methods::RoutineListMethod, _, _>(params, |c, _| async move {
+                    c.routine_list().await
+                })
+                .await
+            }
+            wisp_ipc::methods::RoutineSave::NAME => {
+                self.call::<wisp_ipc::methods::RoutineSave, _, _>(params, |c, p| async move {
+                    c.routine_save(p).await
+                })
+                .await
+            }
+            wisp_ipc::methods::RoutineDelete::NAME => {
+                self.call::<wisp_ipc::methods::RoutineDelete, _, _>(params, |c, p| async move {
+                    c.routine_delete(p.id).await
+                })
+                .await
+            }
+            wisp_ipc::methods::RoutineRunNow::NAME => {
+                self.call::<wisp_ipc::methods::RoutineRunNow, _, _>(params, |c, p| async move {
+                    c.routine_run_now(p.id).await
+                })
+                .await
+            }
+            wisp_ipc::methods::RoutineRuns::NAME => {
+                self.call::<wisp_ipc::methods::RoutineRuns, _, _>(params, |c, p| async move {
+                    Ok(wisp_ipc::types::routines::RoutineRunList {
+                        runs: c.routine_runs(p.routine_id, p.limit).await?,
+                    })
+                })
+                .await
             }
             wisp_ipc::methods::FileListMethod::NAME => {
                 self.call::<wisp_ipc::methods::FileListMethod, _, _>(params, |c, _| async move {
@@ -612,6 +646,10 @@ impl Core {
             .events
             .publish::<wisp_ipc::methods::ConversationUpdated>(&s);
         Ok(s)
+    }
+
+    pub(crate) fn routine_clock(&self) -> &crate::routines::RoutineClock {
+        &self.inner.routine_clock
     }
 
     pub(crate) fn db(&self) -> &Database {
