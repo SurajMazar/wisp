@@ -276,3 +276,35 @@ async fn falls_back_to_another_local_model_when_the_first_fails() {
     assert_eq!(done["status"], "complete", "{done}");
     assert_eq!(done["content"], "Fallback answer.");
 }
+
+#[tokio::test]
+async fn regenerate_replaces_the_answer() {
+    let dir = tempfile::tempdir().expect("tmp");
+    let core = core(dir.path(), vec![local("First answer.")]);
+    let mut rx = core.events().subscribe();
+    let r = core
+        .dispatch("conversation.send", json!({ "text": "Question?" }))
+        .await
+        .expect("send");
+    let conv = r["conversationId"].as_str().expect("id").to_owned();
+    let first = r["assistantMessage"]["id"]
+        .as_str()
+        .expect("aid")
+        .to_owned();
+    wait_done(&mut rx, &first).await;
+    let again = core
+        .dispatch("conversation.regenerate", json!({ "messageId": first }))
+        .await
+        .expect("regenerate");
+    let second = again["id"].as_str().expect("id").to_owned();
+    assert_ne!(second, first);
+    let (done, _) = wait_done(&mut rx, &second).await;
+    assert_eq!(done["status"], "complete");
+    let got = core
+        .dispatch("conversation.get", json!({ "id": conv }))
+        .await
+        .expect("get");
+    let msgs = got["messages"].as_array().expect("messages");
+    assert_eq!(msgs.len(), 2, "old answer replaced, question kept");
+    assert_eq!(msgs[1]["id"], second);
+}

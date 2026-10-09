@@ -1,57 +1,86 @@
-import { useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { WispMark } from "@wisp/icons";
+import { useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { Composer } from "../../components/chat/Composer";
-import { useConnectionStore } from "../../stores/connectionStore";
+import { useComposerFocus } from "../../components/chat/useComposerFocus";
 import { useConversationStore } from "../../stores/conversationStore";
+import { useFocusStore } from "../../stores/focusStore";
 
 function greeting(date = new Date()): string {
   const h = date.getHours();
-  if (h < 5) return "Good evening.";
-  if (h < 12) return "Good morning.";
-  if (h < 18) return "Good afternoon.";
-  return "Good evening.";
+  if (h < 5) return "Up late?";
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
 }
 
-export function HomePage() {
-  const info = useConnectionStore((s) => s.info);
-  const { summaries, loadList, send } = useConversationStore();
-  const navigate = useNavigate();
+const suggestions: { label: string; prompt?: string; focus?: "rectangle" | "window" }[] = [
+  { label: "Explain something on my screen", focus: "rectangle" },
+  { label: "Summarize this window", focus: "window" },
+  { label: "Draft a reply", prompt: "Help me draft a short, friendly reply to: " },
+  {
+    label: "Teach me a shortcut",
+    prompt: "Teach me a useful macOS keyboard shortcut I probably don't know.",
+  },
+];
 
-  useEffect(() => {
-    void loadList();
-  }, [loadList]);
+export function HomePage() {
+  const { send, error } = useConversationStore();
+  const startFocus = useFocusStore((s) => s.start);
+  const navigate = useNavigate();
+  const { focus, includeFocus, consumed } = useComposerFocus();
+  const [draft, setDraft] = useState("");
+  const box = useRef<HTMLDivElement>(null);
+
+  const ask = (t: string) =>
+    void send(t, { includeFocus }).then((id) => {
+      if (!id) return;
+      consumed();
+      navigate(`/conversations/${id}`);
+    });
 
   return (
-    <div className="pt-16">
-      <h1 className="text-2xl font-semibold tracking-tight">{greeting()}</h1>
-      <p className="mt-1 text-md text-text-muted">What would you like to do?</p>
-      <div className="mt-6">
-        <Composer
-          autoFocus
-          streaming={false}
-          onSend={(t) => void send(t, {}).then((id) => id && navigate(`/conversations/${id}`))}
-        />
+    <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-8 pb-[12vh] pt-10">
+      <div className="w-full max-w-[680px]">
+        <div className="mb-7 flex items-center justify-center gap-3">
+          <WispMark size={30} />
+          <h1 className="text-[28px] font-medium tracking-tight">{greeting()}</h1>
+        </div>
+        <div ref={box}>
+          <Composer
+            autoFocus
+            streaming={false}
+            focus={focus}
+            placeholder={includeFocus ? "Ask about what you selected" : "How can I help?"}
+            onSend={ask}
+            text={draft}
+            onTextChange={setDraft}
+          />
+        </div>
+        {error && (
+          <p role="alert" className="mt-2 px-2 text-sm text-danger">
+            {error}
+          </p>
+        )}
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {suggestions.map((s) => (
+            <button
+              key={s.label}
+              type="button"
+              onClick={() => {
+                if (s.focus) void startFocus(s.focus);
+                else if (s.prompt) {
+                  setDraft(s.prompt);
+                  box.current?.querySelector("textarea")?.focus();
+                }
+              }}
+              className="rounded-full border border-border px-3 py-1.5 text-sm text-text-muted transition-colors hover:border-border-strong hover:bg-surface hover:text-text"
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
-
-      {summaries.length > 0 && (
-        <section className="mt-10">
-          <h2 className="mb-2 text-sm font-semibold text-text-muted">Recent conversations</h2>
-          <ul className="divide-y divide-border rounded-[var(--radius-md)] border border-border bg-surface">
-            {summaries.slice(0, 5).map((s) => (
-              <li key={s.id}>
-                <Link to={`/conversations/${s.id}`} className="block px-3 py-2 hover:bg-surface-hover">
-                  <span className="block truncate text-base">{s.title}</span>
-                  {s.preview && <span className="block truncate text-sm text-text-muted">{s.preview}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {info && (
-        <p className="mt-10 text-sm text-text-faint">Wisp engine {info.coreVersion} · data stored locally</p>
-      )}
     </div>
   );
 }

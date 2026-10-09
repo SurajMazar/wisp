@@ -334,6 +334,11 @@ export type AxSnapshotParams = z.output<typeof AxSnapshotParams>;
 export const ChannelState = z.enum(["active","needsPermission","conflict","disabled","unsupported"]);
 export type ChannelState = z.output<typeof ChannelState>;
 
+export const ClipboardText = z.strictObject({
+  "text": z.string(),
+});
+export type ClipboardText = z.output<typeof ClipboardText>;
+
 export const ConflictSeverity = z.enum(["blocking","warning"]);
 export type ConflictSeverity = z.output<typeof ConflictSeverity>;
 
@@ -643,6 +648,12 @@ export const PullProgress = z.strictObject({
 });
 export type PullProgress = z.output<typeof PullProgress>;
 
+export const RegenerateParams = z.strictObject({
+  "messageId": z.string(),
+  "model": ModelRef.nullable().optional(),
+});
+export type RegenerateParams = z.output<typeof RegenerateParams>;
+
 export const RenameParams = z.strictObject({
   "id": z.string(),
   "title": z.string(),
@@ -848,6 +859,8 @@ export const methods = {
   "conversation.rename": { target: "core", params: RenameParams, result: ConversationSummary },
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
+  "conversation.regenerate": { target: "core", params: RegenerateParams, result: Message },
+  "host.clipboard.writeText": { target: "host", params: ClipboardText, result: Empty },
   "host.voice.start": { target: "host", params: HostVoiceStartParams, result: Empty },
   "host.voice.stop": { target: "host", params: Empty, result: VoiceFinishResult },
   "host.voice.stopSpeaking": { target: "host", params: Empty, result: Empty },
@@ -879,6 +892,7 @@ export const events = {
   "conversation.delta": MessageDelta,
   "conversation.messageUpdated": Message,
   "conversation.updated": ConversationSummary,
+  "conversation.messageRemoved": Message,
   "audio.chunk": AudioChunk,
   "voice.speechChunk": SpeechChunk,
   "voice.modelProgress": SpeechModelProgress,

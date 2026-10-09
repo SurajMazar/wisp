@@ -4,6 +4,7 @@ import {
   type ConversationSummary,
   type Message,
   type MessageDelta,
+  type ModelRef,
 } from "@wisp/contracts";
 import { create } from "zustand";
 import { ipc } from "../services/ipc";
@@ -14,6 +15,11 @@ interface ConversationState {
   /** Conversation shown in the floating panel. */
   panelId: string | null;
   error: string | null;
+  /** Model chosen in the composer; null = automatic routing. */
+  model: ModelRef | null;
+  setModel(m: ModelRef | null): void;
+  regenerate(messageId: string): Promise<void>;
+  receiveRemoved(m: Message): void;
   loadList(query?: string): Promise<void>;
   open(id: string): Promise<void>;
   send(
@@ -43,11 +49,36 @@ const upsert = (messages: Message[], m: Message) => {
   return next;
 };
 
-export const useConversationStore = create<ConversationState>()((set) => ({
+export const useConversationStore = create<ConversationState>()((set, get) => ({
   summaries: [],
   conversations: {},
   panelId: null,
   error: null,
+  model: null,
+  setModel: (model) => set({ model }),
+
+  async regenerate(messageId) {
+    set({ error: null });
+    try {
+      const model = get().model;
+      await ipc().call("conversation.regenerate", { messageId, ...(model ? { model } : {}) });
+    } catch (e) {
+      set({ error: e instanceof WispError ? e.message : "Couldn't regenerate that." });
+    }
+  },
+
+  receiveRemoved(m) {
+    set((s) => {
+      const c = s.conversations[m.conversationId];
+      if (!c) return s;
+      return {
+        conversations: {
+          ...s.conversations,
+          [c.id]: { ...c, messages: c.messages.filter((x) => x.id !== m.id) },
+        },
+      };
+    });
+  },
 
   async loadList(query) {
     const r = await ipc().call("conversation.list", { limit: 200, ...(query ? { query } : {}) });
@@ -62,9 +93,11 @@ export const useConversationStore = create<ConversationState>()((set) => ({
   async send(text, { conversationId, includeFocus }) {
     set({ error: null });
     try {
+      const model = get().model;
       const r = await ipc().call("conversation.send", {
         text,
         includeFocus: !!includeFocus,
+        ...(model ? { model } : {}),
         ...(conversationId ? { conversationId } : {}),
       });
       set((s) => {

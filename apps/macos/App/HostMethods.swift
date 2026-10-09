@@ -155,6 +155,13 @@ enum HostMethods {
             return Empty()
         }
 
+        router.register(IPCMethods.hostClipboardWriteText) { params in
+            guard params.text.utf8.count <= 1_000_000 else { throw IpcError.invalidRequest("text too large") }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(params.text, forType: .string)
+            return Empty()
+        }
+
         router.register(IPCMethods.hostCursorPreview) { params in
             guard (300...5_000).contains(params.stepMs), (1...12).contains(params.states.count) else {
                 throw IpcError.invalidRequest("stepMs must be 300–5000 and 1–12 states")

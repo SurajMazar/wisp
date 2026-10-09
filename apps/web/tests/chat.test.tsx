@@ -36,6 +36,10 @@ describe("Chat", () => {
         assistantMessage: msg("a1", "assistant", "", "streaming"),
       }))
       .handle("conversation.cancel", () => ({}))
+      .handle("conversation.regenerate", ({ messageId }) =>
+        msg(`${messageId}-2`, "assistant", "", "streaming"),
+      )
+      .handle("host.clipboard.writeText", () => ({}))
       .handle("conversation.list", () => ({
         items: [
           {
@@ -155,7 +159,7 @@ describe("Chat", () => {
       },
     });
     render(<AssistantPanel />);
-    expect(screen.getByRole("checkbox", { name: "Include this in my next question" })).toBeChecked();
+    expect(screen.getByRole("button", { name: "Remove selection" })).toBeInTheDocument();
     await userEvent.type(screen.getByRole("textbox", { name: "Message" }), "What's this?{Enter}");
     await waitFor(() =>
       expect(
@@ -179,6 +183,51 @@ describe("Chat", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pin" }));
     await waitFor(() =>
       expect(transport.sent.some((e) => e.kind === "request" && e.method === "conversation.pin")).toBe(true),
+    );
+  });
+
+  it("copies and regenerates an answer, and sends with the chosen model", async () => {
+    useConversationStore.setState({
+      conversations: {
+        [CID]: {
+          id: CID,
+          title: "Math",
+          pinned: false,
+          createdAtMs: 1,
+          updatedAtMs: 2,
+          messages: [msg("u1", "user", "2+2?"), msg("a1", "assistant", "4")],
+        },
+      },
+      panelId: CID,
+      model: { providerId: "ollama", model: "llama3.2:3b" },
+    });
+    render(<AssistantPanel />);
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
+    await waitFor(() =>
+      expect(
+        transport.sent.find((e) => e.kind === "request" && e.method === "host.clipboard.writeText"),
+      ).toMatchObject({ params: { text: "4" } }),
+    );
+    expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Regenerate" }));
+    await waitFor(() =>
+      expect(
+        transport.sent.find((e) => e.kind === "request" && e.method === "conversation.regenerate"),
+      ).toMatchObject({
+        params: { messageId: "a1", model: { providerId: "ollama", model: "llama3.2:3b" } },
+      }),
+    );
+    act(() => useConversationStore.getState().receiveRemoved(msg("a1", "assistant", "4")));
+    expect(screen.queryByText("4")).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Message" }), "and 3+3?{Enter}");
+    await waitFor(() =>
+      expect(
+        transport.sent.find((e) => e.kind === "request" && e.method === "conversation.send"),
+      ).toMatchObject({
+        params: { model: { providerId: "ollama", model: "llama3.2:3b" } },
+      }),
     );
   });
 });

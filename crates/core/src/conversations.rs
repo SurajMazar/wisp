@@ -212,6 +212,84 @@ impl Core {
         })
     }
 
+    /// Re-answer the user question that preceded `message_id`, replacing that answer.
+    pub(crate) async fn regenerate(
+        &self,
+        p: wisp_ipc::types::conversations::RegenerateParams,
+    ) -> Result<Message, IpcError> {
+        if !wisp_common::ids::is_valid_id(&p.message_id) {
+            return Err(IpcError::invalid_params("invalid id"));
+        }
+        let id = p.message_id.clone();
+        let old = self
+            .blocking(move |db| db.get_message(&id))
+            .await?
+            .filter(|m| m.role == MessageRole::Assistant && m.status != MessageStatus::Streaming)
+            .ok_or_else(|| {
+                IpcError::new(
+                    wisp_ipc::ErrorCode::NotFound,
+                    "That answer can't be regenerated.",
+                )
+            })?;
+        let conv = old.conversation_id.clone();
+        let conversation = self
+            .blocking(move |db| db.get_conversation(&conv))
+            .await?
+            .ok_or_else(|| {
+                IpcError::new(
+                    wisp_ipc::ErrorCode::NotFound,
+                    "That conversation no longer exists.",
+                )
+            })?;
+        let question = conversation
+            .messages
+            .iter()
+            .take_while(|m| m.id != old.id)
+            .filter(|m| m.role == MessageRole::User)
+            .last()
+            .cloned()
+            .ok_or_else(|| {
+                IpcError::new(
+                    wisp_ipc::ErrorCode::NotFound,
+                    "There's no question to answer again.",
+                )
+            })?;
+        let old_id = old.id.clone();
+        self.blocking(move |db| db.delete_message(&old_id)).await?;
+        self.events()
+            .publish::<wisp_ipc::methods::MessageRemoved>(&old);
+
+        let mut assistant = new_message(
+            &old.conversation_id,
+            MessageRole::Assistant,
+            String::new(),
+            MessageStatus::Streaming,
+        );
+        assistant.created_at_ms = old.created_at_ms;
+        let a = assistant.clone();
+        self.blocking(move |db| db.insert_message(&a)).await?;
+        self.events().publish::<MessageUpdated>(&assistant);
+
+        // Re-attach the focus only if it's still the current one.
+        let focus = question
+            .focus
+            .as_ref()
+            .and_then(|f| self.latest_focus().filter(|l| l.id == f.focus_id));
+        let token = CancellationToken::new();
+        self.inner_streams().insert(&assistant.id, token.clone());
+        let send = SendParams {
+            conversation_id: Some(old.conversation_id.clone()),
+            text: question.content.clone(),
+            include_focus: focus.is_some(),
+            allow_cloud: false,
+            model: p.model,
+        };
+        let core = self.clone();
+        let a = assistant.clone();
+        tokio::spawn(async move { core.answer(a, question.content, focus, send, token).await });
+        Ok(assistant)
+    }
+
     async fn publish_summary(&self, id: &str) {
         let id = id.to_owned();
         if let Ok(Some(s)) = self.blocking(move |db| db.conversation_summary(&id)).await {

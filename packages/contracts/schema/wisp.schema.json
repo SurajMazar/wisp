@@ -669,6 +669,18 @@
       ],
       "type": "string"
     },
+    "ClipboardText": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
     "ConflictSeverity": {
       "oneOf": [
         {
@@ -2239,6 +2251,29 @@
       ],
       "type": "object"
     },
+    "RegenerateParams": {
+      "additionalProperties": false,
+      "properties": {
+        "messageId": {
+          "description": "The assistant message to replace.",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ModelRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "messageId"
+      ],
+      "type": "object"
+    },
     "RenameParams": {
       "additionalProperties": false,
       "properties": {
@@ -3149,6 +3184,12 @@
       }
     },
     {
+      "name": "conversation.messageRemoved",
+      "payload": {
+        "$ref": "#/definitions/Message"
+      }
+    },
+    {
       "name": "audio.chunk",
       "payload": {
         "$ref": "#/definitions/AudioChunk"
@@ -3579,6 +3620,26 @@
         "$ref": "#/definitions/Empty"
       },
       "target": "core"
+    },
+    {
+      "name": "conversation.regenerate",
+      "params": {
+        "$ref": "#/definitions/RegenerateParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Message"
+      },
+      "target": "core"
+    },
+    {
+      "name": "host.clipboard.writeText",
+      "params": {
+        "$ref": "#/definitions/ClipboardText"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
     },
     {
       "name": "host.voice.start",

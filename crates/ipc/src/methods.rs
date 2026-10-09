@@ -167,6 +167,10 @@ define_methods! {
     ConversationRename = "conversation.rename", Core, RenameParams => ConversationSummary;
     ConversationPin = "conversation.pin", Core, PinParams => ConversationSummary;
     ConversationDelete = "conversation.delete", Core, IdParams => Empty;
+    /// Answer the same question again, replacing an assistant message.
+    ConversationRegenerate = "conversation.regenerate", Core, RegenerateParams => Message;
+    /// Put text on the clipboard (Copy buttons).
+    HostClipboardWrite = "host.clipboard.writeText", Host, ClipboardText => Empty;
 
     /// Start listening (push-to-talk from the panel or a microphone test).
     HostVoiceStart = "host.voice.start", Host, HostVoiceStartParams => Empty;
@@ -225,6 +229,8 @@ define_events! {
     MessageUpdated = "conversation.messageUpdated", Message;
     /// A conversation's title, pin or recency changed.
     ConversationUpdated = "conversation.updated", ConversationSummary;
+    /// A message was removed (e.g. replaced by a regenerated answer).
+    MessageRemoved = "conversation.messageRemoved", Message;
     /// Captured microphone audio (host → core only).
     AudioChunkEvent = "audio.chunk", AudioChunk;
     /// Synthesized speech ready to play (core → host).

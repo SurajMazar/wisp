@@ -281,6 +281,24 @@ impl Database {
         )?)
     }
 
+    pub fn get_message(&self, id: &str) -> DbResult<Option<Message>> {
+        Ok(self
+            .lock()?
+            .query_row(
+                "SELECT * FROM messages WHERE id = ?1",
+                [id],
+                message_from_row,
+            )
+            .optional()?)
+    }
+
+    pub fn delete_message(&self, id: &str) -> DbResult<bool> {
+        Ok(self
+            .lock()?
+            .execute("DELETE FROM messages WHERE id = ?1", [id])?
+            > 0)
+    }
+
     pub fn rename_conversation(&self, id: &str, title: &str) -> DbResult<bool> {
         Ok(self.lock()?.execute(
             "UPDATE conversations SET title = ?2, updated_at = ?3 WHERE id = ?1",

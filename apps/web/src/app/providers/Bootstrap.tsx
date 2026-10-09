@@ -28,6 +28,7 @@ export function Bootstrap({ children }: { children: ReactNode }) {
       client.on("conversation.delta", (d) => useConversationStore.getState().receiveDelta(d)),
       client.on("conversation.messageUpdated", (m) => useConversationStore.getState().receiveMessage(m)),
       client.on("conversation.updated", (c) => useConversationStore.getState().receiveSummary(c)),
+      client.on("conversation.messageRemoved", (m) => useConversationStore.getState().receiveRemoved(m)),
       client.on("voice.level", (l) => useVoiceStore.getState().setLevel(l.level)),
       client.on("voice.modelProgress", (p) => useVoiceStore.getState().receiveProgress(p)),
       client.on("voice.asked", (a) => {

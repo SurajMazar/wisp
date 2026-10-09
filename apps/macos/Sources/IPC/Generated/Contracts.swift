@@ -605,6 +605,14 @@ public enum ChannelState: String, Codable, Sendable, Equatable, CaseIterable {
     case unsupported = "unsupported"
 }
 
+public struct ClipboardText: Codable, Sendable, Equatable {
+    public var text: String
+
+    public init(text: String) {
+        self.text = text
+    }
+}
+
 public enum ConflictSeverity: String, Codable, Sendable, Equatable, CaseIterable {
     case blocking = "blocking"
     case warning = "warning"
@@ -1162,6 +1170,16 @@ public struct PullProgress: Codable, Sendable, Equatable {
     }
 }
 
+public struct RegenerateParams: Codable, Sendable, Equatable {
+    public var messageId: String
+    public var model: ModelRef?
+
+    public init(messageId: String, model: ModelRef? = nil) {
+        self.messageId = messageId
+        self.model = model
+    }
+}
+
 public struct RenameParams: Codable, Sendable, Equatable {
     public var id: String
     public var title: String
@@ -1543,6 +1561,8 @@ public enum IPCMethods {
     public static let conversationRename = IPCMethod<RenameParams, ConversationSummary>(name: "conversation.rename", target: .core)
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
+    public static let conversationRegenerate = IPCMethod<RegenerateParams, Message>(name: "conversation.regenerate", target: .core)
+    public static let hostClipboardWriteText = IPCMethod<ClipboardText, Empty>(name: "host.clipboard.writeText", target: .host)
     public static let hostVoiceStart = IPCMethod<HostVoiceStartParams, Empty>(name: "host.voice.start", target: .host)
     public static let hostVoiceStop = IPCMethod<Empty, VoiceFinishResult>(name: "host.voice.stop", target: .host)
     public static let hostVoiceStopSpeaking = IPCMethod<Empty, Empty>(name: "host.voice.stopSpeaking", target: .host)
@@ -1599,6 +1619,8 @@ public enum IPCMethods {
         "conversation.rename": .core,
         "conversation.pin": .core,
         "conversation.delete": .core,
+        "conversation.regenerate": .core,
+        "host.clipboard.writeText": .host,
         "host.voice.start": .host,
         "host.voice.stop": .host,
         "host.voice.stopSpeaking": .host,
@@ -1631,6 +1653,7 @@ public enum IPCEvents {
     public static let conversationDelta = IPCEvent<MessageDelta>(name: "conversation.delta")
     public static let conversationMessageUpdated = IPCEvent<Message>(name: "conversation.messageUpdated")
     public static let conversationUpdated = IPCEvent<ConversationSummary>(name: "conversation.updated")
+    public static let conversationMessageRemoved = IPCEvent<Message>(name: "conversation.messageRemoved")
     public static let audioChunk = IPCEvent<AudioChunk>(name: "audio.chunk")
     public static let voiceSpeechChunk = IPCEvent<SpeechChunk>(name: "voice.speechChunk")
     public static let voiceModelProgress = IPCEvent<SpeechModelProgress>(name: "voice.modelProgress")

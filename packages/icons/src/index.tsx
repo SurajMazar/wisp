@@ -19,6 +19,22 @@ export {
   SlidersHorizontal as GeneralIcon,
   Plug as DisconnectedIcon,
   Check as CheckIcon,
+  ArrowUp as SendIcon,
+  ArrowDown as ArrowDownIcon,
+  Square as StopIcon,
+  Plus as PlusIcon,
+  Copy as CopyIcon,
+  RotateCcw as RegenerateIcon,
+  Volume2 as SpeakIcon,
+  ChevronDown as ChevronDownIcon,
+  Mic as MicIcon,
+  X as CloseIcon,
+  Scan as AreaIcon,
+  MousePointerClick as PointIcon,
+  AppWindow as WindowIcon,
+  Monitor as ScreenIcon,
+  Sparkles as SparklesIcon,
+  Cpu as ChipIcon,
 } from "lucide-react";
 
 /** Wisp's mark: a small luminous core with a soft trailing halo. */

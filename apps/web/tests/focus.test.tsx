@@ -58,14 +58,19 @@ describe("Focus in the assistant panel", () => {
     act(() => useFocusStore.getState().receive(region));
     render(<AssistantPanel />);
     expect(screen.getByRole("img", { name: "Captured area" })).toHaveAttribute("src", region.image!.url);
-    expect(screen.getByText(/320 × 180 pt · Built-in Retina Display · Docs/)).toBeInTheDocument();
-    expect(screen.getByText(/736 × 456 px/)).toBeInTheDocument();
+    expect(screen.getByText("320 × 180 pt · Built-in Retina Display · Docs")).toBeInTheDocument();
+    expect(
+      screen
+        .getByText("320 × 180 pt · Built-in Retina Display · Docs")
+        .closest("[title]")
+        ?.getAttribute("title"),
+    ).toMatch(/736 × 456 px/);
   });
 
   it("clears the focus", async () => {
     act(() => useFocusStore.getState().receive(region));
     render(<AssistantPanel />);
-    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove selection" }));
     expect(requests("host.focus.clear")).toHaveLength(1);
     act(() => useFocusStore.getState().cleared());
     expect(screen.queryByRole("img")).not.toBeInTheDocument();

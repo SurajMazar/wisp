@@ -153,3 +153,18 @@ pub struct MessageDelta {
     pub message_id: String,
     pub delta: String,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RegenerateParams {
+    /// The assistant message to replace.
+    pub message_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<ModelRef>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClipboardText {
+    pub text: String,
+}
