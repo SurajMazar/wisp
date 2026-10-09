@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Phase
-Phase 2 — Invocation System (implemented; **waiting on manual stop gate 2**)
+Phase 3 — Assistant Shell & Cursor (implemented; **waiting on manual stop gates 2 and 3**)
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +18,15 @@ Phase 2 — Invocation System (implemented; **waiting on manual stop gate 2**)
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- Phase 3 implemented and automatically tested; manual checklist pending (docs/release/manual-checklist.md → Phase 3):
+  - Buddy beside the pointer on every display (spring follow, edge flipping, approach-hold so it can be clicked)
+  - Click the buddy → assistant panel expands out of it; Esc / Close / click-away collapses it (D-019)
+  - 12 assistant states with distinct ring treatments and a state label pill; `assistant.stateChanged` events
+  - Themes (9 colors + custom), size, opacity, glow, animation level, label; Reduce Motion respected
+  - Settings → Assistant cursor with live preview and "Preview on screen" on the real buddy
+  - Hold shortcut → buddy becomes attentive; toggle / menu bar → panel expands
+  - Buddy excluded from screen capture; 10 Hz idle polling
+  - Fixed: Tailwind wasn't generating design-system classes (segmented controls/switch looked broken)
 - Phase 2 implemented and automatically tested; manual gate checklist pending (docs/release/manual-checklist.md → Phase 2):
   - ⌥⌘ modifier-only chord via listen-only event tap with taint rule (⌘⌥I etc. never summon Wisp)
   - Key chords (e.g. ⌥Space) via Carbon hot keys — work without any permission
@@ -35,7 +44,7 @@ Phase 2 — Invocation System (implemented; **waiting on manual stop gate 2**)
   - No code-signing identity yet → TCC permissions reset on every rebuild until `scripts/development/create-signing-identity.sh` is run (needed from Phase 2 onward).
 
 ## Failed Tests
-- None. `pnpm validate` passes: 26 Rust, 15 TS, 26 Swift tests; lint/format/typecheck/architecture clean.
+- None. `pnpm validate` passes: 28 Rust, 19 TS, 34 Swift tests; lint/format/typecheck/architecture clean.
 
 ## Known Issues
 - Phase 1 manual UI checklist (docs/release/manual-checklist.md) not yet run by a person; launch and React→Swift→Rust IPC were verified from logs of a real app launch.
@@ -43,7 +52,8 @@ Phase 2 — Invocation System (implemented; **waiting on manual stop gate 2**)
 - Model manifests are empty until Phase 8 (entries require verified checksums).
 
 ## Next Stop Gate
+- **Gate 3 (manual):** slow/fast movement, screen edges, two displays, resolution change, theme change, Reduce Motion, click-to-expand. Checklist: docs/release/manual-checklist.md (Phase 3).
 - **Gate 2 (manual, needs a person):** ⌘⌥ works globally; shortcut change survives restart; hold and toggle modes; menu bar invocation; conflicting shortcuts handled. Checklist: docs/release/manual-checklist.md (Phase 1 + Phase 2 sections).
 
 ## Last Verified
-2026-10-08
+2026-10-09

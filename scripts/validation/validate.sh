@@ -13,6 +13,7 @@ step "Rust tests";           cargo test --workspace --quiet
 step "TS format";            pnpm -s exec prettier --check .
 step "TS lint";              pnpm -s exec eslint .
 step "TS typecheck";         pnpm -s typecheck
+step "Build wisp-core (used by TS and Swift integration tests)"; cargo build -q -p wisp-core
 step "TS tests";             pnpm -s test:js
 step "Swift tests";          scripts/development/swiftpm.sh test --quiet
 echo; echo "✓ all validation passed"

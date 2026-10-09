@@ -149,3 +149,46 @@ PENDING — automated portion passes; manual checklist (Phase 2) must be run on 
 - `pnpm validate` → ✓ all validation passed
 - Launched debug app with no Accessibility grant: core requests served; keyboard channel reports
   `needsPermission` (no false "active" state)
+
+---
+
+# Phase 3 Report
+
+## Objective
+The distinctive interaction: an assistant cursor that lives beside the pointer, communicates state,
+is themable, and opens the floating assistant.
+
+## Implemented
+- Contracts: `CursorSettings` section (enabled, visibility, theme/custom color, size, opacity, glow,
+  animation, label), `AssistantState` (12 states), `assistant.stateChanged`, `host.assistant.state`,
+  `host.cursor.preview`
+- Swift: `BuddyMotion` (pure follow/edge/approach-hold model), `BuddyView` (Core Animation orb, glow,
+  per-state rings, hover), `BuddyController` (per-frame placement across displays, adaptive 60/10 Hz,
+  label pill via SwiftUI, Reduce Motion, screen-change handling, capture exclusion), panel
+  expand-from/collapse-into buddy with on-screen placement, `AssistantCoordinator` owning buddy + panel + state
+- React: Assistant cursor settings with live preview and on-screen preview, `Slider` component,
+  panel shows live assistant state, fixtures derived from contract defaults
+- Fix: `@source` for the design-system package so its Tailwind classes are generated
+
+## Tests Added
+- Swift: anchor placement, right/bottom edge flips, every-corner containment, negative-origin secondary
+  display, convergence while following, approach-hold, fast sweep isn't a reach, Reduce Motion snap,
+  panel placement on screen and not covering the buddy
+- Rust: cursor settings defaults and validation
+- React: defaults, color/visibility save, local + on-screen preview, label length
+
+## Tests Passed
+- `pnpm validate` → all passed (28 Rust, 19 TS, 34 Swift)
+
+## Known Limitations
+- Panel position always follows the buddy; a dragged panel isn't remembered across openings.
+- States beyond idle/summoned are driven by later phases (voice, screen, AI); today they're reachable via preview.
+- The buddy can't avoid covering UI under it until Accessibility element detection (Phase 5).
+
+## Stop Gate
+PENDING — automated portion passes; manual checklist (Phase 3) must be run on the Mac.
+
+## Evidence
+- `pnpm validate` → ✓ all validation passed
+- Launched debug app: screenshot shows the buddy rendered 38 pt below-right of the pointer and following
+  it live while the Mac was in normal use (captured with `WISP_BUDDY_CAPTURABLE=1`).

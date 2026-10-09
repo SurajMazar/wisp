@@ -7,6 +7,10 @@ export const PROTOCOL_VERSION = 1 as const;
 export const AccentColor = z.enum(["default","blue","purple","cyan","green","orange","red","pink","monochrome","custom"]);
 export type AccentColor = z.output<typeof AccentColor>;
 
+/** How lively the buddy's motion is. Reduced Motion in macOS always wins. */
+export const AnimationLevel = z.enum(["minimal","normal","expressive"]);
+export type AnimationLevel = z.output<typeof AnimationLevel>;
+
 export const AppInfo = z.strictObject({
   "coreVersion": z.string(),
   "dataDir": z.string(),
@@ -25,6 +29,24 @@ export const AppearanceSettings = z.strictObject({
   "theme": ThemePreference.default(() => ThemePreference.parse("system")),
 });
 export type AppearanceSettings = z.output<typeof AppearanceSettings>;
+
+/** When the buddy is on screen. */
+export const CursorVisibility = z.enum(["always","whenSummoned"]);
+export type CursorVisibility = z.output<typeof CursorVisibility>;
+
+export const CursorSettings = z.strictObject({
+  "animation": AnimationLevel.default(() => AnimationLevel.parse("normal")),
+  "customColor": z.string().nullable().optional(),
+  "enabled": z.boolean().default(true),
+  "glow": z.number().default(0.6),
+  "label": z.string().default("Wisp"),
+  "opacity": z.number().default(0.95),
+  "showLabel": z.boolean().default(false),
+  "size": z.number().default(1),
+  "theme": AccentColor.default(() => AccentColor.parse("default")),
+  "visibility": CursorVisibility.default(() => CursorVisibility.parse("always")),
+});
+export type CursorSettings = z.output<typeof CursorSettings>;
 
 export const GeneralSettings = z.strictObject({
   "launchAtLogin": z.boolean().default(false),
@@ -82,12 +104,23 @@ export type PrivacySettings = z.output<typeof PrivacySettings>;
 
 export const AppSettings = z.strictObject({
   "appearance": AppearanceSettings.default(() => AppearanceSettings.parse({"accent":"default","theme":"system"})),
+  "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"label":"Wisp","opacity":0.95,"showLabel":false,"size":1,"theme":"default","visibility":"always"})),
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
   "invocation": InvocationSettings.default(() => InvocationSettings.parse({"behavior":"hold","holdDelayMs":150,"mouseAction":"focusCursor","mouseButton":"none","shortcut":{"modifiers":["option","command"]}})),
   "onboarding": OnboardingSettings.default(() => OnboardingSettings.parse({"completed":false})),
   "privacy": PrivacySettings.default(() => PrivacySettings.parse({"mode":"localOnly"})),
 });
 export type AppSettings = z.output<typeof AppSettings>;
+
+/** Everything the assistant can be doing, shown on the buddy and in the panel (spec §28, §92). */
+export const AssistantState = z.enum(["listening","selecting","drawing","analyzing","thinking","speaking","executing","waitingForPermission","success","error","idle","following"]);
+export type AssistantState = z.output<typeof AssistantState>;
+
+export const AssistantStateChanged = z.strictObject({
+  "expanded": z.boolean(),
+  "state": AssistantState,
+});
+export type AssistantStateChanged = z.output<typeof AssistantStateChanged>;
 
 /** Where an invocation came from. */
 export const InvocationSource = z.enum(["keyboard","mouse","menuBar","dock","commandPalette"]);
@@ -106,6 +139,13 @@ export type ChannelState = z.output<typeof ChannelState>;
 
 export const ConflictSeverity = z.enum(["blocking","warning"]);
 export type ConflictSeverity = z.output<typeof ConflictSeverity>;
+
+/** Play the given states on the real on-screen buddy, for previewing themes. */
+export const CursorPreviewParams = z.strictObject({
+  "states": z.array(AssistantState),
+  "stepMs": z.number().int().nonnegative(),
+});
+export type CursorPreviewParams = z.output<typeof CursorPreviewParams>;
 
 /** Parameters for methods that take none. Accepts `{}` or an absent/`null` params field. */
 export const Empty = z.strictObject({
@@ -160,7 +200,7 @@ export const OpenSettingsPaneParams = z.strictObject({
 export type OpenSettingsPaneParams = z.output<typeof OpenSettingsPaneParams>;
 
 /** One section replaced atomically. */
-export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings })]);
+export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings })]);
 export type SettingsSection = z.output<typeof SettingsSection>;
 
 export const SettingsUpdateParams = z.strictObject({
@@ -204,6 +244,8 @@ export const methods = {
   "host.shortcut.check": { target: "host", params: ShortcutCheckParams, result: ShortcutCheckResult },
   "host.system.openSettingsPane": { target: "host", params: OpenSettingsPaneParams, result: Empty },
   "host.assistant.setVisible": { target: "host", params: AssistantVisibility, result: Empty },
+  "host.assistant.state": { target: "host", params: Empty, result: AssistantStateChanged },
+  "host.cursor.preview": { target: "host", params: CursorPreviewParams, result: Empty },
 } as const;
 
 export const events = {
@@ -212,6 +254,7 @@ export const events = {
   "invocation.started": InvocationStarted,
   "invocation.ended": InvocationEnded,
   "invocation.statusChanged": InvocationStatus,
+  "assistant.stateChanged": AssistantStateChanged,
 } as const;
 
 export type MethodName = keyof typeof methods;

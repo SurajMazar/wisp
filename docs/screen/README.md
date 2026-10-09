@@ -1,4 +1,6 @@
-# Assistant cursor & focus system (design — Phases 3–4)
+# Assistant cursor & focus system
+
+**Status:** assistant cursor implemented (Phase 3, see DECISIONS.md D-019); focus system is Phase 4.
 
 - The **assistant cursor** is a click-through, per-display overlay panel that follows the pointer at a
   small offset (never replacing the system cursor), springs smoothly, flips near screen edges, and

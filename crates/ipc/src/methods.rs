@@ -8,7 +8,7 @@
 use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
-use crate::types::{app::*, invocation::*, settings::*};
+use crate::types::{app::*, cursor::*, invocation::*, settings::*};
 
 /// Which side implements a method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -104,6 +104,10 @@ define_methods! {
     HostOpenSettingsPane = "host.system.openSettingsPane", Host, OpenSettingsPaneParams => Empty;
     /// Show or hide the floating assistant.
     HostAssistantSetVisible = "host.assistant.setVisible", Host, AssistantVisibility => Empty;
+    /// Current assistant state and whether the panel is expanded.
+    HostAssistantState = "host.assistant.state", Host, Empty => AssistantStateChanged;
+    /// Play states on the real buddy (theme preview in Settings).
+    HostCursorPreview = "host.cursor.preview", Host, CursorPreviewParams => Empty;
 }
 
 define_events! {
@@ -117,6 +121,8 @@ define_events! {
     InvocationEndedEvent = "invocation.ended", InvocationEnded;
     /// An invocation channel changed state (e.g. permission granted).
     InvocationStatusChanged = "invocation.statusChanged", InvocationStatus;
+    /// The assistant changed state or the panel expanded/collapsed.
+    AssistantStateChangedEvent = "assistant.stateChanged", AssistantStateChanged;
 }
 
 #[cfg(test)]

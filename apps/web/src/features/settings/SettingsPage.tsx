@@ -1,20 +1,10 @@
-import type { AccentColor, PrivacyMode, ThemePreference } from "@wisp/contracts";
+import type { PrivacyMode, ThemePreference } from "@wisp/contracts";
 import { Button, ErrorNotice, Segmented, SettingsGroup, SettingsRow, Spinner, Switch, cn } from "@wisp/ui";
 import { useConnectionStore } from "../../stores/connectionStore";
 import { useSettingsStore } from "../../stores/settingsStore";
+import { accents } from "./accents";
+import { CursorSettingsGroup } from "./CursorSettingsGroup";
 import { InvocationSettingsGroup } from "./InvocationSettingsGroup";
-
-const accents: { value: AccentColor; label: string; swatch: string }[] = [
-  { value: "default", label: "Wisp", swatch: "linear-gradient(135deg,#8b7cf6,#5ec8f2)" },
-  { value: "blue", label: "Blue", swatch: "#3b82f6" },
-  { value: "purple", label: "Purple", swatch: "#9b5de5" },
-  { value: "cyan", label: "Cyan", swatch: "#0fb5c9" },
-  { value: "green", label: "Green", swatch: "#2fae66" },
-  { value: "orange", label: "Orange", swatch: "#f08a24" },
-  { value: "red", label: "Red", swatch: "#e5484d" },
-  { value: "pink", label: "Pink", swatch: "#e5559b" },
-  { value: "monochrome", label: "Monochrome", swatch: "#8a8a84" },
-];
 
 const privacyHints: Record<PrivacyMode, string> = {
   localOnly: "Nothing leaves your Mac. Cloud models are never used — not even as a fallback.",
@@ -49,7 +39,7 @@ export function SettingsPage() {
     );
   }
 
-  const { general, appearance, privacy, invocation } = settings;
+  const { general, appearance, privacy, invocation, cursor } = settings;
 
   return (
     <>
@@ -79,6 +69,8 @@ export function SettingsPage() {
       </SettingsGroup>
 
       <InvocationSettingsGroup invocation={invocation} />
+
+      <CursorSettingsGroup cursor={cursor} />
 
       <SettingsGroup title="Appearance">
         <SettingsRow

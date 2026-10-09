@@ -37,5 +37,23 @@ Prerequisite: run `scripts/development/create-signing-identity.sh` once, then re
 - [ ] Panel appears on the display containing the pointer; can be dragged; position is remembered next time.
 - [ ] Panel appears over a full-screen app and on every Space.
 
+## Phase 3 — Assistant cursor ("buddy")
+- [ ] Launch Wisp: a small glowing buddy sits just below-right of the pointer. The system cursor is unchanged.
+- [ ] Move slowly, then quickly: it follows smoothly and stays close; it never lags far behind.
+- [ ] Move to each screen edge and corner: the buddy flips to the inside and never leaves the screen.
+- [ ] With two displays: move across — the buddy jumps with the pointer and stays on its display. Repeat with different resolutions/scales.
+- [ ] Reach for the buddy slowly: it holds still; hovering grows it and shows "Open Wisp".
+- [ ] Click it: the assistant panel grows out of the buddy, next to it, fully on screen. Esc, Close, or clicking another app collapses it back into the buddy.
+- [ ] Hold ⌥⌘ (Accessibility granted): the buddy brightens with a ring ("summoned"); release → back to resting. No window opens.
+- [ ] Toggle behavior: tap ⌥⌘ → panel expands from the buddy; tap again → collapses.
+- [ ] Menu bar → Summon Wisp: expands; again: collapses.
+- [ ] Settings → Assistant cursor: change color, size, opacity, glow — the on-screen buddy updates immediately, and the preview matches.
+- [ ] "Preview on screen" plays Summoned → Listening → Thinking → Speaking → Working → Waiting → Done on the real buddy, each with a label pill and distinct ring.
+- [ ] Visible: "When summoned" → buddy disappears; holding ⌥⌘ shows it. Switch back to Always.
+- [ ] Turn on System Settings → Accessibility → Display → Reduce motion: the buddy snaps instead of gliding and rings stop animating.
+- [ ] Turn on "Show label" with a custom name: the pill appears beside the buddy.
+- [ ] Screenshot (⌘⇧4) near the buddy: the buddy is not in the image.
+- [ ] Activity Monitor: Wisp CPU stays low (≈0–1%) while the pointer rests.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

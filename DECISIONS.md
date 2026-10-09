@@ -89,3 +89,16 @@ The assistant must appear over the user's work without stealing focus (hold mode
 current app). It's an `NSPanel` with `.nonactivatingPanel`, joins all Spaces and full-screen apps, and
 becomes key only in toggle mode or when the user clicks into it. Content is the React `/assistant`
 route over native vibrancy (transparent WKWebView via the `drawsBackground` KVC key — no public API).
+
+## D-019 — The buddy is always present; the panel expands out of it
+**Status** accepted (product direction from the owner, 2026-10-09)
+The assistant cursor is the product's front door, as in HeyClicky: by default it's always beside the
+pointer and clicking it expands the floating assistant from that spot (Esc / click-away collapses it).
+Holding the invocation shortcut makes the buddy attentive instead of opening a window. "When summoned"
+visibility remains available.
+Mechanics: the buddy is a borderless non-activating panel at status-bar level, positioned every frame
+from `NSEvent.mouseLocation` (no permission needed), with a spring follow and an *approach hold* — it
+holds still when the pointer reaches for it slowly (<320 pt/s) so it can be clicked, but never for fast
+movement. It drops to 10 Hz polling when the pointer rests. It is excluded from screen capture
+(`sharingType = .none`) so Wisp never sees itself in screenshots; `WISP_BUDDY_CAPTURABLE=1` overrides
+this for verification and demos.

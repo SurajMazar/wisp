@@ -9,15 +9,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var deps: DependencyContainer?
     private var mainWindow: MainWindowController?
     private var menuBar: MenuBarController?
-    private var assistantPanel: FloatingAssistantPanel?
+    private var assistant: AssistantCoordinator?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let deps = DependencyContainer()
         self.deps = deps
         NSApp.mainMenu = MainMenu.build(settingsTarget: self, settingsAction: #selector(openSettings))
 
+        let assistant = AssistantCoordinator(router: deps.router, invocation: deps.invocation)
+        self.assistant = assistant
+
         let menuBar = MenuBarController(actions: .init(
-            summon: { deps.invocation.toggle(from: .menuBar) },
+            summon: { assistant.toggleExpanded() },
             openMain: { [weak self] in self?.showMain() },
             openSettings: { [weak self] in self?.openSettings() },
             quit: { NSApp.terminate(nil) }
@@ -30,13 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         deps.invocation.delegate = self
-        HostMethods.register(on: deps.router, deps: deps) { visible, source in
-            if visible {
-                if !deps.invocation.isActive { deps.invocation.toggle(from: source ?? .commandPalette) }
-            } else {
-                deps.invocation.dismissed()
-            }
-        }
+        HostMethods.register(on: deps.router, deps: deps, assistant: assistant)
 
         Task { @MainActor in
             await deps.router.connect()
@@ -56,7 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // Wisp keeps running in the menu bar.
+        // Wisp keeps running in the menu bar and beside the pointer.
         false
     }
 
@@ -105,30 +102,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if previous?.invocation != settings.invocation {
             deps?.invocation.apply(settings.invocation)
         }
-    }
-
-    private func panel() -> FloatingAssistantPanel? {
-        guard let deps else { return nil }
-        if assistantPanel == nil {
-            let p = FloatingAssistantPanel(router: deps.router)
-            p.onDismiss = { [weak deps] in deps?.invocation.dismissed() }
-            assistantPanel = p
+        if previous?.cursor != settings.cursor {
+            assistant?.apply(settings.cursor)
         }
-        return assistantPanel
     }
 }
 
 extension AppDelegate: InvocationDelegate {
     func invocationStarted(source: InvocationSource, behavior: InvocationBehavior) {
-        // Hold keeps the user's app focused; toggle and menu invocations take focus for typing.
-        panel()?.present(takeFocus: behavior == .toggle)
+        assistant?.invocationStarted(behavior: behavior)
         deps?.router.emit(IPCEvents.invocationStarted, InvocationStarted(
             atMs: Int64(Date().timeIntervalSince1970 * 1000), behavior: behavior, source: source
         ))
     }
 
     func invocationEnded(source: InvocationSource, reason: InvocationEndReason, duration: Duration) {
-        assistantPanel?.dismiss()
+        assistant?.invocationEnded()
         let ms = duration.components.seconds * 1000 + duration.components.attoseconds / 1_000_000_000_000_000
         deps?.router.emit(IPCEvents.invocationEnded, InvocationEnded(durationMs: ms, reason: reason, source: source))
     }

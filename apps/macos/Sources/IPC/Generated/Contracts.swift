@@ -18,6 +18,13 @@ public enum AccentColor: String, Codable, Sendable, Equatable, CaseIterable {
     case custom = "custom"
 }
 
+/// How lively the buddy's motion is. Reduced Motion in macOS always wins.
+public enum AnimationLevel: String, Codable, Sendable, Equatable, CaseIterable {
+    case minimal = "minimal"
+    case normal = "normal"
+    case expressive = "expressive"
+}
+
 public struct AppInfo: Codable, Sendable, Equatable {
     public var coreVersion: String
     public var dataDir: String
@@ -49,6 +56,38 @@ public struct AppearanceSettings: Codable, Sendable, Equatable {
         self.accent = accent
         self.customColor = customColor
         self.theme = theme
+    }
+}
+
+/// When the buddy is on screen.
+public enum CursorVisibility: String, Codable, Sendable, Equatable, CaseIterable {
+    case always = "always"
+    case whenSummoned = "whenSummoned"
+}
+
+public struct CursorSettings: Codable, Sendable, Equatable {
+    public var animation: AnimationLevel
+    public var customColor: String?
+    public var enabled: Bool
+    public var glow: Double
+    public var label: String
+    public var opacity: Double
+    public var showLabel: Bool
+    public var size: Double
+    public var theme: AccentColor
+    public var visibility: CursorVisibility
+
+    public init(animation: AnimationLevel, customColor: String? = nil, enabled: Bool, glow: Double, label: String, opacity: Double, showLabel: Bool, size: Double, theme: AccentColor, visibility: CursorVisibility) {
+        self.animation = animation
+        self.customColor = customColor
+        self.enabled = enabled
+        self.glow = glow
+        self.label = label
+        self.opacity = opacity
+        self.showLabel = showLabel
+        self.size = size
+        self.theme = theme
+        self.visibility = visibility
     }
 }
 
@@ -150,17 +189,45 @@ public struct PrivacySettings: Codable, Sendable, Equatable {
 
 public struct AppSettings: Codable, Sendable, Equatable {
     public var appearance: AppearanceSettings
+    public var cursor: CursorSettings
     public var general: GeneralSettings
     public var invocation: InvocationSettings
     public var onboarding: OnboardingSettings
     public var privacy: PrivacySettings
 
-    public init(appearance: AppearanceSettings, general: GeneralSettings, invocation: InvocationSettings, onboarding: OnboardingSettings, privacy: PrivacySettings) {
+    public init(appearance: AppearanceSettings, cursor: CursorSettings, general: GeneralSettings, invocation: InvocationSettings, onboarding: OnboardingSettings, privacy: PrivacySettings) {
         self.appearance = appearance
+        self.cursor = cursor
         self.general = general
         self.invocation = invocation
         self.onboarding = onboarding
         self.privacy = privacy
+    }
+}
+
+/// Everything the assistant can be doing, shown on the buddy and in the panel (spec §28, §92).
+public enum AssistantState: String, Codable, Sendable, Equatable, CaseIterable {
+    case listening = "listening"
+    case selecting = "selecting"
+    case drawing = "drawing"
+    case analyzing = "analyzing"
+    case thinking = "thinking"
+    case speaking = "speaking"
+    case executing = "executing"
+    case waitingForPermission = "waitingForPermission"
+    case success = "success"
+    case error = "error"
+    case idle = "idle"
+    case following = "following"
+}
+
+public struct AssistantStateChanged: Codable, Sendable, Equatable {
+    public var expanded: Bool
+    public var state: AssistantState
+
+    public init(expanded: Bool, state: AssistantState) {
+        self.expanded = expanded
+        self.state = state
     }
 }
 
@@ -196,6 +263,17 @@ public enum ChannelState: String, Codable, Sendable, Equatable, CaseIterable {
 public enum ConflictSeverity: String, Codable, Sendable, Equatable, CaseIterable {
     case blocking = "blocking"
     case warning = "warning"
+}
+
+/// Play the given states on the real on-screen buddy, for previewing themes.
+public struct CursorPreviewParams: Codable, Sendable, Equatable {
+    public var states: [AssistantState]
+    public var stepMs: UInt32
+
+    public init(states: [AssistantState], stepMs: UInt32) {
+        self.states = states
+        self.stepMs = stepMs
+    }
 }
 
 /// Parameters for methods that take none. Accepts `{}` or an absent/`null` params field.
@@ -306,6 +384,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
     case privacy(PrivacySettings)
     case onboarding(OnboardingSettings)
     case invocation(InvocationSettings)
+    case cursor(CursorSettings)
 
     private enum CodingKeys: String, CodingKey {
         case tag = "section"
@@ -321,6 +400,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
         case "privacy": self = .privacy(try c.decode(PrivacySettings.self, forKey: .content))
         case "onboarding": self = .onboarding(try c.decode(OnboardingSettings.self, forKey: .content))
         case "invocation": self = .invocation(try c.decode(InvocationSettings.self, forKey: .content))
+        case "cursor": self = .cursor(try c.decode(CursorSettings.self, forKey: .content))
         default:
             throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown SettingsSection variant \(tag)")
         }
@@ -343,6 +423,9 @@ public enum SettingsSection: Codable, Sendable, Equatable {
             try c.encode(v, forKey: .content)
         case .invocation(let v):
             try c.encode("invocation", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .cursor(let v):
+            try c.encode("cursor", forKey: .tag)
             try c.encode(v, forKey: .content)
         }
     }
@@ -409,6 +492,8 @@ public enum IPCMethods {
     public static let hostShortcutCheck = IPCMethod<ShortcutCheckParams, ShortcutCheckResult>(name: "host.shortcut.check", target: .host)
     public static let hostSystemOpenSettingsPane = IPCMethod<OpenSettingsPaneParams, Empty>(name: "host.system.openSettingsPane", target: .host)
     public static let hostAssistantSetVisible = IPCMethod<AssistantVisibility, Empty>(name: "host.assistant.setVisible", target: .host)
+    public static let hostAssistantState = IPCMethod<Empty, AssistantStateChanged>(name: "host.assistant.state", target: .host)
+    public static let hostCursorPreview = IPCMethod<CursorPreviewParams, Empty>(name: "host.cursor.preview", target: .host)
 
     /// Every known method and which side implements it. Used to route and reject unknown methods.
     public static let targets: [String: IPCTarget] = [
@@ -420,6 +505,8 @@ public enum IPCMethods {
         "host.shortcut.check": .host,
         "host.system.openSettingsPane": .host,
         "host.assistant.setVisible": .host,
+        "host.assistant.state": .host,
+        "host.cursor.preview": .host,
     ]
 }
 
@@ -429,4 +516,5 @@ public enum IPCEvents {
     public static let invocationStarted = IPCEvent<InvocationStarted>(name: "invocation.started")
     public static let invocationEnded = IPCEvent<InvocationEnded>(name: "invocation.ended")
     public static let invocationStatusChanged = IPCEvent<InvocationStatus>(name: "invocation.statusChanged")
+    public static let assistantStateChanged = IPCEvent<AssistantStateChanged>(name: "assistant.stateChanged")
 }

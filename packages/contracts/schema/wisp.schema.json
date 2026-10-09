@@ -16,6 +16,15 @@
       ],
       "type": "string"
     },
+    "AnimationLevel": {
+      "description": "How lively the buddy's motion is. Reduced Motion in macOS always wins.",
+      "enum": [
+        "minimal",
+        "normal",
+        "expressive"
+      ],
+      "type": "string"
+    },
     "AppInfo": {
       "additionalProperties": false,
       "properties": {
@@ -58,6 +67,20 @@
           "default": {
             "accent": "default",
             "theme": "system"
+          }
+        },
+        "cursor": {
+          "$ref": "#/definitions/CursorSettings",
+          "default": {
+            "animation": "normal",
+            "enabled": true,
+            "glow": 0.6,
+            "label": "Wisp",
+            "opacity": 0.95,
+            "showLabel": false,
+            "size": 1,
+            "theme": "default",
+            "visibility": "always"
           }
         },
         "general": {
@@ -118,6 +141,53 @@
       },
       "type": "object"
     },
+    "AssistantState": {
+      "description": "Everything the assistant can be doing, shown on the buddy and in the panel (spec §28, §92).",
+      "oneOf": [
+        {
+          "enum": [
+            "listening",
+            "selecting",
+            "drawing",
+            "analyzing",
+            "thinking",
+            "speaking",
+            "executing",
+            "waitingForPermission",
+            "success",
+            "error"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "idle",
+          "description": "Resting beside the pointer.",
+          "type": "string"
+        },
+        {
+          "const": "following",
+          "description": "Summoned and attentive; tracks the pointer closely.",
+          "type": "string"
+        }
+      ]
+    },
+    "AssistantStateChanged": {
+      "additionalProperties": false,
+      "properties": {
+        "expanded": {
+          "description": "Whether the assistant panel is expanded from the buddy.",
+          "type": "boolean"
+        },
+        "state": {
+          "$ref": "#/definitions/AssistantState"
+        }
+      },
+      "required": [
+        "state",
+        "expanded"
+      ],
+      "type": "object"
+    },
     "AssistantVisibility": {
       "additionalProperties": false,
       "description": "Assistant surface requested state.",
@@ -162,6 +232,99 @@
         {
           "const": "warning",
           "description": "It works, but shadows a common shortcut.",
+          "type": "string"
+        }
+      ]
+    },
+    "CursorPreviewParams": {
+      "additionalProperties": false,
+      "description": "Play the given states on the real on-screen buddy, for previewing themes.",
+      "properties": {
+        "states": {
+          "items": {
+            "$ref": "#/definitions/AssistantState"
+          },
+          "type": "array"
+        },
+        "stepMs": {
+          "description": "Time per state, 300–5000 ms.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "states",
+        "stepMs"
+      ],
+      "type": "object"
+    },
+    "CursorSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "animation": {
+          "$ref": "#/definitions/AnimationLevel",
+          "default": "normal"
+        },
+        "customColor": {
+          "description": "`#RRGGBB`, used when `theme` is `custom`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "glow": {
+          "default": 0.6,
+          "description": "Glow strength, 0–1.",
+          "format": "double",
+          "type": "number"
+        },
+        "label": {
+          "default": "Wisp",
+          "type": "string"
+        },
+        "opacity": {
+          "default": 0.95,
+          "description": "0.3–1.0.",
+          "format": "double",
+          "type": "number"
+        },
+        "showLabel": {
+          "default": false,
+          "type": "boolean"
+        },
+        "size": {
+          "default": 1,
+          "description": "Scale, 0.6–1.6.",
+          "format": "double",
+          "type": "number"
+        },
+        "theme": {
+          "$ref": "#/definitions/AccentColor",
+          "default": "default"
+        },
+        "visibility": {
+          "$ref": "#/definitions/CursorVisibility",
+          "default": "always"
+        }
+      },
+      "type": "object"
+    },
+    "CursorVisibility": {
+      "description": "When the buddy is on screen.",
+      "oneOf": [
+        {
+          "const": "always",
+          "description": "Always beside the pointer; click it to open the assistant.",
+          "type": "string"
+        },
+        {
+          "const": "whenSummoned",
+          "description": "Only while the assistant is summoned.",
           "type": "string"
         }
       ]
@@ -569,6 +732,22 @@
             "value"
           ],
           "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "cursor",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/CursorSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -737,6 +916,12 @@
       "payload": {
         "$ref": "#/definitions/InvocationStatus"
       }
+    },
+    {
+      "name": "assistant.stateChanged",
+      "payload": {
+        "$ref": "#/definitions/AssistantStateChanged"
+      }
     }
   ],
   "methods": [
@@ -814,6 +999,26 @@
       "name": "host.assistant.setVisible",
       "params": {
         "$ref": "#/definitions/AssistantVisibility"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.assistant.state",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/AssistantStateChanged"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.cursor.preview",
+      "params": {
+        "$ref": "#/definitions/CursorPreviewParams"
       },
       "result": {
         "$ref": "#/definitions/Empty"

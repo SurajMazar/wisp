@@ -3,23 +3,12 @@ import { MockTransport } from "@wisp/test-utils";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
+import { defaultSettings } from "./fixtures";
 import { SettingsPage } from "../src/features/settings/SettingsPage";
 import { setIpcClient } from "../src/services/ipc";
 import { useSettingsStore } from "../src/stores/settingsStore";
 
-const defaults: AppSettings = {
-  general: { launchAtLogin: false, showMenuBarIcon: true },
-  appearance: { theme: "system", accent: "default" },
-  privacy: { mode: "localOnly" },
-  onboarding: { completed: false },
-  invocation: {
-    shortcut: { modifiers: ["option", "command"] },
-    behavior: "hold",
-    mouseButton: "none",
-    mouseAction: "focusCursor",
-    holdDelayMs: 150,
-  },
-};
+const defaults: AppSettings = defaultSettings();
 
 describe("SettingsPage (mock core)", () => {
   let transport: MockTransport;

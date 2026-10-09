@@ -3,25 +3,14 @@ import { MockTransport } from "@wisp/test-utils";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
+import { defaultSettings } from "./fixtures";
 import { InvocationSettingsGroup } from "../src/features/settings/InvocationSettingsGroup";
 import { formatShortcut } from "../src/lib/shortcut";
 import { setIpcClient } from "../src/services/ipc";
 import { useInvocationStore } from "../src/stores/invocationStore";
 import { useSettingsStore } from "../src/stores/settingsStore";
 
-const base: AppSettings = {
-  general: { launchAtLogin: false, showMenuBarIcon: true },
-  appearance: { theme: "system", accent: "default" },
-  privacy: { mode: "localOnly" },
-  onboarding: { completed: false },
-  invocation: {
-    shortcut: { modifiers: ["option", "command"] },
-    behavior: "hold",
-    mouseButton: "none",
-    mouseAction: "focusCursor",
-    holdDelayMs: 150,
-  },
-};
+const base: AppSettings = defaultSettings();
 
 const status = (keyboard: InvocationStatus["keyboard"]): InvocationStatus => ({
   keyboard,

@@ -6,7 +6,7 @@ import WispUI
 /// Swift implementations of `host.*` IPC methods.
 @MainActor
 enum HostMethods {
-    static func register(on router: IPCRouter, deps: DependencyContainer, assistant: @escaping @MainActor (Bool, InvocationSource?) -> Void) {
+    static func register(on router: IPCRouter, deps: DependencyContainer, assistant: AssistantCoordinator) {
         router.register(IPCMethods.hostInvocationStatus) { _ in
             deps.invocation.refresh()
             return deps.invocation.status
@@ -38,7 +38,19 @@ enum HostMethods {
         }
 
         router.register(IPCMethods.hostAssistantSetVisible) { params in
-            assistant(params.visible, params.source)
+            if params.visible { assistant.expand() } else { assistant.collapse() }
+            return Empty()
+        }
+
+        router.register(IPCMethods.hostAssistantState) { _ in
+            assistant.snapshot
+        }
+
+        router.register(IPCMethods.hostCursorPreview) { params in
+            guard (300...5_000).contains(params.stepMs), (1...12).contains(params.states.count) else {
+                throw IpcError.invalidRequest("stepMs must be 300–5000 and 1–12 states")
+            }
+            assistant.preview(params)
             return Empty()
         }
     }

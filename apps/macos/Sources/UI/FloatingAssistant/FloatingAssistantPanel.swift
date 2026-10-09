@@ -8,6 +8,9 @@ import WispIPC
 public final class FloatingAssistantPanel: NSPanel {
     private let surface: WebSurface
     public var onDismiss: (() -> Void)?
+    /// Called when the panel loses key status (the user clicked elsewhere) — auto-hide.
+    public var onResignKey: (() -> Void)?
+    public private(set) var isExpanded = false
 
     public init(router: IPCRouter) {
         surface = WebSurface(router: router, route: "/assistant", transparent: true)
@@ -52,35 +55,80 @@ public final class FloatingAssistantPanel: NSPanel {
         ])
         contentView = effect
 
+        // Size is remembered; position always follows the buddy.
         setFrameAutosaveName("WispAssistantPanel")
-        if !setFrameUsingName("WispAssistantPanel") { placeNearPointer() }
+        _ = setFrameUsingName("WispAssistantPanel")
         surface.load()
     }
 
     public override var canBecomeKey: Bool { true }
     public override var canBecomeMain: Bool { false }
 
-    /// Show without taking keyboard focus (hold mode keeps the user's app focused).
-    public func present(takeFocus: Bool) {
-        if !isVisible, !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(frame) }) {
-            placeNearPointer()
+    /// Expand out of the buddy at `anchor` (screen rect), taking keyboard focus.
+    public func expand(from anchor: NSRect) {
+        let target = Self.frame(size: frame.size, beside: anchor)
+        isExpanded = true
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            setFrame(target, display: true)
+            alphaValue = 1
+            makeKeyAndOrderFront(nil)
+            return
         }
-        if takeFocus { makeKeyAndOrderFront(nil) } else { orderFrontRegardless() }
+        setFrame(NSRect(x: anchor.midX - 20, y: anchor.midY - 14, width: 40, height: 28), display: false)
+        alphaValue = 0
+        makeKeyAndOrderFront(nil)
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.22
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.22, 1, 0.36, 1)
+            animator().setFrame(target, display: true)
+            animator().alphaValue = 1
+        }
     }
 
-    public func dismiss() {
-        orderOut(nil)
+    /// Shrink back into the buddy at `anchor` and hide.
+    public func collapse(to anchor: NSRect?) {
+        guard isExpanded else { return }
+        isExpanded = false
+        saveFrame(usingName: "WispAssistantPanel")
+        let restore = frame.size
+        guard let anchor, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            orderOut(nil)
+            return
+        }
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.16
+            animator().setFrame(NSRect(x: anchor.midX - 20, y: anchor.midY - 14, width: 40, height: 28), display: true)
+            animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, !self.isExpanded else { return }
+                self.orderOut(nil)
+                self.setContentSize(restore)
+            }
+        }
+    }
+
+    public override func resignKey() {
+        super.resignKey()
+        onResignKey?()
+    }
+
+    /// Place a panel of `size` beside `anchor`, inside the visible frame of the anchor's display.
+    static func frame(size: NSSize, beside anchor: NSRect) -> NSRect {
+        let center = NSPoint(x: anchor.midX, y: anchor.midY)
+        let screen = NSScreen.screens.first { NSMouseInRect(center, $0.frame, false) } ?? NSScreen.main
+        let v = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        var x = anchor.maxX + 6
+        if x + size.width > v.maxX { x = anchor.minX - 6 - size.width }
+        var y = anchor.maxY + 6 - size.height
+        if y < v.minY { y = v.minY + 6 }
+        if y + size.height > v.maxY { y = v.maxY - size.height - 6 }
+        x = min(max(x, v.minX + 6), v.maxX - size.width - 6)
+        return NSRect(x: x.rounded(), y: y.rounded(), width: size.width, height: size.height)
     }
 
     public override func cancelOperation(_ sender: Any?) {
         onDismiss?()
     }
 
-    /// Top-center of the display under the pointer.
-    private func placeNearPointer() {
-        let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
-        guard let v = screen?.visibleFrame else { return }
-        setFrameOrigin(NSPoint(x: v.midX - frame.width / 2, y: v.maxY - frame.height - 80))
-    }
 }

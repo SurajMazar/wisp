@@ -1,25 +1,34 @@
-import type { InvocationBehavior, InvocationSource } from "@wisp/contracts";
+import type { AssistantState, InvocationBehavior, InvocationSource } from "@wisp/contracts";
 import { create } from "zustand";
 import { ipc } from "../services/ipc";
 
-/** Assistant surface state (spec §92). More states arrive with voice, screen and AI phases. */
-export type AssistantPhase = "idle" | "active";
-
-interface AssistantState {
-  phase: AssistantPhase;
+/** Mirror of the native assistant state (spec §92), driven by `assistant.stateChanged`. */
+interface AssistantStore {
+  state: AssistantState;
+  expanded: boolean;
   source: InvocationSource | null;
   behavior: InvocationBehavior | null;
-  started(source: InvocationSource, behavior: InvocationBehavior): void;
-  ended(): void;
+  receive(state: AssistantState, expanded: boolean): void;
+  invoked(source: InvocationSource, behavior: InvocationBehavior): void;
+  load(): Promise<void>;
   dismiss(): Promise<void>;
 }
 
-export const useAssistantStore = create<AssistantState>()((set) => ({
-  phase: "idle",
+export const useAssistantStore = create<AssistantStore>()((set) => ({
+  state: "idle",
+  expanded: false,
   source: null,
   behavior: null,
-  started: (source, behavior) => set({ phase: "active", source, behavior }),
-  ended: () => set({ phase: "idle" }),
+  receive: (state, expanded) => set({ state, expanded }),
+  invoked: (source, behavior) => set({ source, behavior }),
+  async load() {
+    try {
+      const s = await ipc().call("host.assistant.state");
+      set({ state: s.state, expanded: s.expanded });
+    } catch {
+      // Not hosted by the app (tests, demo); keep defaults.
+    }
+  },
   async dismiss() {
     await ipc().call("host.assistant.setVisible", { visible: false });
   },

@@ -15,8 +15,8 @@ export function Bootstrap({ children }: { children: ReactNode }) {
     const offs = [
       client.on("settings.changed", (s) => useSettingsStore.getState().receive(s)),
       client.on("invocation.statusChanged", (st) => useInvocationStore.getState().receiveStatus(st)),
-      client.on("invocation.started", (e) => useAssistantStore.getState().started(e.source, e.behavior)),
-      client.on("invocation.ended", () => useAssistantStore.getState().ended()),
+      client.on("invocation.started", (e) => useAssistantStore.getState().invoked(e.source, e.behavior)),
+      client.on("assistant.stateChanged", (e) => useAssistantStore.getState().receive(e.state, e.expanded)),
       client.on("core.ready", (info) => {
         useConnectionStore.getState().setConnected(info);
         void useSettingsStore.getState().load();
@@ -28,6 +28,7 @@ export function Bootstrap({ children }: { children: ReactNode }) {
       .catch(() => useConnectionStore.getState().setUnavailable());
     void useSettingsStore.getState().load();
     void useInvocationStore.getState().loadStatus();
+    void useAssistantStore.getState().load();
     return () => offs.forEach((off) => off());
   }, []);
 

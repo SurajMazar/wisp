@@ -1,22 +1,27 @@
+import type { AssistantState } from "@wisp/contracts";
 import { WispMark } from "@wisp/icons";
 import { Button } from "@wisp/ui";
 import { useEffect } from "react";
-import { formatShortcut } from "../../lib/shortcut";
 import { useAssistantStore } from "../../stores/assistantStore";
-import { useSettingsStore } from "../../stores/settingsStore";
 
-const sourceLabel = {
-  keyboard: "keyboard shortcut",
-  mouse: "mouse button",
-  menuBar: "menu bar",
-  dock: "Dock",
-  commandPalette: "command palette",
-} as const;
+const stateText: Record<AssistantState, string> = {
+  idle: "Ready",
+  following: "Ready",
+  listening: "Listening…",
+  selecting: "Point at something",
+  drawing: "Drawing…",
+  analyzing: "Looking at your screen…",
+  thinking: "Thinking…",
+  speaking: "Speaking…",
+  executing: "Working…",
+  waitingForPermission: "Waiting for your permission",
+  success: "Done",
+  error: "Something went wrong",
+};
 
-/** Content of the floating assistant panel (spec §91). */
+/** Content of the floating assistant that expands out of the buddy (spec §91). */
 export function AssistantPanel() {
-  const { phase, source, behavior, dismiss } = useAssistantStore();
-  const shortcut = useSettingsStore((s) => s.settings?.invocation.shortcut);
+  const { state, dismiss } = useAssistantStore();
 
   useEffect(() => {
     document.documentElement.dataset.surface = "panel";
@@ -28,14 +33,12 @@ export function AssistantPanel() {
   }, [dismiss]);
 
   return (
-    <div className="flex h-full flex-col px-4 pb-3 pt-3" aria-live="polite">
+    <div className="flex h-full flex-col px-4 pb-3 pt-3">
       <header className="flex items-center gap-2">
         <WispMark size={16} />
         <span className="text-base font-semibold">Wisp</span>
-        <span className="ml-auto text-sm text-text-faint">
-          {phase === "active" && source
-            ? `via ${sourceLabel[source]}${behavior === "hold" ? " · hold" : ""}`
-            : ""}
+        <span className="ml-auto text-sm text-text-faint" role="status" aria-live="polite">
+          {stateText[state]}
         </span>
       </header>
 
@@ -47,9 +50,7 @@ export function AssistantPanel() {
       </div>
 
       <footer className="flex items-center justify-between text-sm text-text-faint">
-        <span>
-          {behavior === "hold" && shortcut ? `Release ${formatShortcut(shortcut)} to close` : "Esc to close"}
-        </span>
+        <span>Esc or click away to close</span>
         <Button size="sm" variant="ghost" onClick={() => void dismiss()}>
           Close
         </Button>

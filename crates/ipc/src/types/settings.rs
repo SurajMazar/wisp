@@ -5,7 +5,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::invocation::InvocationSettings;
+use super::{cursor::CursorSettings, invocation::InvocationSettings};
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields, default)]
@@ -15,6 +15,7 @@ pub struct AppSettings {
     pub privacy: PrivacySettings,
     pub onboarding: OnboardingSettings,
     pub invocation: InvocationSettings,
+    pub cursor: CursorSettings,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -105,6 +106,7 @@ pub enum SettingsSection {
     Privacy(PrivacySettings),
     Onboarding(OnboardingSettings),
     Invocation(InvocationSettings),
+    Cursor(CursorSettings),
 }
 
 impl SettingsSection {
@@ -116,28 +118,27 @@ impl SettingsSection {
             Self::Privacy(_) => "privacy",
             Self::Onboarding(_) => "onboarding",
             Self::Invocation(_) => "invocation",
+            Self::Cursor(_) => "cursor",
         }
     }
 
     /// Semantic validation beyond what the type system enforces.
     pub fn validate(&self) -> Result<(), String> {
-        if let Self::Invocation(i) = self {
-            i.validate()?;
+        match self {
+            Self::Invocation(i) => i.validate(),
+            Self::Cursor(c) => c.validate(),
+            Self::Appearance(AppearanceSettings {
+                custom_color: Some(c),
+                ..
+            }) if !is_hex_color(c) => Err(format!("customColor must be #RRGGBB, got {c:?}")),
+            _ => Ok(()),
         }
-        if let Self::Appearance(AppearanceSettings {
-            custom_color: Some(c),
-            ..
-        }) = self
-        {
-            let ok = c.len() == 7
-                && c.starts_with('#')
-                && c[1..].chars().all(|ch| ch.is_ascii_hexdigit());
-            if !ok {
-                return Err(format!("customColor must be #RRGGBB, got {c:?}"));
-            }
-        }
-        Ok(())
     }
+}
+
+/// `#RRGGBB`.
+pub fn is_hex_color(c: &str) -> bool {
+    c.len() == 7 && c.starts_with('#') && c[1..].chars().all(|ch| ch.is_ascii_hexdigit())
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
