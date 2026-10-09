@@ -62,7 +62,7 @@ fn main() -> ExitCode {
         core.start_scheduler();
         core.backup_if_due();
     }
-    match runtime.block_on(transport::serve(
+    let code = match runtime.block_on(transport::serve(
         core,
         tokio::io::stdin(),
         tokio::io::stdout(),
@@ -72,5 +72,10 @@ fn main() -> ExitCode {
             tracing::error!(error = %e, "transport failed");
             ExitCode::from(1)
         }
-    }
+    };
+    // Dropping the runtime would wait forever for blocking work (a model load, a file scan);
+    // the host is gone, so give it a moment and exit.
+    runtime.shutdown_timeout(std::time::Duration::from_secs(2));
+    tracing::info!("engine stopped");
+    code
 }

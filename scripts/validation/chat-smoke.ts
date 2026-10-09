@@ -103,7 +103,22 @@ async function main() {
       .catch(() => {});
   try {
     await page.goto(`http://127.0.0.1:${PORT}/#/home`);
-    await page.getByText("Engine running").waitFor();
+    page.on("console", (m) => {
+      if (m.type() === "error" || m.type() === "warning") console.log("console:", m.text());
+    });
+    // First run: walk through setup the way a person would, then finish it.
+    const welcome = page.getByRole("button", { name: "Set Up My Assistant →" });
+    await welcome.waitFor({ timeout: 15_000 });
+    if (shots) mkdirSync(shots, { recursive: true });
+    if (shots) await page.screenshot({ path: join(shots, "0-welcome.png") });
+    await welcome.click();
+    for (let i = 0; i < 7; i++) {
+      const b = page.getByRole("button", { name: /Skip for now|Got it|Later|Continue/ }).first();
+      if (!(await b.isVisible().catch(() => false))) break;
+      await b.click();
+    }
+    await page.getByRole("button", { name: "Start using Wisp" }).click();
+    await page.getByText("Engine running").waitFor({ timeout: 10_000 });
     if (shots) mkdirSync(shots, { recursive: true });
     if (shots) await page.screenshot({ path: join(shots, "1-home.png") });
     if (model) {

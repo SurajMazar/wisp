@@ -65,12 +65,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let core = deps?.core else { return .terminateNow }
-        Task {
-            await core.stop()
-            NSApp.reply(toApplicationShouldTerminate: true)
-        }
-        return .terminateLater
+        // Quit immediately. When this process exits, the engine's stdin closes and it shuts down
+        // cleanly on that EOF. Never `.terminateLater` waiting on a main-actor Task: `terminate`
+        // is often called from a main-queue block, which keeps the main queue busy, so the Task
+        // would never run and the app would hang (and every UI→engine call with it).
+        .terminateNow
     }
 
     // MARK: Actions

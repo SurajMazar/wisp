@@ -43,11 +43,18 @@ const permissionCopy: Record<PermissionKind, { title: string; why: string; how: 
 };
 
 function Frame({ children, footer }: { children: ReactNode; footer: ReactNode }) {
+  // Saving a choice goes to the engine; never fail silently.
+  const error = useSettingsStore((s) => s.error);
   return (
     <div className="flex h-full flex-col items-center justify-center bg-bg px-8">
       <div className="w-full max-w-[520px]">
         {children}
         <div className="mt-8 flex items-center gap-2">{footer}</div>
+        {error && (
+          <p role="alert" className="mt-4 text-sm text-danger">
+            Couldn't save that: {error.message}. Try again in a moment.
+          </p>
+        )}
       </div>
     </div>
   );
