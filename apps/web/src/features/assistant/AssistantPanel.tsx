@@ -7,6 +7,7 @@ import { useComposerFocus } from "../../components/chat/useComposerFocus";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { streamingMessage, useConversationStore } from "../../stores/conversationStore";
 import { useFocusStore } from "../../stores/focusStore";
+import { LessonCard } from "../../components/teach/LessonCard";
 import { ApprovalStack } from "../../components/tools/ApprovalCard";
 import { FocusActions } from "./FocusActions";
 
@@ -43,8 +44,8 @@ export function AssistantPanel() {
     return () => window.removeEventListener("keydown", onKey);
   }, [dismiss]);
 
-  const ask = async (text: string) => {
-    const id = await send(text, { conversationId: panelId, includeFocus });
+  const ask = async (text: string, opts?: { teach?: boolean }) => {
+    const id = await send(text, { conversationId: panelId, includeFocus, ...opts });
     if (id) {
       setPanel(id);
       consumed(); // attach a selection once; select again to include a new one
@@ -109,6 +110,9 @@ export function AssistantPanel() {
 
       <div className="mt-2">
         <ApprovalStack className="mb-2" />
+        <div className="mb-2 empty:hidden">
+          <LessonCard compact />
+        </div>
         {error && (
           <p className="mb-1 px-1 text-xs text-danger" role="alert">
             {error}
@@ -120,7 +124,7 @@ export function AssistantPanel() {
           focus={focus}
           streaming={!!streaming}
           onStop={() => streaming && void cancel(streaming.id)}
-          onSend={(t) => void ask(t)}
+          onSend={(t, o) => void ask(t, o)}
           placeholder={includeFocus ? "Ask about what you selected" : "Ask anything"}
         />
       </div>

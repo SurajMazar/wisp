@@ -519,6 +519,38 @@ export const ConversationListParams = z.strictObject({
 });
 export type ConversationListParams = z.output<typeof ConversationListParams>;
 
+export const LessonStatus = z.enum(["done","stopped","failed","thinking","waitingForUser","stuck"]);
+export type LessonStatus = z.output<typeof LessonStatus>;
+
+export const StepStatus = z.enum(["current","done"]);
+export type StepStatus = z.output<typeof StepStatus>;
+
+export const LessonStep = z.strictObject({
+  "confirmed": z.string().nullable().optional(),
+  "instruction": z.string(),
+  "messageId": z.string(),
+  "status": StepStatus,
+  "target": GuidanceTarget.nullable().optional(),
+});
+export type LessonStep = z.output<typeof LessonStep>;
+
+export const Lesson = z.strictObject({
+  "conversationId": z.string(),
+  "goal": z.string(),
+  "id": z.string(),
+  "note": z.string().nullable().optional(),
+  "startedAtMs": z.number().int(),
+  "status": LessonStatus,
+  "steps": z.array(LessonStep),
+  "watching": z.boolean(),
+});
+export type Lesson = z.output<typeof Lesson>;
+
+export const CurrentLesson = z.strictObject({
+  "lesson": Lesson.nullable().optional(),
+});
+export type CurrentLesson = z.output<typeof CurrentLesson>;
+
 /** Play the given states on the real on-screen buddy, for previewing themes. */
 export const CursorPreviewParams = z.strictObject({
   "states": z.array(AssistantState),
@@ -704,6 +736,15 @@ export const LatestFocus = z.strictObject({
 });
 export type LatestFocus = z.output<typeof LatestFocus>;
 
+export const LessonAction = z.enum(["stop","next","repeat"]);
+export type LessonAction = z.output<typeof LessonAction>;
+
+export const LessonControl = z.strictObject({
+  "action": LessonAction,
+  "lessonId": z.string(),
+});
+export type LessonControl = z.output<typeof LessonControl>;
+
 export const MessageDelta = z.strictObject({
   "conversationId": z.string(),
   "delta": z.string(),
@@ -862,6 +903,7 @@ export const SendParams = z.strictObject({
   "conversationId": z.string().nullable().optional(),
   "includeFocus": z.boolean().default(false),
   "model": ModelRef.nullable().optional(),
+  "teach": z.boolean().default(false),
   "text": z.string(),
 });
 export type SendParams = z.output<typeof SendParams>;
@@ -1134,6 +1176,8 @@ export const methods = {
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
   "conversation.regenerate": { target: "core", params: RegenerateParams, result: Message },
+  "teach.control": { target: "core", params: LessonControl, result: Empty },
+  "teach.current": { target: "core", params: Empty, result: CurrentLesson },
   "tool.list": { target: "core", params: Empty, result: ToolList },
   "tool.run": { target: "core", params: ToolRunParams, result: ToolRunResult },
   "tool.respond": { target: "core", params: ApprovalResponse, result: Empty },
@@ -1144,6 +1188,7 @@ export const methods = {
   "host.clipboard.writeText": { target: "host", params: ClipboardText, result: Empty },
   "host.guidance.show": { target: "host", params: GuidanceShow, result: Empty },
   "host.guidance.clear": { target: "host", params: Empty, result: Empty },
+  "host.screen.observe": { target: "host", params: Empty, result: FocusRegion },
   "host.input.perform": { target: "host", params: ToolCall, result: ToolExecution },
   "host.voice.start": { target: "host", params: HostVoiceStartParams, result: Empty },
   "host.voice.stop": { target: "host", params: Empty, result: VoiceFinishResult },
@@ -1181,6 +1226,7 @@ export const events = {
   "tool.approvalRequested": ApprovalRequest,
   "tool.approvalResolved": ApprovalResolved,
   "tool.callUpdated": ToolCallRecord,
+  "teach.updated": Lesson,
   "audio.chunk": AudioChunk,
   "voice.speechChunk": SpeechChunk,
   "voice.modelProgress": SpeechModelProgress,

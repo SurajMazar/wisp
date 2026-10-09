@@ -32,6 +32,7 @@ fn local(reply: &str) -> MockProvider {
         locality: Locality::Local,
         vision: true,
         reply: reply.into(),
+        calls: Default::default(),
     }
 }
 
@@ -148,6 +149,7 @@ async fn local_only_refuses_cloud_and_says_why() {
         locality: Locality::Cloud,
         vision: true,
         reply: "leaked".into(),
+        calls: Default::default(),
     };
     let core = core(dir.path(), vec![cloud]);
     let mut rx = core.events().subscribe();

@@ -376,3 +376,31 @@ verified and audited.
 ## Stop Gate 11
 Automated portions PASS; real input needs Accessibility for the app — manual checklist (Phase 11) pending.
 
+---
+
+# Phase 12 — Teacher Mode (2026-10-09)
+
+## Summary
+"Teach me how to …" starts a guided lesson: Wisp looks at the window you're working in, says and highlights one step,
+waits while you do it, notices when you have, and continues until the goal is reached — without ever acting for you.
+
+## Implemented
+- Contracts: `Lesson`, `LessonStep`, `LessonStatus`, `LessonControl`; `teach.control|current`; `teach.updated`;
+  `host.screen.observe`; `SendParams.teach`
+- Core `teacher`: intent detection, lesson loop (observe → step via the answer engine → guidance + speech → wait →
+  confirm), fingerprint watching, manual next/repeat/stop, step and time limits, loop detection, guidance cleared at
+  the end; answer engine generalized (`lesson` mode, returns the final message)
+- Host: `WindowLocator.frontmostWindow` (skips Wisp), `FocusCoordinator.observeFrontWindow`
+- Contracts generator escapes all Swift keywords (`repeat`)
+- UI: lesson card (checklist, status, watching hint, I did it / Show me again / Do it for me / Stop), composer
+  Teach me mode, DONE/STUCK prefixes hidden in the chat
+
+## Tests Added
+- Rust: intent detection; lesson end to end with a fake host — first step resolves "Save" to its frame, screen change
+  is noticed, DONE ends it, guidance shown, nothing performed, conversation holds goal/step/wrap-up; manual
+  next and stop
+- React: lesson checklist and controls, conversation scoping and closing, Teach mode send
+
+## Stop Gate 12
+Automated portions PASS; manual checklist (Phase 12) pending.
+

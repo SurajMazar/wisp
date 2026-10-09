@@ -173,6 +173,10 @@ enum HostMethods {
             return Empty()
         }
 
+        router.register(IPCMethods.hostScreenObserve) { _ in
+            try await focus.observeFrontWindow()
+        }
+
         router.register(IPCMethods.hostInputPerform) { params in
             do {
                 return try await InputController.perform(params)

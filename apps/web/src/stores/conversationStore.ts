@@ -28,7 +28,7 @@ interface ConversationState {
   open(id: string): Promise<void>;
   send(
     text: string,
-    opts: { conversationId?: string | null; includeFocus?: boolean },
+    opts: { conversationId?: string | null; includeFocus?: boolean; teach?: boolean },
   ): Promise<string | null>;
   cancel(messageId: string): Promise<void>;
   rename(id: string, title: string): Promise<void>;
@@ -122,13 +122,14 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
     });
   },
 
-  async send(text, { conversationId, includeFocus }) {
+  async send(text, { conversationId, includeFocus, teach }) {
     set({ error: null });
     try {
       const model = get().model;
       const r = await ipc().call("conversation.send", {
         text,
         includeFocus: !!includeFocus,
+        teach: !!teach,
         ...(model ? { model } : {}),
         ...(conversationId ? { conversationId } : {}),
       });

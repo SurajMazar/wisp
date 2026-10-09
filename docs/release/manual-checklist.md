@@ -129,5 +129,15 @@ Prerequisite: Accessibility permission for Wisp.
 - [ ] Ask Wisp to type into a password field: it refuses.
 - [ ] Turn on "Ask before every action": every action asks, whatever was allowed before.
 
+## Phase 12 — Teacher mode
+Prerequisite: Screen Recording (to watch), Accessibility (to notice steps by itself — optional).
+- [ ] In TextEdit, ask "Teach me how to make this text bold" (or turn on Teach me in the composer and type the goal).
+- [ ] A lesson card appears: Wisp looks at the window, says the first step aloud, highlights the control and the buddy points at it.
+- [ ] Do the step yourself: within a couple of seconds the step gets a ✓ ("Wisp saw the screen change") and the next step appears.
+- [ ] "Show me again" re-highlights and repeats the step; "I did it" advances; "Stop lesson" ends it and clears the highlight.
+- [ ] "Do it for me" asks for approval through Computer control (and is refused if it's off).
+- [ ] When the goal is reached, the card says Done with a short note. Wisp never clicks or types by itself during a lesson.
+- [ ] Without Accessibility, the card says to press "I did it" after each step.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

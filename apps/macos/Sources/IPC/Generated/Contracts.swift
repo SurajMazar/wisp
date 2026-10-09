@@ -992,6 +992,66 @@ public struct ConversationListParams: Codable, Sendable, Equatable {
     }
 }
 
+public enum LessonStatus: String, Codable, Sendable, Equatable, CaseIterable {
+    case done = "done"
+    case stopped = "stopped"
+    case failed = "failed"
+    case thinking = "thinking"
+    case waitingForUser = "waitingForUser"
+    case stuck = "stuck"
+}
+
+public enum StepStatus: String, Codable, Sendable, Equatable, CaseIterable {
+    case current = "current"
+    case done = "done"
+}
+
+public struct LessonStep: Codable, Sendable, Equatable {
+    public var confirmed: String?
+    public var instruction: String
+    public var messageId: String
+    public var status: StepStatus
+    public var target: GuidanceTarget?
+
+    public init(confirmed: String? = nil, instruction: String, messageId: String, status: StepStatus, target: GuidanceTarget? = nil) {
+        self.confirmed = confirmed
+        self.instruction = instruction
+        self.messageId = messageId
+        self.status = status
+        self.target = target
+    }
+}
+
+public struct Lesson: Codable, Sendable, Equatable {
+    public var conversationId: String
+    public var goal: String
+    public var id: String
+    public var note: String?
+    public var startedAtMs: Int64
+    public var status: LessonStatus
+    public var steps: [LessonStep]
+    public var watching: Bool
+
+    public init(conversationId: String, goal: String, id: String, note: String? = nil, startedAtMs: Int64, status: LessonStatus, steps: [LessonStep], watching: Bool) {
+        self.conversationId = conversationId
+        self.goal = goal
+        self.id = id
+        self.note = note
+        self.startedAtMs = startedAtMs
+        self.status = status
+        self.steps = steps
+        self.watching = watching
+    }
+}
+
+public struct CurrentLesson: Codable, Sendable, Equatable {
+    public var lesson: Lesson?
+
+    public init(lesson: Lesson? = nil) {
+        self.lesson = lesson
+    }
+}
+
 /// Play the given states on the real on-screen buddy, for previewing themes.
 public struct CursorPreviewParams: Codable, Sendable, Equatable {
     public var states: [AssistantState]
@@ -1315,6 +1375,22 @@ public struct LatestFocus: Codable, Sendable, Equatable {
     }
 }
 
+public enum LessonAction: String, Codable, Sendable, Equatable, CaseIterable {
+    case stop = "stop"
+    case next = "next"
+    case `repeat` = "repeat"
+}
+
+public struct LessonControl: Codable, Sendable, Equatable {
+    public var action: LessonAction
+    public var lessonId: String
+
+    public init(action: LessonAction, lessonId: String) {
+        self.action = action
+        self.lessonId = lessonId
+    }
+}
+
 public struct MessageDelta: Codable, Sendable, Equatable {
     public var conversationId: String
     public var delta: String
@@ -1593,13 +1669,15 @@ public struct SendParams: Codable, Sendable, Equatable {
     public var conversationId: String?
     public var includeFocus: Bool
     public var model: ModelRef?
+    public var teach: Bool
     public var text: String
 
-    public init(allowCloud: Bool, conversationId: String? = nil, includeFocus: Bool, model: ModelRef? = nil, text: String) {
+    public init(allowCloud: Bool, conversationId: String? = nil, includeFocus: Bool, model: ModelRef? = nil, teach: Bool, text: String) {
         self.allowCloud = allowCloud
         self.conversationId = conversationId
         self.includeFocus = includeFocus
         self.model = model
+        self.teach = teach
         self.text = text
     }
 }
@@ -2209,6 +2287,8 @@ public enum IPCMethods {
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
     public static let conversationRegenerate = IPCMethod<RegenerateParams, Message>(name: "conversation.regenerate", target: .core)
+    public static let teachControl = IPCMethod<LessonControl, Empty>(name: "teach.control", target: .core)
+    public static let teachCurrent = IPCMethod<Empty, CurrentLesson>(name: "teach.current", target: .core)
     public static let toolList = IPCMethod<Empty, ToolList>(name: "tool.list", target: .core)
     public static let toolRun = IPCMethod<ToolRunParams, ToolRunResult>(name: "tool.run", target: .core)
     public static let toolRespond = IPCMethod<ApprovalResponse, Empty>(name: "tool.respond", target: .core)
@@ -2219,6 +2299,7 @@ public enum IPCMethods {
     public static let hostClipboardWriteText = IPCMethod<ClipboardText, Empty>(name: "host.clipboard.writeText", target: .host)
     public static let hostGuidanceShow = IPCMethod<GuidanceShow, Empty>(name: "host.guidance.show", target: .host)
     public static let hostGuidanceClear = IPCMethod<Empty, Empty>(name: "host.guidance.clear", target: .host)
+    public static let hostScreenObserve = IPCMethod<Empty, FocusRegion>(name: "host.screen.observe", target: .host)
     public static let hostInputPerform = IPCMethod<ToolCall, ToolExecution>(name: "host.input.perform", target: .host)
     public static let hostVoiceStart = IPCMethod<HostVoiceStartParams, Empty>(name: "host.voice.start", target: .host)
     public static let hostVoiceStop = IPCMethod<Empty, VoiceFinishResult>(name: "host.voice.stop", target: .host)
@@ -2277,6 +2358,8 @@ public enum IPCMethods {
         "conversation.pin": .core,
         "conversation.delete": .core,
         "conversation.regenerate": .core,
+        "teach.control": .core,
+        "teach.current": .core,
         "tool.list": .core,
         "tool.run": .core,
         "tool.respond": .core,
@@ -2287,6 +2370,7 @@ public enum IPCMethods {
         "host.clipboard.writeText": .host,
         "host.guidance.show": .host,
         "host.guidance.clear": .host,
+        "host.screen.observe": .host,
         "host.input.perform": .host,
         "host.voice.start": .host,
         "host.voice.stop": .host,
@@ -2325,6 +2409,7 @@ public enum IPCEvents {
     public static let toolApprovalRequested = IPCEvent<ApprovalRequest>(name: "tool.approvalRequested")
     public static let toolApprovalResolved = IPCEvent<ApprovalResolved>(name: "tool.approvalResolved")
     public static let toolCallUpdated = IPCEvent<ToolCallRecord>(name: "tool.callUpdated")
+    public static let teachUpdated = IPCEvent<Lesson>(name: "teach.updated")
     public static let audioChunk = IPCEvent<AudioChunk>(name: "audio.chunk")
     public static let voiceSpeechChunk = IPCEvent<SpeechChunk>(name: "voice.speechChunk")
     public static let voiceModelProgress = IPCEvent<SpeechModelProgress>(name: "voice.modelProgress")

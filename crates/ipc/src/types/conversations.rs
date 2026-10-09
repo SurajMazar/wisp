@@ -195,6 +195,9 @@ pub struct SendParams {
     /// Use this model instead of the router's choice.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<ModelRef>,
+    /// Start a guided lesson for this goal instead of answering (spec §53).
+    #[serde(default)]
+    pub teach: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

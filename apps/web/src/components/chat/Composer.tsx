@@ -7,6 +7,7 @@ import {
   ScreenIcon,
   SendIcon,
   StopIcon,
+  TeachIcon,
   WindowIcon,
 } from "@wisp/icons";
 import { cn } from "@wisp/ui";
@@ -86,7 +87,7 @@ export function Composer({
   text: controlledText,
   onTextChange,
 }: {
-  onSend: (text: string) => void;
+  onSend: (text: string, opts?: { teach?: boolean }) => void;
   onStop?: () => void;
   streaming: boolean;
   placeholder?: string;
@@ -111,11 +112,13 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, compact ? 140 : 220)}px`;
   }, [text, compact]);
 
+  const [teach, setTeach] = useState(false);
   const submit = () => {
     const t = text.trim();
     if (!t || streaming) return;
-    onSend(t);
+    onSend(t, teach ? { teach: true } : undefined);
     setText("");
+    setTeach(false);
   };
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -162,7 +165,7 @@ export function Composer({
           "block w-full resize-none bg-transparent px-1 outline-none placeholder:text-text-faint",
           compact ? "text-base" : "text-md",
         )}
-        placeholder={placeholder}
+        placeholder={teach ? "What do you want to learn? e.g. how to make a pivot table" : placeholder}
         value={text}
         autoFocus={autoFocus}
         onChange={(e) => setText(e.target.value)}
@@ -212,6 +215,22 @@ export function Composer({
           )}
         </Popover>
         <MicButton disabled={streaming} />
+        <button
+          type="button"
+          aria-pressed={teach}
+          title="Teach me step by step: Wisp highlights each step and waits for you"
+          onClick={() => {
+            setTeach((t) => !t);
+            area.current?.focus();
+          }}
+          className={cn(
+            "flex h-7 items-center gap-1 rounded-full px-2 text-sm text-text-muted transition-colors hover:bg-surface-hover hover:text-text",
+            teach && "bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent",
+          )}
+        >
+          <TeachIcon size={15} />
+          {(teach || !compact) && <span>Teach me</span>}
+        </button>
         <span className="ml-auto" />
         <ModelPicker />
         {streaming ? (

@@ -11,7 +11,9 @@ pub struct MockProvider {
     pub id: String,
     pub locality: Locality,
     pub vision: bool,
+    /// The reply. "a|||b|||c" replies a, then b, then c (the last repeats).
     pub reply: String,
+    pub calls: std::sync::atomic::AtomicUsize,
 }
 
 #[async_trait]
@@ -59,13 +61,21 @@ impl AiProvider for MockProvider {
         cancel: CancellationToken,
     ) -> Result<ChunkStream, AiError> {
         // "<echo>" replies with the prompt's last message, so tests can inspect the context.
-        let source = if self.reply == "<echo>" {
+        let n = self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let parts: Vec<&str> = self.reply.split("|||").collect();
+        let reply = parts
+            .get(n)
+            .or(parts.last())
+            .copied()
+            .unwrap_or_default()
+            .to_owned();
+        let source = if reply == "<echo>" {
             req.messages
                 .last()
                 .map(|m| m.content.clone())
                 .unwrap_or_default()
         } else {
-            self.reply.clone()
+            reply
         };
         // `<think>…</think>` at the start of the reply is streamed as reasoning.
         let (reasoning, reply) = match source

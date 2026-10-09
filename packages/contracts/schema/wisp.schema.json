@@ -1168,6 +1168,22 @@
       ],
       "type": "object"
     },
+    "CurrentLesson": {
+      "additionalProperties": false,
+      "properties": {
+        "lesson": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Lesson"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
     "CursorPreviewParams": {
       "additionalProperties": false,
       "description": "Play the given states on the real on-screen buddy, for previewing themes.",
@@ -2104,6 +2120,154 @@
           ]
         }
       },
+      "type": "object"
+    },
+    "Lesson": {
+      "additionalProperties": false,
+      "properties": {
+        "conversationId": {
+          "type": "string"
+        },
+        "goal": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "startedAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/definitions/LessonStatus"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/definitions/LessonStep"
+          },
+          "type": "array"
+        },
+        "watching": {
+          "description": "Whether Wisp can notice on its own that a step was done (needs Accessibility).",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "conversationId",
+        "goal",
+        "status",
+        "steps",
+        "watching",
+        "startedAtMs"
+      ],
+      "type": "object"
+    },
+    "LessonAction": {
+      "oneOf": [
+        {
+          "enum": [
+            "stop"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "next",
+          "description": "\"I did it\" — look again and continue.",
+          "type": "string"
+        },
+        {
+          "const": "repeat",
+          "description": "Highlight and say the current step again.",
+          "type": "string"
+        }
+      ]
+    },
+    "LessonControl": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/LessonAction"
+        },
+        "lessonId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "lessonId",
+        "action"
+      ],
+      "type": "object"
+    },
+    "LessonStatus": {
+      "oneOf": [
+        {
+          "enum": [
+            "done",
+            "stopped",
+            "failed"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "thinking",
+          "description": "Looking at the screen and working out the next step.",
+          "type": "string"
+        },
+        {
+          "const": "waitingForUser",
+          "description": "Waiting for the user to do the current step.",
+          "type": "string"
+        },
+        {
+          "const": "stuck",
+          "description": "It couldn't work out how to continue; the user can say more or stop.",
+          "type": "string"
+        }
+      ]
+    },
+    "LessonStep": {
+      "additionalProperties": false,
+      "properties": {
+        "confirmed": {
+          "description": "How the step was confirmed, e.g. \"The window changed\".",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "instruction": {
+          "type": "string"
+        },
+        "messageId": {
+          "description": "The assistant message that holds this step.",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/StepStatus"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/GuidanceTarget"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "instruction",
+        "status",
+        "messageId"
+      ],
       "type": "object"
     },
     "Locality": {
@@ -3100,6 +3264,11 @@
           ],
           "description": "Use this model instead of the router's choice."
         },
+        "teach": {
+          "default": false,
+          "description": "Start a guided lesson for this goal instead of answering (spec §53).",
+          "type": "boolean"
+        },
         "text": {
           "type": "string"
         }
@@ -3588,6 +3757,13 @@
         "done"
       ],
       "type": "object"
+    },
+    "StepStatus": {
+      "enum": [
+        "current",
+        "done"
+      ],
+      "type": "string"
     },
     "TargetSource": {
       "oneOf": [
@@ -4608,6 +4784,12 @@
       }
     },
     {
+      "name": "teach.updated",
+      "payload": {
+        "$ref": "#/definitions/Lesson"
+      }
+    },
+    {
       "name": "audio.chunk",
       "payload": {
         "$ref": "#/definitions/AudioChunk"
@@ -5050,6 +5232,26 @@
       "target": "core"
     },
     {
+      "name": "teach.control",
+      "params": {
+        "$ref": "#/definitions/LessonControl"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "teach.current",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/CurrentLesson"
+      },
+      "target": "core"
+    },
+    {
       "name": "tool.list",
       "params": {
         "$ref": "#/definitions/Empty"
@@ -5146,6 +5348,16 @@
       },
       "result": {
         "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.screen.observe",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/FocusRegion"
       },
       "target": "host"
     },

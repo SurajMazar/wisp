@@ -42,6 +42,7 @@ struct Inner {
     /// The region the user last focused. In memory only: pixels never reach the database.
     latest_focus: Mutex<Option<FocusRegion>>,
     tools: crate::tools::ToolService,
+    teacher: crate::teacher::Teacher,
 }
 
 impl Core {
@@ -76,6 +77,7 @@ impl Core {
                 info,
                 latest_focus: Mutex::new(None),
                 tools: Default::default(),
+                teacher: Default::default(),
             }),
         })
     }
@@ -219,6 +221,18 @@ impl Core {
             ConversationSend::NAME => {
                 self.call::<ConversationSend, _, _>(params, |c, p| async move { c.send(p).await })
                     .await
+            }
+            wisp_ipc::methods::TeachControl::NAME => {
+                self.call::<wisp_ipc::methods::TeachControl, _, _>(params, |c, p| async move {
+                    c.control_lesson(p)
+                })
+                .await
+            }
+            wisp_ipc::methods::TeachCurrent::NAME => {
+                self.call::<wisp_ipc::methods::TeachCurrent, _, _>(params, |c, _| async move {
+                    Ok(c.current_lesson())
+                })
+                .await
             }
             wisp_ipc::methods::ToolListMethod::NAME => {
                 self.call::<wisp_ipc::methods::ToolListMethod, _, _>(params, |_, _| async move {
@@ -436,6 +450,10 @@ impl Core {
             .events
             .publish::<wisp_ipc::methods::ConversationUpdated>(&s);
         Ok(s)
+    }
+
+    pub(crate) fn teacher_state(&self) -> &crate::teacher::Teacher {
+        &self.inner.teacher
     }
 
     pub(crate) fn tool_service(&self) -> &crate::tools::ToolService {

@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Phase
-Phase 12 — Teacher Mode (in progress). Phases 9–11 implemented; **manual stop gates 2–11 pending on the Mac**
+Phase 13 — Agents (in progress). Phases 9–12 implemented; **manual stop gates 2–12 pending on the Mac**
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +18,8 @@ Phase 12 — Teacher Mode (in progress). Phases 9–11 implemented; **manual sto
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- **12 Teacher mode:** "teach me how to…" → observe, one highlighted and spoken step at a time, notice when the user
+  did it, continue; never acts by itself
 - **11 Computer control:** 19 typed tools, risk escalation, central policy (off by default, approvals with
   once/session/always/deny, high-risk always asks), host execution with verification, full audit, Activity page
 - **10 Visual guidance:** answers mark targets, resolved to exact frames; on-screen highlight + label overlay; the

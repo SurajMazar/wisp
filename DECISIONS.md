@@ -198,3 +198,15 @@ the element at the point before/after (verified / failed / unknown — never ass
 `tool_calls` with arguments redacted (typed text becomes a length); unfinished calls are marked failed at startup.
 First integration: "Click “…” for me" on what an answer pointed at; the model-driven loop arrives with agents (Phase 13).
 
+## D-029 — Teacher mode reuses the answer engine; progress is detected, never assumed
+**Status** accepted (2026-10-09)
+A lesson is a conversation: the goal is the user message and each step is an assistant message produced by the
+same engine as answers (streaming, stages, guidance markers resolved against the screen, speech), with a teacher
+system prompt that allows exactly one short instruction, `DONE:` or `STUCK:`. Each step observes the frontmost
+non-Wisp window (`host.screen.observe`: capture + OCR + Accessibility, no selection UI). Progress is detected with a
+cheap Accessibility fingerprint (app, window title, focused element, selection) polled every 1.5 s — no repeated
+captures — or the user's "I did it". Lessons stop at 15 steps or after 15 minutes waiting; three identical
+instructions mark the lesson stuck (loop detection, spec §61). Lessons never act: "Do it for me" goes through the
+Phase 11 tool pipeline and its approvals. Intent detection starts a lesson for "teach me how to…", "show me how to…",
+"walk/guide me through…", or the composer's Teach me mode.
+

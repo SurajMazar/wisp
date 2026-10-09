@@ -32,8 +32,8 @@ export function HomePage() {
   const [draft, setDraft] = useState("");
   const box = useRef<HTMLDivElement>(null);
 
-  const ask = (t: string) =>
-    void send(t, { includeFocus }).then((id) => {
+  const ask = (t: string, opts?: { teach?: boolean }) =>
+    void send(t, { includeFocus, ...opts }).then((id) => {
       if (!id) return;
       consumed();
       navigate(`/conversations/${id}`);

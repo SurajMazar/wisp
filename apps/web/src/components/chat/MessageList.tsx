@@ -233,7 +233,12 @@ export function MessageList({
             <div className="min-w-0 flex-1">
               <StepTrail m={m} steps={progress[m.id] ?? []} />
               <ReasoningBlock m={m} steps={progress[m.id] ?? []} />
-              {m.content && <RichText text={stripMarkers(m.content)} streaming={m.status === "streaming"} />}
+              {m.content && (
+                <RichText
+                  text={stripMarkers(m.content).replace(/^(DONE|STUCK):\s*/, "")}
+                  streaming={m.status === "streaming"}
+                />
+              )}
               {m.guidance && m.guidance.length > 0 && m.status !== "streaming" && <GuidanceChips m={m} />}
               {m.status === "cancelled" && <p className="mt-1 text-xs text-text-faint">Stopped</p>}
               {m.status === "error" && (

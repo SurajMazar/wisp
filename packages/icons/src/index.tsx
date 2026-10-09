@@ -41,6 +41,8 @@ export {
   Activity as ActivityIcon,
   ShieldAlert as RiskIcon,
   Hand as ControlIcon,
+  GraduationCap as TeachIcon,
+  Circle as StepPendingIcon,
 } from "lucide-react";
 
 /** Wisp's mark: a small luminous core with a soft trailing halo. */

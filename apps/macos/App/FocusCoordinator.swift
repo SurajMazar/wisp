@@ -171,6 +171,46 @@ final class FocusCoordinator {
         }
     }
 
+    /// Look at the window the user is working in, without any selection UI (teacher mode).
+    func observeFrontWindow() async throws -> FocusRegion {
+        guard ScreenPermission.status == .enabled else {
+            throw IpcError(code: .permissionDenied, details: nil, message: "Wisp needs Screen Recording permission to watch the lesson.")
+        }
+        guard let found = WindowLocator.frontmostWindow() else {
+            throw IpcError(code: .unavailable, details: nil, message: "There's no window to look at.")
+        }
+        let frame = found.window.frame.cg
+        let center = CGPoint(x: frame.midX, y: frame.midY)
+        guard let screen = Displays.screen(containingCG: center) else {
+            throw IpcError(code: .unavailable, details: nil, message: "That window isn't on a display.")
+        }
+        let display = Displays.info(for: screen)
+        let crop = frame.intersection(display.frame.cg).integral
+        guard !crop.isEmpty else { throw IpcError(code: .unavailable, details: nil, message: "That window is off screen.") }
+        let id = UUID().uuidString.lowercased()
+        let image = try await ScreenCapturer.capture(rect: crop, display: display)
+        _ = try ScreenCapturer.save(image, id: id, directory: AppPaths.focusCacheDirectory)
+        async let recognized = TextRecognizer.recognize(image, crop: crop)
+        let cursor = FocusGeometry.cgPoint(fromAppKit: NSEvent.mouseLocation, primaryHeight: Displays.primaryHeight)
+        let accessibility = await accessibilityContext(selection: crop, cursor: crop.contains(cursor) ? cursor : center)
+        let text = await recognized
+        return FocusRegion(
+            accessibility: accessibility,
+            application: found.application,
+            createdAtMs: Int64(Date().timeIntervalSince1970 * 1000),
+            crop: Rect(crop),
+            cursor: Point(cursor),
+            display: display,
+            id: id,
+            image: FocusImage(heightPx: UInt32(image.height), url: "wisp://focus/\(id).png", widthPx: UInt32(image.width)),
+            kind: .window,
+            path: [],
+            selection: Rect(crop),
+            text: text,
+            window: found.window
+        )
+    }
+
     /// The UI elements inside the selection, ranked by the core (spec §35). Nil without permission.
     private func accessibilityContext(selection: CGRect, cursor: CGPoint) async -> AxContext? {
         guard AccessibilityReader.isTrusted else { return nil }
