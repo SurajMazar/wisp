@@ -72,5 +72,36 @@ Prerequisite: Screen Recording for Wisp (Settings → Screen & focus → Allow�
 - [ ] Clear removes the card; the PNG is gone from `~/Library/Application Support/Wisp/cache/focus`.
 - [ ] No screen-recording indicator stays on: capture happens once per selection, never continuously.
 
+## Phase 5 — Accessibility
+- [ ] Permissions → Accessibility → Allow: System Settings opens on the right pane; after enabling, the status turns Enabled without restarting.
+- [ ] Inspector → Inspect Under Pointer, then hover a button in **Safari**, **Finder**, **VS Code** (or another editor) and **System Settings**: the right app, window, element role and title appear with plausible bounds.
+- [ ] Draw a focus box around a form in Safari: the focus card shows "Element: … · N controls understood".
+- [ ] Hover a password field: its value never appears anywhere (inspector, logs, answers).
+- [ ] Revoke Accessibility: chat, voice and screen focus still work; the capability list marks control features unavailable.
+
+## Phase 6 — AI providers
+- [ ] Models page: Apple Foundation Model and Ollama show their real status (stop Ollama → "Not running" + Start Ollama works).
+- [ ] Test on Apple's model and on an Ollama model both answer "4" with timings.
+- [ ] Download a model with progress; Pause, then Resume continues; Delete removes it.
+- [ ] Settings → Privacy → Local Only, add a cloud endpoint: questions never go to it ("Who answers" stays local).
+- [ ] Pull the network cable / turn off Wi-Fi: local models still answer.
+
+## Phase 7 — Ask and answer
+- [ ] Click the buddy, type a question: the answer streams in with "model · on this Mac · N s".
+- [ ] Stop during an answer keeps the partial text and says "Stopped".
+- [ ] Quit Ollama mid-answer: a friendly error with Try Again and technical details; Wisp doesn't crash.
+- [ ] Draw around an error message, ask "What's wrong here?": the answer is about that error.
+- [ ] Ten conversations in a row without a crash; quit and relaunch: all are in Conversations, searchable, pinnable, renamable, deletable.
+
+## Phase 8 — Voice
+Prerequisite: Microphone permission; `brew install espeak-ng` (already installed on the dev Mac).
+- [ ] Voice → Test Microphone shows what you said.
+- [ ] Voice → Test Voice speaks with the chosen Kokoro voice; Speed and Volume change it.
+- [ ] Hold ⌥⌘ and ask "What am I looking at?" while drawing around something: the buddy shows Listening, then Thinking; the panel opens with your words; the answer streams and is spoken.
+- [ ] Start holding ⌥⌘ again while it's speaking: speech stops immediately.
+- [ ] Hold ⌥⌘ and say nothing: nothing is asked.
+- [ ] Local Only on, Wi-Fi off: the whole voice loop still works.
+- [ ] No microphone indicator in the menu bar except while holding the shortcut.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

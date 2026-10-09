@@ -6,7 +6,7 @@ import WispUI
 /// Swift implementations of `host.*` IPC methods.
 @MainActor
 enum HostMethods {
-    static func register(on router: IPCRouter, deps: DependencyContainer, assistant: AssistantCoordinator, focus: FocusCoordinator) {
+    static func register(on router: IPCRouter, deps: DependencyContainer, assistant: AssistantCoordinator, focus: FocusCoordinator, voice: VoiceCoordinator) {
         router.register(IPCMethods.hostInvocationStatus) { _ in
             deps.invocation.refresh()
             return deps.invocation.status
@@ -138,6 +138,20 @@ enum HostMethods {
 
         router.register(IPCMethods.hostOllamaStart) { _ in
             try OllamaLauncher.start()
+            return Empty()
+        }
+
+        router.register(IPCMethods.hostVoiceStart) { params in
+            try voice.start(params.purpose)
+            return Empty()
+        }
+
+        router.register(IPCMethods.hostVoiceStop) { _ in
+            try await voice.stop()
+        }
+
+        router.register(IPCMethods.hostVoiceStopSpeaking) { _ in
+            voice.interrupt()
             return Empty()
         }
 

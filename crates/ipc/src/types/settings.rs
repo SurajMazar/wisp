@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     cursor::CursorSettings, focus::FocusSettings, invocation::InvocationSettings,
-    models::ModelSettings,
+    models::ModelSettings, voice::VoiceSettings,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -21,6 +21,7 @@ pub struct AppSettings {
     pub cursor: CursorSettings,
     pub focus: FocusSettings,
     pub models: ModelSettings,
+    pub voice: VoiceSettings,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -114,6 +115,7 @@ pub enum SettingsSection {
     Cursor(CursorSettings),
     Focus(FocusSettings),
     Models(ModelSettings),
+    Voice(VoiceSettings),
 }
 
 impl SettingsSection {
@@ -128,6 +130,7 @@ impl SettingsSection {
             Self::Cursor(_) => "cursor",
             Self::Focus(_) => "focus",
             Self::Models(_) => "models",
+            Self::Voice(_) => "voice",
         }
     }
 
@@ -138,6 +141,7 @@ impl SettingsSection {
             Self::Cursor(c) => c.validate(),
             Self::Focus(f) => f.validate(),
             Self::Models(m) => m.validate(),
+            Self::Voice(v) => v.validate(),
             Self::Appearance(AppearanceSettings {
                 custom_color: Some(c),
                 ..

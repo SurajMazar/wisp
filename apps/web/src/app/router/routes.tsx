@@ -5,6 +5,7 @@ import { ConversationsPage } from "../../features/conversations/ConversationsPag
 import { HomePage } from "../../features/home/HomePage";
 import { ModelsPage } from "../../features/models/ModelsPage";
 import { PermissionsPage } from "../../features/permissions/PermissionsPage";
+import { VoicePage } from "../../features/voice/VoicePage";
 import { UnavailablePage } from "../../features/placeholders/UnavailablePage";
 import { SettingsPage } from "../../features/settings/SettingsPage";
 import { sections } from "./sections";
@@ -15,6 +16,7 @@ const built: Record<string, React.ReactNode> = {
   "/permissions": <PermissionsPage />,
   "/models": <ModelsPage />,
   "/conversations": <ConversationsPage />,
+  "/voice": <VoicePage />,
 };
 
 /** Hash routing: works identically under wisp:// in the app and the Vite dev server. */

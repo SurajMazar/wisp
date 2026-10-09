@@ -118,3 +118,28 @@ this for verification and demos.
   metadata only (kind, display, size) — never pixels.
 * The overlay is one non-activating panel per display above the menu bar, excluded from capture, and
   torn down on every exit path (finish, Esc, display change, 60 s timeout, 2 s post-finish safety).
+
+## D-021 — Kokoro phonemes via espeak-ng as a separate process (resolves D-009's open risk)
+**Status** accepted
+Kokoro needs IPA phonemes. Wisp invokes `espeak-ng` (GPL-3.0) as an external process found on the
+system (Homebrew) — never linked or bundled — and maps its IPA to Kokoro's vocabulary (port of Kokoro's
+reference normalization). If espeak-ng is missing, Voice settings say so with the exact install command;
+recognition and everything else still work. Verified: Kokoro output transcribed back by Whisper as
+"Click the red delete button to remove the file."
+
+## D-022 — Hold the shortcut = point *and* talk
+**Status** accepted
+Holding ⌥⌘ listens (microphone only while held) and arms the focus overlay. On release, the recording is
+VAD-trimmed and transcribed with whisper.cpp; if there was speech, it's asked as a question — with the
+area drawn during that hold attached — and the answer is spoken sentence by sentence while it streams.
+Silence asks nothing. Holding again interrupts speech. "Push to Talk" behavior is the same without the
+overlay. Speech recognition and Kokoro load at startup so the first question is instant.
+
+## D-023 — Provider fallback and "thinking" models
+**Status** accepted
+If the routed model fails before producing text, the next eligible model answers (privacy rules are
+re-applied on every attempt) and the failed provider cools down for two minutes (spec §99). Ollama's
+`qwen3-vl:8b` tag is the *thinking* variant, which deliberates silently for tens of seconds and ignores
+`think:false`; the router prefers models that answer immediately and Wisp recommends the `-instruct`
+variants. Apple Foundation Models can refuse non-foreground callers (ModelManagerError 1013); fallback
+covers it.

@@ -8,6 +8,7 @@ export function Composer({
   placeholder = "Ask anything…",
   autoFocus,
   attachment,
+  accessory,
 }: {
   onSend: (text: string) => void;
   onStop?: () => void;
@@ -15,6 +16,8 @@ export function Composer({
   placeholder?: string;
   autoFocus?: boolean;
   attachment?: React.ReactNode;
+  /** Extra controls left of Send (e.g. the microphone). */
+  accessory?: React.ReactNode;
 }) {
   const [text, setText] = useState("");
   const submit = () => {
@@ -43,6 +46,7 @@ export function Composer({
         onKeyDown={onKey}
       />
       <div className="mt-1 flex items-center justify-end gap-2">
+        {accessory && <span className="mr-auto">{accessory}</span>}
         <span className={cn("text-xs text-text-faint", streaming && "invisible")}>
           Enter to send · Shift+Enter for a new line
         </span>

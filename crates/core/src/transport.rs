@@ -131,7 +131,21 @@ where
         }
     });
 
+    // Spoken answers: feed streamed text into the speech queue.
+    let mut speech_events = core.events().subscribe();
+    let speech_core = core.clone();
+    let speech = tokio::spawn(async move {
+        loop {
+            match speech_events.recv().await {
+                Ok(env) => speech_core.on_event_for_speech(&env),
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                Err(_) => break,
+            }
+        }
+    });
+
     core.events().publish::<CoreReady>(core.info());
+    core.warm_up_voice();
 
     let mut lines = BufReader::new(input).lines();
     while let Some(line) = lines.next_line().await? {
@@ -185,6 +199,7 @@ where
 
     tracing::info!("stdin closed; shutting down");
     forwarder.abort();
+    speech.abort();
     core.detach_host();
     drop(host);
     drop(out_tx);

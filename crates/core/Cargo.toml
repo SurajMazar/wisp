@@ -19,6 +19,8 @@ wisp-screen.workspace = true
 wisp-accessibility.workspace = true
 wisp-ai.workspace = true
 wisp-providers.workspace = true
+wisp-audio = { path = "../audio" }
+base64.workspace = true
 async-trait.workspace = true
 futures.workspace = true
 tokio-util.workspace = true

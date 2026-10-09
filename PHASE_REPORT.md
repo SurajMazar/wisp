@@ -233,3 +233,54 @@ PENDING — automated portion passes, including real capture on the primary Reti
 ## Evidence
 - `scripts/development/swiftpm.sh test --filter ScreenCaptureIntegrationTests` → passed (not skipped) on the M1 Pro Retina display
 - `pnpm validate` → ✓ all validation passed
+
+---
+
+# Phases 5–8 Report
+
+## Objective
+Understand real UI elements (5), connect local AI providers (6), deliver the first end-to-end AI experience (7),
+and make it voice-driven (8).
+
+## Implemented
+- **5:** `AccessibilityReader` (AX under point, ancestors, focused element, selected text, region traversal
+  bounded by nodes/depth/250 ms, off the main thread, secure values never read); `wisp-accessibility` ranking +
+  compact summaries; focus regions carry AX context; Permissions page with live TCC status, capability list,
+  inspector; microphone permission
+- **6:** `wisp-ai` provider trait + pure privacy-safe router; providers: Ollama (status, capabilities via
+  /api/show, streaming chat with images, pull/cancel/delete, alias filtering), OpenAI-compatible (locality by
+  address, Keychain keys), Apple Foundation Models via host (streamed deltas, cancel), mock; host Keychain and
+  Start Ollama; Models page; host-call timeouts
+- **7:** conversation engine (system prompt for spoken answers, recent turns, focus JPEG + AX summary, streaming,
+  progressive persistence, cancel, startup recovery, diagnostics), provider fallback with cooldown, conversations
+  repo, panel chat, Conversations page, Home ask
+- **8:** `wisp-audio` (energy VAD with adaptive floor, sentence splitter, speakable text, whisper.cpp STT on Metal,
+  Kokoro TTS on ONNX Runtime with espeak-ng phonemes, verified model downloads with resume); core voice service
+  (sessions, transcription, ask, sentence-streamed synthesis worker, stop speaking, model management, warm-up);
+  host `AudioCapture` (16 kHz Int16, levels), `SpeechPlayer` (ordered, cache-confined, barge-in),
+  `VoiceCoordinator` (hold = point + talk); Voice page; panel mic button
+
+## Tests Added
+- Rust: AX ranking (4), router privacy/fallback/thinking preference (8), Ollama/OpenAI/Apple parsing (7),
+  conversations repo (2), engine streaming/cancel/privacy/validation/fallback (5), VAD (4), text (3), STT cleanup,
+  Kokoro normalization, manifests (2), **Kokoro→Whisper round trip on real models**
+- Swift: real Apple Foundation Models "2 + 2" with streamed deltas, Keychain validation, AX normalization (skips
+  without trust)
+- React: Permissions (3), Models (4), Chat (5), Voice (4)
+
+## Evidence (real hardware, this Mac)
+- Apple Foundation Models: "4", streamed deltas reassemble exactly
+- Ollama qwen3-vl:8b via the engine: "4"; multi-turn text; synthetic "Delete 3 files?" dialog →
+  "…permanently remove 3 files. To proceed with deletion, click the red 'Delete' button."
+- Kokoro: 3.2 s of speech; Whisper heard "Click the red delete button to remove the file." (648 ms)
+- Voice loop through the engine: macOS-generated question → transcript "What is the capital of France? Answer in
+  one short sentence." (217 ms STT) → "The capital of France is Paris." → Kokoro WAV; silence → no question
+- Launched app: speech recognition and Kokoro warm at startup
+
+## Known Limitations
+- Thinking-variant model latency until the instruct model is installed (D-023)
+- Microphone uses the system default input device (device picker later)
+- AX and hold-to-talk need the user's Accessibility/Microphone grants to verify in the running app
+
+## Stop Gates 5–8
+PENDING — automated portions pass; manual checklists (Phases 5–8) remain.

@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Phase
-Phase 4 — Screen Capture & Focus (implemented; **waiting on manual stop gates 2, 3 and 4**)
+Phase 8 — Voice Pipeline (implemented; **manual stop gates 2–8 pending on the Mac**)
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +18,15 @@ Phase 4 — Screen Capture & Focus (implemented; **waiting on manual stop gates 
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- Phases 5–8 implemented and automatically verified (see PHASE_REPORT.md):
+  - **5 Accessibility:** element under pointer, ancestors, focused element, region elements (bounded, off-main-thread,
+    secure values never read), Rust relevance ranking, Permissions page + inspector
+  - **6 AI providers:** Ollama + Apple Foundation Models + OpenAI-compatible behind one interface, privacy-safe router,
+    Models page with downloads, tests, preferences; Keychain for keys. **Both Apple and Ollama answered "What is 2 + 2?"**
+  - **7 First AI slice:** conversations with streaming, cancel, persistence, history, fallback; panel chat;
+    **local qwen3-vl correctly described a dialog from a focused screenshot**
+  - **8 Voice:** push-to-talk capture, VAD, whisper.cpp (Metal), Kokoro (ONNX + espeak-ng), sentence-streamed speech,
+    barge-in; **end-to-end through the engine: spoken question → exact transcript → local answer → spoken reply**
 - Phase 4 implemented and automatically tested; manual checklist pending (Phase 4 section):
   - Hold ⌥⌘ + drag (rectangle / lasso / circle) or click a point; panel buttons for area, point, window, screen
   - Per-display overlay: dims surroundings, "Focused" confirmation, guaranteed teardown, excluded from capture
@@ -51,9 +60,13 @@ Phase 4 — Screen Capture & Focus (implemented; **waiting on manual stop gates 
   - No code-signing identity yet → TCC permissions reset on every rebuild until `scripts/development/create-signing-identity.sh` is run (needed from Phase 2 onward).
 
 ## Failed Tests
-- None. `pnpm validate` passes: 31 Rust, 23 TS, 42 Swift tests; lint/format/typecheck/architecture clean.
+- None. `pnpm validate` passes (Rust, 33 TS, 46 Swift tests incl. real Apple model, ScreenCaptureKit and Kokoro→Whisper round trip).
+- Environment-dependent tests report skips rather than passing silently: AX test (runner lacks Accessibility);
+  Apple generation when macOS refuses non-foreground callers (ModelManagerError 1013).
 
 ## Known Issues
+- `qwen3-vl:8b` (thinking variant) takes 20–70 s to answer; `qwen3-vl:8b-instruct` is downloading and the router will
+  prefer it automatically (D-023).
 - Phase 1 manual UI checklist (docs/release/manual-checklist.md) not yet run by a person; launch and React→Swift→Rust IPC were verified from logs of a real app launch.
 - Web bundle is 484 KB (unsplit); revisit in Phase 19.
 - Model manifests are empty until Phase 8 (entries require verified checksums).

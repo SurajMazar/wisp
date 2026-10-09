@@ -10,7 +10,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
     accessibility::*, app::*, conversations::*, cursor::*, focus::*, invocation::*, models::*,
-    settings::*,
+    settings::*, voice::*,
 };
 
 /// Which side implements a method.
@@ -168,6 +168,26 @@ define_methods! {
     ConversationPin = "conversation.pin", Core, PinParams => ConversationSummary;
     ConversationDelete = "conversation.delete", Core, IdParams => Empty;
 
+    /// Start listening (push-to-talk from the panel or a microphone test).
+    HostVoiceStart = "host.voice.start", Host, HostVoiceStartParams => Empty;
+    /// Stop listening and process what was said.
+    HostVoiceStop = "host.voice.stop", Host, Empty => VoiceFinishResult;
+    /// Stop speaking immediately.
+    HostVoiceStopSpeaking = "host.voice.stopSpeaking", Host, Empty => Empty;
+
+    /// Speech model status and readiness of recognition and voices.
+    VoiceStatusMethod = "voice.status", Core, Empty => VoiceStatus;
+    /// Transcribe a finished recording and (unless testing) ask it as a question.
+    VoiceFinish = "voice.finish", Core, VoiceFinishParams => VoiceFinishResult;
+    VoiceCancel = "voice.cancel", Core, SessionParams => Empty;
+    /// Speak text with the configured voice (Test Voice).
+    VoiceSpeak = "voice.speak", Core, SpeakParams => Empty;
+    VoiceStopSpeaking = "voice.stopSpeaking", Core, Empty => Empty;
+    /// Download a speech model listed in the manifest (verified by SHA-256).
+    VoiceModelDownload = "voice.models.download", Core, ModelIdParams => Empty;
+    VoiceModelCancel = "voice.models.cancel", Core, ModelIdParams => Empty;
+    VoiceModelRemove = "voice.models.remove", Core, ModelIdParams => Empty;
+
     /// Rank and trim an accessibility snapshot into model-ready context.
     AccessibilityRank = "accessibility.rank", Core, AxRankParams => AxContext;
     /// The most recent focus region the core accepted.
@@ -205,6 +225,16 @@ define_events! {
     MessageUpdated = "conversation.messageUpdated", Message;
     /// A conversation's title, pin or recency changed.
     ConversationUpdated = "conversation.updated", ConversationSummary;
+    /// Captured microphone audio (host → core only).
+    AudioChunkEvent = "audio.chunk", AudioChunk;
+    /// Synthesized speech ready to play (core → host).
+    SpeechChunkEvent = "voice.speechChunk", SpeechChunk;
+    /// Speech model download progress.
+    SpeechModelProgressEvent = "voice.modelProgress", SpeechModelProgress;
+    /// Microphone level while listening (host → UI).
+    VoiceLevelEvent = "voice.level", VoiceLevel;
+    /// A spoken question was asked (host → UI).
+    VoiceAskedEvent = "voice.asked", VoiceAsked;
 }
 
 #[cfg(test)]

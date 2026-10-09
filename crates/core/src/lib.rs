@@ -7,6 +7,7 @@ pub mod dispatch;
 pub mod events;
 pub mod logging;
 pub mod transport;
+pub mod voice;
 
 pub use config::Config;
 pub use dispatch::Core;

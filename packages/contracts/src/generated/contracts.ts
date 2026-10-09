@@ -149,6 +149,21 @@ export const PrivacySettings = z.strictObject({
 });
 export type PrivacySettings = z.output<typeof PrivacySettings>;
 
+export const SpeakAnswers = z.enum(["always","never","voiceQuestions"]);
+export type SpeakAnswers = z.output<typeof SpeakAnswers>;
+
+export const VoiceSettings = z.strictObject({
+  "enabled": z.boolean().default(true),
+  "language": z.string().default("auto"),
+  "speakAnswers": SpeakAnswers.default(() => SpeakAnswers.parse("voiceQuestions")),
+  "speed": z.number().default(1),
+  "sttModel": z.string().default("whisper-base.en"),
+  "vadSensitivity": z.number().default(0.5),
+  "voice": z.string().default("af_heart"),
+  "volume": z.number().default(1),
+});
+export type VoiceSettings = z.output<typeof VoiceSettings>;
+
 export const AppSettings = z.strictObject({
   "appearance": AppearanceSettings.default(() => AppearanceSettings.parse({"accent":"default","theme":"system"})),
   "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"label":"Wisp","opacity":0.95,"showLabel":false,"size":1,"theme":"default","visibility":"always"})),
@@ -158,6 +173,7 @@ export const AppSettings = z.strictObject({
   "models": ModelSettings.default(() => ModelSettings.parse({"contextLength":8192,"endpoints":[],"maxTokens":1024,"ollamaUrl":"http://127.0.0.1:11434","temperature":0.4})),
   "onboarding": OnboardingSettings.default(() => OnboardingSettings.parse({"completed":false})),
   "privacy": PrivacySettings.default(() => PrivacySettings.parse({"mode":"localOnly"})),
+  "voice": VoiceSettings.default(() => VoiceSettings.parse({"enabled":true,"language":"auto","speakAnswers":"voiceQuestions","speed":1,"sttModel":"whisper-base.en","vadSensitivity":0.5,"voice":"af_heart","volume":1})),
 });
 export type AppSettings = z.output<typeof AppSettings>;
 
@@ -218,6 +234,14 @@ export const AssistantVisibility = z.strictObject({
   "visible": z.boolean(),
 });
 export type AssistantVisibility = z.output<typeof AssistantVisibility>;
+
+/** 16 kHz mono signed 16-bit PCM, base64, ~100 ms per chunk (host → core). */
+export const AudioChunk = z.strictObject({
+  "pcm": z.string(),
+  "seq": z.number().int().nonnegative(),
+  "sessionId": z.string(),
+});
+export type AudioChunk = z.output<typeof AudioChunk>;
 
 export const Rect = z.object({
   "height": z.number(),
@@ -438,6 +462,14 @@ export const FocusStarted = z.strictObject({
 });
 export type FocusStarted = z.output<typeof FocusStarted>;
 
+export const VoicePurpose = z.enum(["ask","test"]);
+export type VoicePurpose = z.output<typeof VoicePurpose>;
+
+export const HostVoiceStartParams = z.strictObject({
+  "purpose": VoicePurpose,
+});
+export type HostVoiceStartParams = z.output<typeof HostVoiceStartParams>;
+
 export const IdParams = z.strictObject({
   "id": z.string(),
 });
@@ -513,6 +545,11 @@ export type MicrophoneStatus = z.output<typeof MicrophoneStatus>;
 export const ModelCapability = z.enum(["text","vision","audioInput","audioOutput","toolCalling","structuredOutput","streaming","reasoning"]);
 export type ModelCapability = z.output<typeof ModelCapability>;
 
+export const ModelIdParams = z.strictObject({
+  "id": z.string(),
+});
+export type ModelIdParams = z.output<typeof ModelIdParams>;
+
 export const ModelInfo = z.strictObject({
   "capabilities": z.array(ModelCapability),
   "contextLength": z.number().int().nonnegative().nullable().optional(),
@@ -565,6 +602,9 @@ export const ModelsList = z.strictObject({
   "providers": z.array(ProviderInfo),
 });
 export type ModelsList = z.output<typeof ModelsList>;
+
+export const NoSpeechReason = z.enum(["silence","tooShort"]);
+export type NoSpeechReason = z.output<typeof NoSpeechReason>;
 
 /** System Settings panes Wisp may open for the user. */
 export const SettingsPane = z.enum(["accessibility","inputMonitoring","screenRecording","microphone","automation","notifications","keyboard"]);
@@ -638,8 +678,13 @@ export const SendResult = z.strictObject({
 });
 export type SendResult = z.output<typeof SendResult>;
 
+export const SessionParams = z.strictObject({
+  "sessionId": z.string(),
+});
+export type SessionParams = z.output<typeof SessionParams>;
+
 /** One section replaced atomically. */
-export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings })]);
+export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings }), z.strictObject({ "section": z.literal("voice"), "value": VoiceSettings })]);
 export type SettingsSection = z.output<typeof SettingsSection>;
 
 export const SettingsUpdateParams = z.strictObject({
@@ -673,6 +718,82 @@ export const ShortcutRecordResult = z.strictObject({
   "shortcut": Shortcut,
 });
 export type ShortcutRecordResult = z.output<typeof ShortcutRecordResult>;
+
+export const SpeakParams = z.strictObject({
+  "text": z.string(),
+});
+export type SpeakParams = z.output<typeof SpeakParams>;
+
+/** A synthesized piece of speech ready to play (core → host). `path` is inside Wisp's cache. */
+export const SpeechChunk = z.strictObject({
+  "last": z.boolean(),
+  "path": z.string(),
+  "seq": z.number().int().nonnegative(),
+  "text": z.string(),
+  "utteranceId": z.string(),
+});
+export type SpeechChunk = z.output<typeof SpeechChunk>;
+
+export const SpeechModelInfo = z.strictObject({
+  "id": z.string(),
+  "installed": z.boolean(),
+  "kind": z.string(),
+  "languages": z.array(z.string()),
+  "license": z.string(),
+  "name": z.string(),
+  "preset": z.string().nullable().optional(),
+  "sizeBytes": z.number().int().nonnegative(),
+  "voices": z.array(z.string()).optional(),
+});
+export type SpeechModelInfo = z.output<typeof SpeechModelInfo>;
+
+export const SpeechModelProgress = z.strictObject({
+  "completed": z.number().int().nonnegative(),
+  "done": z.boolean(),
+  "error": z.string().nullable().optional(),
+  "id": z.string(),
+  "total": z.number().int().nonnegative(),
+});
+export type SpeechModelProgress = z.output<typeof SpeechModelProgress>;
+
+/** Host → UI: a spoken question was asked in this conversation. */
+export const VoiceAsked = z.strictObject({
+  "conversationId": z.string(),
+  "transcript": z.string(),
+});
+export type VoiceAsked = z.output<typeof VoiceAsked>;
+
+export const VoiceFinishParams = z.strictObject({
+  "conversationId": z.string().nullable().optional(),
+  "includeFocus": z.boolean().default(false),
+  "sessionId": z.string(),
+  "transcribeOnly": z.boolean().default(false),
+});
+export type VoiceFinishParams = z.output<typeof VoiceFinishParams>;
+
+export const VoiceFinishResult = z.strictObject({
+  "audioMs": z.number().int().nonnegative(),
+  "noSpeech": NoSpeechReason.nullable().optional(),
+  "sent": SendResult.nullable().optional(),
+  "sttMs": z.number().int().nonnegative(),
+  "transcript": z.string().nullable().optional(),
+});
+export type VoiceFinishResult = z.output<typeof VoiceFinishResult>;
+
+/** Host → UI: microphone level 0–1 while listening. */
+export const VoiceLevel = z.strictObject({
+  "level": z.number(),
+});
+export type VoiceLevel = z.output<typeof VoiceLevel>;
+
+export const VoiceStatus = z.strictObject({
+  "detail": z.string().nullable().optional(),
+  "models": z.array(SpeechModelInfo),
+  "phonemizer": z.boolean(),
+  "sttReady": z.boolean(),
+  "ttsReady": z.boolean(),
+});
+export type VoiceStatus = z.output<typeof VoiceStatus>;
 
 export const methods = {
   "app.info": { target: "core", params: Empty, result: AppInfo },
@@ -715,6 +836,17 @@ export const methods = {
   "conversation.rename": { target: "core", params: RenameParams, result: ConversationSummary },
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
+  "host.voice.start": { target: "host", params: HostVoiceStartParams, result: Empty },
+  "host.voice.stop": { target: "host", params: Empty, result: VoiceFinishResult },
+  "host.voice.stopSpeaking": { target: "host", params: Empty, result: Empty },
+  "voice.status": { target: "core", params: Empty, result: VoiceStatus },
+  "voice.finish": { target: "core", params: VoiceFinishParams, result: VoiceFinishResult },
+  "voice.cancel": { target: "core", params: SessionParams, result: Empty },
+  "voice.speak": { target: "core", params: SpeakParams, result: Empty },
+  "voice.stopSpeaking": { target: "core", params: Empty, result: Empty },
+  "voice.models.download": { target: "core", params: ModelIdParams, result: Empty },
+  "voice.models.cancel": { target: "core", params: ModelIdParams, result: Empty },
+  "voice.models.remove": { target: "core", params: ModelIdParams, result: Empty },
   "accessibility.rank": { target: "core", params: AxRankParams, result: AxContext },
   "focus.latest": { target: "core", params: Empty, result: LatestFocus },
 } as const;
@@ -735,6 +867,11 @@ export const events = {
   "conversation.delta": MessageDelta,
   "conversation.messageUpdated": Message,
   "conversation.updated": ConversationSummary,
+  "audio.chunk": AudioChunk,
+  "voice.speechChunk": SpeechChunk,
+  "voice.modelProgress": SpeechModelProgress,
+  "voice.level": VoiceLevel,
+  "voice.asked": VoiceAsked,
 } as const;
 
 export type MethodName = keyof typeof methods;

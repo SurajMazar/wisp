@@ -1,6 +1,6 @@
 [package]
 name = "wisp-audio"
-description = "Audio pipeline: VAD, STT and TTS orchestration, sentence streaming"
+description = "Audio pipeline: VAD, STT (whisper.cpp) and TTS (Kokoro) orchestration, sentence streaming"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -13,3 +13,19 @@ workspace = true
 [dependencies]
 wisp-common.workspace = true
 wisp-ipc.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+whisper-rs = { version = "0.16", features = ["metal", "tracing_backend"] }
+ort = { version = "=2.0.0-rc.13" }
+hound = "3.5"
+tokio.workspace = true
+reqwest.workspace = true
+futures.workspace = true
+sha2 = "0.10"
+hex = "0.4"
+tokio-util.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

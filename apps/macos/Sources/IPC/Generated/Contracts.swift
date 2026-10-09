@@ -268,6 +268,34 @@ public struct PrivacySettings: Codable, Sendable, Equatable {
     }
 }
 
+public enum SpeakAnswers: String, Codable, Sendable, Equatable, CaseIterable {
+    case always = "always"
+    case never = "never"
+    case voiceQuestions = "voiceQuestions"
+}
+
+public struct VoiceSettings: Codable, Sendable, Equatable {
+    public var enabled: Bool
+    public var language: String
+    public var speakAnswers: SpeakAnswers
+    public var speed: Double
+    public var sttModel: String
+    public var vadSensitivity: Double
+    public var voice: String
+    public var volume: Double
+
+    public init(enabled: Bool, language: String, speakAnswers: SpeakAnswers, speed: Double, sttModel: String, vadSensitivity: Double, voice: String, volume: Double) {
+        self.enabled = enabled
+        self.language = language
+        self.speakAnswers = speakAnswers
+        self.speed = speed
+        self.sttModel = sttModel
+        self.vadSensitivity = vadSensitivity
+        self.voice = voice
+        self.volume = volume
+    }
+}
+
 public struct AppSettings: Codable, Sendable, Equatable {
     public var appearance: AppearanceSettings
     public var cursor: CursorSettings
@@ -277,8 +305,9 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var models: ModelSettings
     public var onboarding: OnboardingSettings
     public var privacy: PrivacySettings
+    public var voice: VoiceSettings
 
-    public init(appearance: AppearanceSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings) {
+    public init(appearance: AppearanceSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings, voice: VoiceSettings) {
         self.appearance = appearance
         self.cursor = cursor
         self.focus = focus
@@ -287,6 +316,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         self.models = models
         self.onboarding = onboarding
         self.privacy = privacy
+        self.voice = voice
     }
 }
 
@@ -397,6 +427,19 @@ public struct AssistantVisibility: Codable, Sendable, Equatable {
     public init(source: InvocationSource? = nil, visible: Bool) {
         self.source = source
         self.visible = visible
+    }
+}
+
+/// 16 kHz mono signed 16-bit PCM, base64, ~100 ms per chunk (host → core).
+public struct AudioChunk: Codable, Sendable, Equatable {
+    public var pcm: String
+    public var seq: UInt32
+    public var sessionId: String
+
+    public init(pcm: String, seq: UInt32, sessionId: String) {
+        self.pcm = pcm
+        self.seq = seq
+        self.sessionId = sessionId
     }
 }
 
@@ -796,6 +839,19 @@ public struct FocusStarted: Codable, Sendable, Equatable {
     }
 }
 
+public enum VoicePurpose: String, Codable, Sendable, Equatable, CaseIterable {
+    case ask = "ask"
+    case test = "test"
+}
+
+public struct HostVoiceStartParams: Codable, Sendable, Equatable {
+    public var purpose: VoicePurpose
+
+    public init(purpose: VoicePurpose) {
+        self.purpose = purpose
+    }
+}
+
 public struct IdParams: Codable, Sendable, Equatable {
     public var id: String
 
@@ -930,6 +986,14 @@ public enum ModelCapability: String, Codable, Sendable, Equatable, CaseIterable 
     case reasoning = "reasoning"
 }
 
+public struct ModelIdParams: Codable, Sendable, Equatable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
 public struct ModelInfo: Codable, Sendable, Equatable {
     public var capabilities: [ModelCapability]
     public var contextLength: UInt32?
@@ -1022,6 +1086,11 @@ public struct ModelsList: Codable, Sendable, Equatable {
         self.models = models
         self.providers = providers
     }
+}
+
+public enum NoSpeechReason: String, Codable, Sendable, Equatable, CaseIterable {
+    case silence = "silence"
+    case tooShort = "tooShort"
 }
 
 /// System Settings panes Wisp may open for the user.
@@ -1151,6 +1220,14 @@ public struct SendResult: Codable, Sendable, Equatable {
     }
 }
 
+public struct SessionParams: Codable, Sendable, Equatable {
+    public var sessionId: String
+
+    public init(sessionId: String) {
+        self.sessionId = sessionId
+    }
+}
+
 /// One section replaced atomically.
 public enum SettingsSection: Codable, Sendable, Equatable {
     case general(GeneralSettings)
@@ -1161,6 +1238,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
     case cursor(CursorSettings)
     case focus(FocusSettings)
     case models(ModelSettings)
+    case voice(VoiceSettings)
 
     private enum CodingKeys: String, CodingKey {
         case tag = "section"
@@ -1179,6 +1257,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
         case "cursor": self = .cursor(try c.decode(CursorSettings.self, forKey: .content))
         case "focus": self = .focus(try c.decode(FocusSettings.self, forKey: .content))
         case "models": self = .models(try c.decode(ModelSettings.self, forKey: .content))
+        case "voice": self = .voice(try c.decode(VoiceSettings.self, forKey: .content))
         default:
             throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown SettingsSection variant \(tag)")
         }
@@ -1210,6 +1289,9 @@ public enum SettingsSection: Codable, Sendable, Equatable {
             try c.encode(v, forKey: .content)
         case .models(let v):
             try c.encode("models", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .voice(let v):
+            try c.encode("voice", forKey: .tag)
             try c.encode(v, forKey: .content)
         }
     }
@@ -1267,6 +1349,137 @@ public struct ShortcutRecordResult: Codable, Sendable, Equatable {
     }
 }
 
+public struct SpeakParams: Codable, Sendable, Equatable {
+    public var text: String
+
+    public init(text: String) {
+        self.text = text
+    }
+}
+
+/// A synthesized piece of speech ready to play (core → host). `path` is inside Wisp's cache.
+public struct SpeechChunk: Codable, Sendable, Equatable {
+    public var last: Bool
+    public var path: String
+    public var seq: UInt32
+    public var text: String
+    public var utteranceId: String
+
+    public init(last: Bool, path: String, seq: UInt32, text: String, utteranceId: String) {
+        self.last = last
+        self.path = path
+        self.seq = seq
+        self.text = text
+        self.utteranceId = utteranceId
+    }
+}
+
+public struct SpeechModelInfo: Codable, Sendable, Equatable {
+    public var id: String
+    public var installed: Bool
+    public var kind: String
+    public var languages: [String]
+    public var license: String
+    public var name: String
+    public var preset: String?
+    public var sizeBytes: UInt64
+    public var voices: [String]?
+
+    public init(id: String, installed: Bool, kind: String, languages: [String], license: String, name: String, preset: String? = nil, sizeBytes: UInt64, voices: [String]? = nil) {
+        self.id = id
+        self.installed = installed
+        self.kind = kind
+        self.languages = languages
+        self.license = license
+        self.name = name
+        self.preset = preset
+        self.sizeBytes = sizeBytes
+        self.voices = voices
+    }
+}
+
+public struct SpeechModelProgress: Codable, Sendable, Equatable {
+    public var completed: UInt64
+    public var done: Bool
+    public var error: String?
+    public var id: String
+    public var total: UInt64
+
+    public init(completed: UInt64, done: Bool, error: String? = nil, id: String, total: UInt64) {
+        self.completed = completed
+        self.done = done
+        self.error = error
+        self.id = id
+        self.total = total
+    }
+}
+
+/// Host → UI: a spoken question was asked in this conversation.
+public struct VoiceAsked: Codable, Sendable, Equatable {
+    public var conversationId: String
+    public var transcript: String
+
+    public init(conversationId: String, transcript: String) {
+        self.conversationId = conversationId
+        self.transcript = transcript
+    }
+}
+
+public struct VoiceFinishParams: Codable, Sendable, Equatable {
+    public var conversationId: String?
+    public var includeFocus: Bool
+    public var sessionId: String
+    public var transcribeOnly: Bool
+
+    public init(conversationId: String? = nil, includeFocus: Bool, sessionId: String, transcribeOnly: Bool) {
+        self.conversationId = conversationId
+        self.includeFocus = includeFocus
+        self.sessionId = sessionId
+        self.transcribeOnly = transcribeOnly
+    }
+}
+
+public struct VoiceFinishResult: Codable, Sendable, Equatable {
+    public var audioMs: UInt32
+    public var noSpeech: NoSpeechReason?
+    public var sent: SendResult?
+    public var sttMs: UInt32
+    public var transcript: String?
+
+    public init(audioMs: UInt32, noSpeech: NoSpeechReason? = nil, sent: SendResult? = nil, sttMs: UInt32, transcript: String? = nil) {
+        self.audioMs = audioMs
+        self.noSpeech = noSpeech
+        self.sent = sent
+        self.sttMs = sttMs
+        self.transcript = transcript
+    }
+}
+
+/// Host → UI: microphone level 0–1 while listening.
+public struct VoiceLevel: Codable, Sendable, Equatable {
+    public var level: Double
+
+    public init(level: Double) {
+        self.level = level
+    }
+}
+
+public struct VoiceStatus: Codable, Sendable, Equatable {
+    public var detail: String?
+    public var models: [SpeechModelInfo]
+    public var phonemizer: Bool
+    public var sttReady: Bool
+    public var ttsReady: Bool
+
+    public init(detail: String? = nil, models: [SpeechModelInfo], phonemizer: Bool, sttReady: Bool, ttsReady: Bool) {
+        self.detail = detail
+        self.models = models
+        self.phonemizer = phonemizer
+        self.sttReady = sttReady
+        self.ttsReady = ttsReady
+    }
+}
+
 public enum IPCMethods {
     public static let appInfo = IPCMethod<Empty, AppInfo>(name: "app.info", target: .core)
     public static let settingsGet = IPCMethod<Empty, AppSettings>(name: "settings.get", target: .core)
@@ -1308,6 +1521,17 @@ public enum IPCMethods {
     public static let conversationRename = IPCMethod<RenameParams, ConversationSummary>(name: "conversation.rename", target: .core)
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
+    public static let hostVoiceStart = IPCMethod<HostVoiceStartParams, Empty>(name: "host.voice.start", target: .host)
+    public static let hostVoiceStop = IPCMethod<Empty, VoiceFinishResult>(name: "host.voice.stop", target: .host)
+    public static let hostVoiceStopSpeaking = IPCMethod<Empty, Empty>(name: "host.voice.stopSpeaking", target: .host)
+    public static let voiceStatus = IPCMethod<Empty, VoiceStatus>(name: "voice.status", target: .core)
+    public static let voiceFinish = IPCMethod<VoiceFinishParams, VoiceFinishResult>(name: "voice.finish", target: .core)
+    public static let voiceCancel = IPCMethod<SessionParams, Empty>(name: "voice.cancel", target: .core)
+    public static let voiceSpeak = IPCMethod<SpeakParams, Empty>(name: "voice.speak", target: .core)
+    public static let voiceStopSpeaking = IPCMethod<Empty, Empty>(name: "voice.stopSpeaking", target: .core)
+    public static let voiceModelsDownload = IPCMethod<ModelIdParams, Empty>(name: "voice.models.download", target: .core)
+    public static let voiceModelsCancel = IPCMethod<ModelIdParams, Empty>(name: "voice.models.cancel", target: .core)
+    public static let voiceModelsRemove = IPCMethod<ModelIdParams, Empty>(name: "voice.models.remove", target: .core)
     public static let accessibilityRank = IPCMethod<AxRankParams, AxContext>(name: "accessibility.rank", target: .core)
     public static let focusLatest = IPCMethod<Empty, LatestFocus>(name: "focus.latest", target: .core)
 
@@ -1353,6 +1577,17 @@ public enum IPCMethods {
         "conversation.rename": .core,
         "conversation.pin": .core,
         "conversation.delete": .core,
+        "host.voice.start": .host,
+        "host.voice.stop": .host,
+        "host.voice.stopSpeaking": .host,
+        "voice.status": .core,
+        "voice.finish": .core,
+        "voice.cancel": .core,
+        "voice.speak": .core,
+        "voice.stopSpeaking": .core,
+        "voice.models.download": .core,
+        "voice.models.cancel": .core,
+        "voice.models.remove": .core,
         "accessibility.rank": .core,
         "focus.latest": .core,
     ]
@@ -1374,4 +1609,9 @@ public enum IPCEvents {
     public static let conversationDelta = IPCEvent<MessageDelta>(name: "conversation.delta")
     public static let conversationMessageUpdated = IPCEvent<Message>(name: "conversation.messageUpdated")
     public static let conversationUpdated = IPCEvent<ConversationSummary>(name: "conversation.updated")
+    public static let audioChunk = IPCEvent<AudioChunk>(name: "audio.chunk")
+    public static let voiceSpeechChunk = IPCEvent<SpeechChunk>(name: "voice.speechChunk")
+    public static let voiceModelProgress = IPCEvent<SpeechModelProgress>(name: "voice.modelProgress")
+    public static let voiceLevel = IPCEvent<VoiceLevel>(name: "voice.level")
+    public static let voiceAsked = IPCEvent<VoiceAsked>(name: "voice.asked")
 }

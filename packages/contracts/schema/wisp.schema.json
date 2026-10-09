@@ -147,6 +147,19 @@
           "default": {
             "mode": "localOnly"
           }
+        },
+        "voice": {
+          "$ref": "#/definitions/VoiceSettings",
+          "default": {
+            "enabled": true,
+            "language": "auto",
+            "speakAnswers": "voiceQuestions",
+            "speed": 1,
+            "sttModel": "whisper-base.en",
+            "vadSensitivity": 0.5,
+            "voice": "af_heart",
+            "volume": 1
+          }
         }
       },
       "type": "object"
@@ -339,6 +352,29 @@
       },
       "required": [
         "visible"
+      ],
+      "type": "object"
+    },
+    "AudioChunk": {
+      "additionalProperties": false,
+      "description": "16 kHz mono signed 16-bit PCM, base64, ~100 ms per chunk (host → core).",
+      "properties": {
+        "pcm": {
+          "type": "string"
+        },
+        "seq": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "seq",
+        "pcm"
       ],
       "type": "object"
     },
@@ -1198,6 +1234,18 @@
       },
       "type": "object"
     },
+    "HostVoiceStartParams": {
+      "additionalProperties": false,
+      "properties": {
+        "purpose": {
+          "$ref": "#/definitions/VoicePurpose"
+        }
+      },
+      "required": [
+        "purpose"
+      ],
+      "type": "object"
+    },
     "IdParams": {
       "additionalProperties": false,
       "properties": {
@@ -1619,6 +1667,18 @@
       ],
       "type": "string"
     },
+    "ModelIdParams": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
     "ModelInfo": {
       "additionalProperties": false,
       "properties": {
@@ -1860,6 +1920,13 @@
         "middle",
         "back",
         "forward"
+      ],
+      "type": "string"
+    },
+    "NoSpeechReason": {
+      "enum": [
+        "silence",
+        "tooShort"
       ],
       "type": "string"
     },
@@ -2252,6 +2319,18 @@
       ],
       "type": "object"
     },
+    "SessionParams": {
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId"
+      ],
+      "type": "object"
+    },
     "SettingsPane": {
       "description": "System Settings panes Wisp may open for the user.",
       "enum": [
@@ -2395,6 +2474,22 @@
             "value"
           ],
           "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "voice",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/VoiceSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -2521,6 +2616,153 @@
       ],
       "type": "object"
     },
+    "SpeakAnswers": {
+      "oneOf": [
+        {
+          "enum": [
+            "always",
+            "never"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "voiceQuestions",
+          "description": "Speak answers to spoken questions.",
+          "type": "string"
+        }
+      ]
+    },
+    "SpeakParams": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "SpeechChunk": {
+      "additionalProperties": false,
+      "description": "A synthesized piece of speech ready to play (core → host). `path` is inside Wisp's cache.",
+      "properties": {
+        "last": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        },
+        "seq": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "text": {
+          "type": "string"
+        },
+        "utteranceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "utteranceId",
+        "seq",
+        "path",
+        "text",
+        "last"
+      ],
+      "type": "object"
+    },
+    "SpeechModelInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "installed": {
+          "type": "boolean"
+        },
+        "kind": {
+          "description": "\"stt\" or \"tts\".",
+          "type": "string"
+        },
+        "languages": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "license": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "preset": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "voices": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "sizeBytes",
+        "installed",
+        "languages",
+        "license"
+      ],
+      "type": "object"
+    },
+    "SpeechModelProgress": {
+      "additionalProperties": false,
+      "properties": {
+        "completed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "total": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "completed",
+        "total",
+        "done"
+      ],
+      "type": "object"
+    },
     "ThemePreference": {
       "enum": [
         "system",
@@ -2528,6 +2770,198 @@
         "dark"
       ],
       "type": "string"
+    },
+    "VoiceAsked": {
+      "additionalProperties": false,
+      "description": "Host → UI: a spoken question was asked in this conversation.",
+      "properties": {
+        "conversationId": {
+          "type": "string"
+        },
+        "transcript": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "conversationId",
+        "transcript"
+      ],
+      "type": "object"
+    },
+    "VoiceFinishParams": {
+      "additionalProperties": false,
+      "properties": {
+        "conversationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "includeFocus": {
+          "default": false,
+          "description": "Ask about the current focus region too.",
+          "type": "boolean"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "transcribeOnly": {
+          "default": false,
+          "description": "Transcribe only (microphone test) — don't ask anything.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sessionId"
+      ],
+      "type": "object"
+    },
+    "VoiceFinishResult": {
+      "additionalProperties": false,
+      "properties": {
+        "audioMs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "noSpeech": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/NoSpeechReason"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sent": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SendResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sttMs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "transcript": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "audioMs",
+        "sttMs"
+      ],
+      "type": "object"
+    },
+    "VoiceLevel": {
+      "additionalProperties": false,
+      "description": "Host → UI: microphone level 0–1 while listening.",
+      "properties": {
+        "level": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "type": "object"
+    },
+    "VoicePurpose": {
+      "enum": [
+        "ask",
+        "test"
+      ],
+      "type": "string"
+    },
+    "VoiceSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": true,
+          "description": "Hold the shortcut to talk.",
+          "type": "boolean"
+        },
+        "language": {
+          "default": "auto",
+          "description": "BCP-47 code or \"auto\" (multilingual models only).",
+          "type": "string"
+        },
+        "speakAnswers": {
+          "$ref": "#/definitions/SpeakAnswers",
+          "default": "voiceQuestions"
+        },
+        "speed": {
+          "default": 1,
+          "description": "0.5–2.0.",
+          "format": "double",
+          "type": "number"
+        },
+        "sttModel": {
+          "default": "whisper-base.en",
+          "type": "string"
+        },
+        "vadSensitivity": {
+          "default": 0.5,
+          "description": "0 (least) – 1 (most sensitive).",
+          "format": "double",
+          "type": "number"
+        },
+        "voice": {
+          "default": "af_heart",
+          "type": "string"
+        },
+        "volume": {
+          "default": 1,
+          "description": "0–1.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "VoiceStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "models": {
+          "items": {
+            "$ref": "#/definitions/SpeechModelInfo"
+          },
+          "type": "array"
+        },
+        "phonemizer": {
+          "description": "espeak-ng found (needed for Kokoro).",
+          "type": "boolean"
+        },
+        "sttReady": {
+          "type": "boolean"
+        },
+        "ttsReady": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "models",
+        "sttReady",
+        "ttsReady",
+        "phonemizer"
+      ],
+      "type": "object"
     },
     "WindowInfo": {
       "additionalProperties": false,
@@ -2646,6 +3080,36 @@
       "name": "conversation.updated",
       "payload": {
         "$ref": "#/definitions/ConversationSummary"
+      }
+    },
+    {
+      "name": "audio.chunk",
+      "payload": {
+        "$ref": "#/definitions/AudioChunk"
+      }
+    },
+    {
+      "name": "voice.speechChunk",
+      "payload": {
+        "$ref": "#/definitions/SpeechChunk"
+      }
+    },
+    {
+      "name": "voice.modelProgress",
+      "payload": {
+        "$ref": "#/definitions/SpeechModelProgress"
+      }
+    },
+    {
+      "name": "voice.level",
+      "payload": {
+        "$ref": "#/definitions/VoiceLevel"
+      }
+    },
+    {
+      "name": "voice.asked",
+      "payload": {
+        "$ref": "#/definitions/VoiceAsked"
       }
     }
   ],
@@ -3044,6 +3508,116 @@
       "name": "conversation.delete",
       "params": {
         "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "host.voice.start",
+      "params": {
+        "$ref": "#/definitions/HostVoiceStartParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.voice.stop",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/VoiceFinishResult"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.voice.stopSpeaking",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "voice.status",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/VoiceStatus"
+      },
+      "target": "core"
+    },
+    {
+      "name": "voice.finish",
+      "params": {
+        "$ref": "#/definitions/VoiceFinishParams"
+      },
+      "result": {
+        "$ref": "#/definitions/VoiceFinishResult"
+      },
+      "target": "core"
+    },
+    {
+      "name": "voice.cancel",
+      "params": {
+        "$ref": "#/definitions/SessionParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "voice.speak",
+      "params": {
+        "$ref": "#/definitions/SpeakParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "voice.stopSpeaking",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "voice.models.download",
+      "params": {
+        "$ref": "#/definitions/ModelIdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "voice.models.cancel",
+      "params": {
+        "$ref": "#/definitions/ModelIdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "voice.models.remove",
+      "params": {
+        "$ref": "#/definitions/ModelIdParams"
       },
       "result": {
         "$ref": "#/definitions/Empty"

@@ -5,6 +5,10 @@ use std::sync::{Arc, Mutex};
 use serde_json::Value;
 use wisp_common::paths::DataPaths;
 use wisp_database::Database;
+use wisp_ipc::methods::{
+    VoiceCancel, VoiceFinish, VoiceModelCancel, VoiceModelDownload, VoiceModelRemove, VoiceSpeak,
+    VoiceStatusMethod, VoiceStopSpeaking,
+};
 use wisp_ipc::{
     IpcError, Method,
     methods::{
@@ -32,6 +36,7 @@ struct Inner {
     db: Database,
     ai: Arc<crate::ai::AiServices>,
     streams: crate::conversations::Streams,
+    voice: crate::voice::VoiceService,
     events: EventBus,
     info: AppInfo,
     /// The region the user last focused. In memory only: pixels never reach the database.
@@ -63,6 +68,7 @@ impl Core {
                 db,
                 ai: Arc::new(crate::ai::AiServices::default()),
                 streams: Default::default(),
+                voice: Default::default(),
                 events,
                 info,
                 latest_focus: Mutex::new(None),
@@ -259,6 +265,61 @@ impl Core {
                 })
                 .await
             }
+            VoiceStatusMethod::NAME => {
+                self.call::<VoiceStatusMethod, _, _>(params, |c, _| async move {
+                    c.voice_status().await
+                })
+                .await
+            }
+            VoiceFinish::NAME => {
+                self.call::<VoiceFinish, _, _>(
+                    params,
+                    |c, p| async move { c.voice_finish(p).await },
+                )
+                .await
+            }
+            VoiceCancel::NAME => {
+                self.call::<VoiceCancel, _, _>(params, |c, p| async move {
+                    c.inner.voice.cancel(&p.session_id);
+                    Ok(Empty {})
+                })
+                .await
+            }
+            VoiceSpeak::NAME => {
+                self.call::<VoiceSpeak, _, _>(params, |c, p| async move {
+                    c.speak_text(&p.text)?;
+                    Ok(Empty {})
+                })
+                .await
+            }
+            VoiceStopSpeaking::NAME => {
+                self.call::<VoiceStopSpeaking, _, _>(params, |c, _| async move {
+                    c.stop_speaking();
+                    Ok(Empty {})
+                })
+                .await
+            }
+            VoiceModelDownload::NAME => {
+                self.call::<VoiceModelDownload, _, _>(params, |c, p| async move {
+                    c.start_model_download(p.id)?;
+                    Ok(Empty {})
+                })
+                .await
+            }
+            VoiceModelCancel::NAME => {
+                self.call::<VoiceModelCancel, _, _>(params, |c, p| async move {
+                    c.cancel_model_download(&p.id);
+                    Ok(Empty {})
+                })
+                .await
+            }
+            VoiceModelRemove::NAME => {
+                self.call::<VoiceModelRemove, _, _>(params, |c, p| async move {
+                    c.remove_model(&p.id)?;
+                    Ok(Empty {})
+                })
+                .await
+            }
             FocusLatest::NAME => {
                 self.call::<FocusLatest, _, _>(params, |c, _| async move {
                     Ok(LatestFocus {
@@ -269,6 +330,10 @@ impl Core {
             }
             other => Err(IpcError::method_not_found(other)),
         }
+    }
+
+    pub(crate) fn inner_voice(&self) -> &crate::voice::VoiceService {
+        &self.inner.voice
     }
 
     pub(crate) fn inner_streams(&self) -> &crate::conversations::Streams {
@@ -326,6 +391,14 @@ impl Core {
         };
         fn parse<E: EventKind>(v: &Value) -> Option<E::Payload> {
             serde_json::from_value::<E::Payload>(v.clone()).ok()
+        }
+        if name == "audio.chunk" {
+            if let Ok(chunk) = serde_json::from_value::<wisp_ipc::types::voice::AudioChunk>(payload)
+                && wisp_common::ids::is_valid_id(&chunk.session_id)
+            {
+                self.inner.voice.append(&chunk.session_id, &chunk.pcm);
+            }
+            return;
         }
         if name == "apple.delta" {
             if let Ok(d) = serde_json::from_value::<wisp_ipc::types::models::AppleDelta>(payload) {

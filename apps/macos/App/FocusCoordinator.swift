@@ -18,6 +18,7 @@ final class FocusCoordinator {
     private var accent = BuddyTheme.color(for: .default, custom: nil)
     private(set) var latest: FocusRegion?
     private var holdSession = false
+    var onCompleted: (() -> Void)?
 
     init(router: IPCRouter, assistant: AssistantCoordinator) {
         self.router = router
@@ -149,6 +150,7 @@ final class FocusCoordinator {
                 window: found?.window
             )
             latest = region
+            onCompleted?()
             router.emit(IPCEvents.focusCompleted, region)
             assistant.set(state: .success)
             assistant.expand()

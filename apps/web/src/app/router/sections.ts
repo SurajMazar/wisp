@@ -68,7 +68,6 @@ export const sections: Section[] = [
     path: "/voice",
     label: "Voice",
     icon: VoiceIcon,
-    unavailableNote: "Voice isn't available in this build yet. The microphone is never used.",
   },
   {
     path: "/permissions",

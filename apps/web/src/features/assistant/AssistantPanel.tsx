@@ -3,6 +3,7 @@ import { WispMark } from "@wisp/icons";
 import { Button, cn } from "@wisp/ui";
 import { useEffect, useState } from "react";
 import { Composer } from "../../components/chat/Composer";
+import { MicButton } from "../../components/chat/MicButton";
 import { MessageList } from "../../components/chat/MessageList";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { streamingMessage, useConversationStore } from "../../stores/conversationStore";
@@ -107,6 +108,7 @@ export function AssistantPanel() {
           streaming={!!streaming}
           onStop={() => streaming && void cancel(streaming.id)}
           onSend={(t) => void ask(t)}
+          accessory={<MicButton disabled={!!streaming} />}
           placeholder={region && attachFocus ? "Ask about what you selected…" : "Ask anything…"}
           attachment={
             region ? (
