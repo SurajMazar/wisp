@@ -37,6 +37,17 @@ enum HostMethods {
             return Empty()
         }
 
+        router.register(IPCMethods.hostAppRelaunch) { _ in
+            // Reopen once this instance has quit, then quit.
+            let bundle = Bundle.main.bundlePath
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/bin/sh")
+            p.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; /usr/bin/open \"$0\"", bundle, String(ProcessInfo.processInfo.processIdentifier)]
+            try? p.run()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { NSApp.terminate(nil) }
+            return Empty()
+        }
+
         router.register(IPCMethods.hostAssistantSetVisible) { params in
             if params.visible { assistant.expand() } else { assistant.collapse() }
             return Empty()

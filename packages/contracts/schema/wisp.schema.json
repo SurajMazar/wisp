@@ -6693,6 +6693,16 @@
       "target": "host"
     },
     {
+      "name": "host.app.relaunch",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
       "name": "host.assistant.setVisible",
       "params": {
         "$ref": "#/definitions/AssistantVisibility"

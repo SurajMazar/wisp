@@ -3108,6 +3108,7 @@ public enum IPCMethods {
     public static let hostShortcutRecord = IPCMethod<ShortcutRecordParams, ShortcutRecordResult>(name: "host.shortcut.record", target: .host)
     public static let hostShortcutCheck = IPCMethod<ShortcutCheckParams, ShortcutCheckResult>(name: "host.shortcut.check", target: .host)
     public static let hostSystemOpenSettingsPane = IPCMethod<OpenSettingsPaneParams, Empty>(name: "host.system.openSettingsPane", target: .host)
+    public static let hostAppRelaunch = IPCMethod<Empty, Empty>(name: "host.app.relaunch", target: .host)
     public static let hostAssistantSetVisible = IPCMethod<AssistantVisibility, Empty>(name: "host.assistant.setVisible", target: .host)
     public static let hostAssistantState = IPCMethod<Empty, AssistantStateChanged>(name: "host.assistant.state", target: .host)
     public static let hostCursorPreview = IPCMethod<CursorPreviewParams, Empty>(name: "host.cursor.preview", target: .host)
@@ -3218,6 +3219,7 @@ public enum IPCMethods {
         "host.shortcut.record": .host,
         "host.shortcut.check": .host,
         "host.system.openSettingsPane": .host,
+        "host.app.relaunch": .host,
         "host.assistant.setVisible": .host,
         "host.assistant.state": .host,
         "host.cursor.preview": .host,

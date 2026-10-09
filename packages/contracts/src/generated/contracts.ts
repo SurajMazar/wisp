@@ -1618,6 +1618,7 @@ export const methods = {
   "host.shortcut.record": { target: "host", params: ShortcutRecordParams, result: ShortcutRecordResult },
   "host.shortcut.check": { target: "host", params: ShortcutCheckParams, result: ShortcutCheckResult },
   "host.system.openSettingsPane": { target: "host", params: OpenSettingsPaneParams, result: Empty },
+  "host.app.relaunch": { target: "host", params: Empty, result: Empty },
   "host.assistant.setVisible": { target: "host", params: AssistantVisibility, result: Empty },
   "host.assistant.state": { target: "host", params: Empty, result: AssistantStateChanged },
   "host.cursor.preview": { target: "host", params: CursorPreviewParams, result: Empty },

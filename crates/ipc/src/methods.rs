@@ -106,6 +106,8 @@ define_methods! {
     HostShortcutCheck = "host.shortcut.check", Host, ShortcutCheckParams => ShortcutCheckResult;
     /// Open a System Settings privacy pane.
     HostOpenSettingsPane = "host.system.openSettingsPane", Host, OpenSettingsPaneParams => Empty;
+    /// Quit and reopen Wisp (macOS applies some permissions only after a restart).
+    HostAppRelaunch = "host.app.relaunch", Host, Empty => Empty;
     /// Show or hide the floating assistant.
     HostAssistantSetVisible = "host.assistant.setVisible", Host, AssistantVisibility => Empty;
     /// Current assistant state and whether the panel is expanded.

@@ -2,6 +2,7 @@ import type { AccentColor } from "@wisp/contracts";
 import { StepDoneIcon, WispMark } from "@wisp/icons";
 import { Button, cn } from "@wisp/ui";
 import { useEffect, useState, type ReactNode } from "react";
+import { ipc } from "../../services/ipc";
 import { usePermissionsStore, type PermissionKind } from "../../stores/permissionsStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useVoiceStore } from "../../stores/voiceStore";
@@ -30,7 +31,7 @@ const permissionCopy: Record<PermissionKind, { title: string; why: string; how: 
   screenRecording: {
     title: "Let Wisp see what you point at",
     why: "When you select part of the screen, Wisp captures just that area so it can explain it. It never records continuously, and captures stay on this Mac.",
-    how: "macOS opens System Settings — turn Wisp on, then come back.",
+    how: "macOS opens System Settings — turn Wisp on, then restart Wisp.",
     button: "Allow Screen Access",
   },
   accessibility: {
@@ -57,11 +58,34 @@ export function OnboardingFlow() {
   const { settings, update } = useSettingsStore();
   const { states, check, request } = usePermissionsStore();
   const voice = useVoiceStore();
-  const [step, setStep] = useState<Step>("welcome");
+  // Remember the step: granting Screen Recording needs a restart, and setup should resume there.
+  const [step, setStepState] = useState<Step>(() => {
+    try {
+      const saved = localStorage.getItem("wisp.onboarding.step") as Step | null;
+      return saved && steps.includes(saved) ? saved : "welcome";
+    } catch {
+      return "welcome";
+    }
+  });
+  const [asked, setAsked] = useState<Step[]>([]);
+  const setStep = (s: Step) => {
+    setStepState(s);
+    try {
+      localStorage.setItem("wisp.onboarding.step", s);
+    } catch {
+      /* storage unavailable: setup just starts over */
+    }
+  };
   const index = steps.indexOf(step);
   const next = () => setStep(steps[Math.min(index + 1, steps.length - 1)] ?? "ready");
-  const finish = () =>
+  const finish = () => {
+    try {
+      localStorage.removeItem("wisp.onboarding.step");
+    } catch {
+      /* nothing to clear */
+    }
     void update({ section: "onboarding", value: { completed: true, completedAtMs: Date.now() } });
+  };
 
   const loadVoice = voice.load;
   useEffect(() => {
@@ -117,12 +141,29 @@ export function OnboardingFlow() {
                 Continue →
               </Button>
             ) : (
-              <Button variant="primary" onClick={() => void request(step).then(() => check())}>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setAsked((a) => [...a, step]);
+                  void request(step).then(() => check());
+                }}
+              >
                 {c.button}
               </Button>
             )}
+            {!granted && step !== "microphone" && asked.includes(step) && (
+              <Button
+                onClick={() =>
+                  void ipc()
+                    .call("host.app.relaunch")
+                    .catch(() => {})
+                }
+              >
+                Restart Wisp
+              </Button>
+            )}
             <Button variant="ghost" onClick={next}>
-              {granted ? "Back" : "Not now"}
+              {granted ? "Back" : "Skip for now"}
             </Button>
           </>
         }
@@ -131,6 +172,12 @@ export function OnboardingFlow() {
         <h1 className="text-xl font-semibold tracking-tight">{c.title}</h1>
         <p className="mt-3 text-md leading-relaxed text-text-muted">{c.why}</p>
         <p className="mt-2 text-sm text-text-faint">{c.how}</p>
+        {!granted && step !== "microphone" && asked.includes(step) && (
+          <p className="mt-3 rounded-[var(--radius-md)] border border-border bg-surface p-3 text-sm text-text-muted">
+            Already turned Wisp on in System Settings? macOS applies this only after Wisp restarts — choose{" "}
+            <b className="text-text">Restart Wisp</b> and setup will continue from here.
+          </p>
+        )}
         {granted && (
           <p role="status" className="mt-4 flex items-center gap-1.5 text-sm text-success">
             <StepDoneIcon size={15} /> Allowed
