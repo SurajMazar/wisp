@@ -74,11 +74,18 @@ export function OnboardingFlow() {
       return "welcome";
     }
   });
-  const [asked, setAsked] = useState<Step[]>([]);
+  const [restartedFor] = useState(() => {
+    try {
+      return localStorage.getItem("wisp.onboarding.restartedFor");
+    } catch {
+      return null;
+    }
+  });
   const setStep = (s: Step) => {
     setStepState(s);
     try {
       localStorage.setItem("wisp.onboarding.step", s);
+      localStorage.removeItem("wisp.onboarding.restartedFor");
     } catch {
       /* storage unavailable: setup just starts over */
     }
@@ -139,6 +146,10 @@ export function OnboardingFlow() {
   if (step === "microphone" || step === "screenRecording" || step === "accessibility") {
     const c = permissionCopy[step];
     const granted = states[step] === "enabled";
+    // Screen Recording applies only after a restart; Accessibility usually applies at once, but
+    // a restart is harmless and fixes the occasional stale grant.
+    const needsRestart = !granted && step !== "microphone";
+    const restartedAlready = restartedFor === step;
     return (
       <Frame
         footer={
@@ -148,30 +159,31 @@ export function OnboardingFlow() {
                 Continue →
               </Button>
             ) : (
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setAsked((a) => [...a, step]);
-                  void request(step).then(() => check());
-                }}
-              >
+              <Button variant="primary" onClick={() => void request(step).then(() => check())}>
                 {c.button}
               </Button>
             )}
-            {!granted && step !== "microphone" && asked.includes(step) && (
+            {needsRestart && (
               <Button
-                onClick={() =>
+                onClick={() => {
+                  try {
+                    localStorage.setItem("wisp.onboarding.restartedFor", step);
+                  } catch {
+                    /* the hint after restart is optional */
+                  }
                   void ipc()
                     .call("host.app.relaunch")
-                    .catch(() => {})
-                }
+                    .catch(() => {});
+                }}
               >
                 Restart Wisp
               </Button>
             )}
-            <Button variant="ghost" onClick={next}>
-              {granted ? "Back" : "Skip for now"}
-            </Button>
+            {!granted && (
+              <Button variant="ghost" onClick={next}>
+                Skip for now
+              </Button>
+            )}
           </>
         }
       >
@@ -179,10 +191,21 @@ export function OnboardingFlow() {
         <h1 className="text-xl font-semibold tracking-tight">{c.title}</h1>
         <p className="mt-3 text-md leading-relaxed text-text-muted">{c.why}</p>
         <p className="mt-2 text-sm text-text-faint">{c.how}</p>
-        {!granted && step !== "microphone" && asked.includes(step) && (
+        {needsRestart && !restartedAlready && (
           <p className="mt-3 rounded-[var(--radius-md)] border border-border bg-surface p-3 text-sm text-text-muted">
             Already turned Wisp on in System Settings? macOS applies this only after Wisp restarts — choose{" "}
             <b className="text-text">Restart Wisp</b> and setup will continue from here.
+          </p>
+        )}
+        {needsRestart && restartedAlready && (
+          <p
+            role="status"
+            className="mt-3 rounded-[var(--radius-md)] border border-border bg-surface p-3 text-sm text-text-muted"
+          >
+            Wisp restarted but macOS still says no. If Wisp is already switched on in System Settings, that
+            entry belongs to an older copy of Wisp. Select it, remove it with <b className="text-text">–</b>,
+            add <b className="text-text">/Applications/Wisp.app</b> again with <b className="text-text">+</b>,
+            then choose <b className="text-text">Restart Wisp</b>.
           </p>
         )}
         {granted && (
