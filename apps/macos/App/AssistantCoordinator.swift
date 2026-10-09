@@ -14,6 +14,8 @@ final class AssistantCoordinator {
     private let router: IPCRouter
     private let invocation: InvocationController
     let buddy = BuddyController()
+    /// Status capsule hanging from the notch.
+    let island = IslandController()
     let guidance = GuidanceOverlayController()
     private var panel: FloatingAssistantPanel?
     private(set) var state: AssistantState = .idle
@@ -24,6 +26,7 @@ final class AssistantCoordinator {
         self.router = router
         self.invocation = invocation
         guidance.onDismiss = { [weak self] _ in self?.buddy.stopPointing() }
+        island.onClick = { [weak self] in self?.expand() }
     }
 
     var isExpanded: Bool { panel?.isExpanded ?? false }
@@ -32,6 +35,7 @@ final class AssistantCoordinator {
 
     func apply(_ settings: CursorSettings) {
         buddy.apply(settings)
+        island.set(accent: BuddyTheme.color(for: settings.theme, custom: settings.customColor))
         guidance.tint = BuddyTheme.color(for: settings.theme, custom: settings.customColor)
     }
 
@@ -102,6 +106,7 @@ final class AssistantCoordinator {
         guard newState != state else { return }
         state = newState
         buddy.set(state: newState)
+        island.set(state: newState)
         publish()
     }
 

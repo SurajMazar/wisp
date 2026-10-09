@@ -21,6 +21,8 @@ final class VoiceCoordinator {
     var settleFocus: (() async -> Void)?
     /// The conversation a spoken question went to; its reply ends "Thinking…" by the pointer.
     private var awaiting: String?
+    /// The conversation whose answer is captioned in the island.
+    private var captionFor: String?
 
     init(router: IPCRouter, assistant: AssistantCoordinator) {
         self.router = router
@@ -29,12 +31,17 @@ final class VoiceCoordinator {
         capture.onChunk = { [weak router] session, seq, data in
             router?.sendToCore(IPCEvents.audioChunk, AudioChunk(pcm: data.base64EncodedString(), seq: seq, sessionId: session))
         }
-        capture.onLevel = { [weak router] level in
+        capture.onLevel = { [weak router, weak assistant] level in
+            assistant?.island.set(level: level)
             router?.broadcast(event: IPCEvents.voiceLevel.name, payload: .object(["level": .double(level)]))
         }
         player.onStart = { [weak assistant] _ in assistant?.set(state: .speaking) }
         player.onFinish = { [weak assistant] _ in
             if assistant?.state == .speaking { assistant?.set(state: .idle) }
+        }
+        router.subscribe(IPCEvents.conversationDelta) { [weak self] d in
+            guard let self, d.conversationId == self.captionFor else { return }
+            self.assistant.island.appendCaption(d.delta)
         }
         router.subscribe(IPCEvents.conversationMessageUpdated) { [weak self] message in
             self?.replyUpdated(message)
@@ -164,6 +171,8 @@ final class VoiceCoordinator {
                 // Answer out loud beside the pointer; the panel opens only when the user opens it
                 // (or when answers aren't spoken, since there'd be no other way to see it).
                 awaiting = sent.conversationId
+                captionFor = sent.conversationId
+                assistant.island.resetCaption()
                 if settings.speakAnswers == .never { assistant.expand() }
             } else if result.transcript == nil {
                 assistant.set(state: .idle)

@@ -311,3 +311,12 @@ becomes a lasso region, clicks a point, anything else the box around all marks. 
 capture, the strokes are burned into the captured image so the model sees what was marked. Voice waits (≤3 s) for
 that capture before sending, so the drawing is attached to what was said. The box/lasso/circle styles remain for the
 panel's Area button.
+
+## D-039 — Spoken questions stay out of the way: pointer + notch island, no panel
+**Status** accepted (2026-10-09)
+Asking out loud (with or without drawing) no longer opens the assistant panel. Status shows beside the pointer
+("Thinking…", "Speaking…") and in a Dynamic-Island-style capsule hanging from the notch (or the top edge of a
+display without one): live waveform while listening, a shimmer while thinking, and a two-line caption of the answer
+as it streams and is spoken. It folds back into the notch when idle; clicking it opens the panel. The panel still
+opens on its own for approvals and when spoken answers are turned off (otherwise the answer would be invisible).
+The capsule is a transparent, non-activating, capture-excluded window: clicks outside it reach the menu bar.
