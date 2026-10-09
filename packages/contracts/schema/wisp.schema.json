@@ -83,6 +83,15 @@
             "visibility": "always"
           }
         },
+        "focus": {
+          "$ref": "#/definitions/FocusSettings",
+          "default": {
+            "dimSurroundings": true,
+            "drawStyle": "rectangle",
+            "margin": 24,
+            "pointSize": 480
+          }
+        },
         "general": {
           "$ref": "#/definitions/GeneralSettings",
           "default": {
@@ -139,6 +148,29 @@
           "default": "system"
         }
       },
+      "type": "object"
+    },
+    "ApplicationInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "bundleId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "pid": {
+          "format": "int32",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "pid"
+      ],
       "type": "object"
     },
     "AssistantState": {
@@ -329,6 +361,45 @@
         }
       ]
     },
+    "DisplayInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "frame": {
+          "$ref": "#/definitions/Rect",
+          "description": "Display frame in global points (top-left origin)."
+        },
+        "id": {
+          "description": "`CGDirectDisplayID`.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "scale": {
+          "description": "Backing scale (2 on Retina).",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "frame",
+        "scale"
+      ],
+      "type": "object"
+    },
+    "DrawStyle": {
+      "description": "Default shape when dragging (spec §81 \"Focus Style\").",
+      "enum": [
+        "rectangle",
+        "lasso",
+        "circle"
+      ],
+      "type": "string"
+    },
     "Empty": {
       "additionalProperties": false,
       "description": "Parameters for methods that take none. Accepts `{}` or an absent/`null` params field.",
@@ -347,6 +418,220 @@
         "notFound"
       ],
       "type": "string"
+    },
+    "FocusEndReason": {
+      "enum": [
+        "cancelled",
+        "nothingSelected",
+        "permissionDenied",
+        "captureFailed"
+      ],
+      "type": "string"
+    },
+    "FocusEnded": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reason": {
+          "$ref": "#/definitions/FocusEndReason"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "type": "object"
+    },
+    "FocusImage": {
+      "additionalProperties": false,
+      "description": "A captured image of the focused area. Kept only in Wisp's cache; never logged.",
+      "properties": {
+        "heightPx": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "url": {
+          "description": "URL the UI can display (`wisp://focus/<id>.png`).",
+          "type": "string"
+        },
+        "widthPx": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "url",
+        "widthPx",
+        "heightPx"
+      ],
+      "type": "object"
+    },
+    "FocusKind": {
+      "oneOf": [
+        {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "point",
+          "description": "The area around a single clicked point.",
+          "type": "string"
+        },
+        {
+          "const": "lasso",
+          "description": "Freeform loop drawn around the target.",
+          "type": "string"
+        },
+        {
+          "const": "window",
+          "description": "The frontmost window under the pointer.",
+          "type": "string"
+        },
+        {
+          "const": "screen",
+          "description": "The whole display under the pointer.",
+          "type": "string"
+        }
+      ]
+    },
+    "FocusRegion": {
+      "additionalProperties": false,
+      "description": "What the user pointed the assistant at (spec §34).",
+      "properties": {
+        "application": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ApplicationInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "createdAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "crop": {
+          "$ref": "#/definitions/Rect",
+          "description": "What was captured: the selection plus margin, clipped to the display, global points."
+        },
+        "cursor": {
+          "$ref": "#/definitions/Point"
+        },
+        "display": {
+          "$ref": "#/definitions/DisplayInfo"
+        },
+        "id": {
+          "type": "string"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FocusImage"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "$ref": "#/definitions/FocusKind"
+        },
+        "path": {
+          "description": "Lasso path or clicked point, global points.",
+          "items": {
+            "$ref": "#/definitions/Point"
+          },
+          "type": "array"
+        },
+        "selection": {
+          "$ref": "#/definitions/Rect",
+          "description": "What the user selected, global points."
+        },
+        "window": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/WindowInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "display",
+        "selection",
+        "crop",
+        "cursor",
+        "createdAtMs"
+      ],
+      "type": "object"
+    },
+    "FocusSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "dimSurroundings": {
+          "default": true,
+          "description": "Dim everything outside the selection while drawing.",
+          "type": "boolean"
+        },
+        "drawStyle": {
+          "$ref": "#/definitions/DrawStyle",
+          "default": "rectangle"
+        },
+        "margin": {
+          "default": 24,
+          "description": "Context kept around a selection, in points (0–200).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pointSize": {
+          "default": 480,
+          "description": "Side of the square captured around a point focus, in points (120–1200).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "FocusStartParams": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/FocusKind"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "FocusStarted": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/FocusKind"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
     },
     "GeneralSettings": {
       "additionalProperties": false,
@@ -557,6 +842,22 @@
       ],
       "type": "object"
     },
+    "LatestFocus": {
+      "additionalProperties": false,
+      "properties": {
+        "region": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FocusRegion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
     "Modifier": {
       "description": "Modifier keys, in canonical display order (⌃ ⌥ ⇧ ⌘ fn).",
       "enum": [
@@ -607,6 +908,31 @@
       ],
       "type": "object"
     },
+    "PermissionState": {
+      "enum": [
+        "enabled",
+        "needsAttention",
+        "notRequested"
+      ],
+      "type": "string"
+    },
+    "Point": {
+      "properties": {
+        "x": {
+          "format": "double",
+          "type": "number"
+        },
+        "y": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "type": "object"
+    },
     "PrivacyMode": {
       "description": "Spec §14.",
       "oneOf": [
@@ -635,6 +961,45 @@
           "default": "localOnly"
         }
       },
+      "type": "object"
+    },
+    "Rect": {
+      "properties": {
+        "height": {
+          "format": "double",
+          "type": "number"
+        },
+        "width": {
+          "format": "double",
+          "type": "number"
+        },
+        "x": {
+          "format": "double",
+          "type": "number"
+        },
+        "y": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "type": "object"
+    },
+    "ScreenPermissionStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "screenRecording": {
+          "$ref": "#/definitions/PermissionState"
+        }
+      },
+      "required": [
+        "screenRecording"
+      ],
       "type": "object"
     },
     "SettingsPane": {
@@ -741,6 +1106,22 @@
             },
             "value": {
               "$ref": "#/definitions/CursorSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "focus",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/FocusSettings"
             }
           },
           "required": [
@@ -881,6 +1262,30 @@
         "dark"
       ],
       "type": "string"
+    },
+    "WindowInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "frame": {
+          "$ref": "#/definitions/Rect"
+        },
+        "id": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "frame"
+      ],
+      "type": "object"
     }
   },
   "error": {
@@ -921,6 +1326,30 @@
       "name": "assistant.stateChanged",
       "payload": {
         "$ref": "#/definitions/AssistantStateChanged"
+      }
+    },
+    {
+      "name": "focus.started",
+      "payload": {
+        "$ref": "#/definitions/FocusStarted"
+      }
+    },
+    {
+      "name": "focus.completed",
+      "payload": {
+        "$ref": "#/definitions/FocusRegion"
+      }
+    },
+    {
+      "name": "focus.ended",
+      "payload": {
+        "$ref": "#/definitions/FocusEnded"
+      }
+    },
+    {
+      "name": "focus.cleared",
+      "payload": {
+        "$ref": "#/definitions/Empty"
       }
     }
   ],
@@ -1024,6 +1453,66 @@
         "$ref": "#/definitions/Empty"
       },
       "target": "host"
+    },
+    {
+      "name": "host.focus.start",
+      "params": {
+        "$ref": "#/definitions/FocusStartParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.focus.cancel",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.focus.clear",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.screen.permission",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/ScreenPermissionStatus"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.screen.requestPermission",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/ScreenPermissionStatus"
+      },
+      "target": "host"
+    },
+    {
+      "name": "focus.latest",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/LatestFocus"
+      },
+      "target": "core"
     }
   ],
   "protocolVersion": 1

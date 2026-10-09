@@ -55,5 +55,22 @@ Prerequisite: run `scripts/development/create-signing-identity.sh` once, then re
 - [ ] Screenshot (⌘⇧4) near the buddy: the buddy is not in the image.
 - [ ] Activity Monitor: Wisp CPU stays low (≈0–1%) while the pointer rests.
 
+## Phase 4 — Screen capture & focus
+Prerequisite: Screen Recording for Wisp (Settings → Screen & focus → Allow…, or the panel's "Allow Screen Access").
+
+- [ ] First focus without permission: the panel explains and "Allow Screen Access" opens the right System Settings pane.
+- [ ] Hold ⌥⌘, drag a box around something on the **primary** display, release the mouse: the rest of the screen dims while dragging, a "Focused" label flashes, and the panel opens showing a thumbnail of exactly that area (plus a little margin).
+- [ ] Same on a **secondary** display (if available), including one positioned left of / above the primary.
+- [ ] Thumbnail pixel size equals the point size × 2 on Retina (shown under the thumbnail).
+- [ ] Hold ⌥⌘ and release without dragging: no capture, overlay disappears immediately.
+- [ ] Hold ⌥⌘ and click once: a point focus (square area around the click).
+- [ ] Settings → Screen & focus → Lasso: draw a loop; Circle: drag an ellipse. Both capture their bounding area.
+- [ ] Panel → Window: captures the window under the pointer (not Wisp's own). Panel → Screen: whole display.
+- [ ] Esc during selection cancels; no dimming or outline remains anywhere, on any display.
+- [ ] Unplug/rearrange a display during selection: the overlay disappears.
+- [ ] The captured image never contains the buddy, the overlay, or the panel.
+- [ ] Clear removes the card; the PNG is gone from `~/Library/Application Support/Wisp/cache/focus`.
+- [ ] No screen-recording indicator stays on: capture happens once per selection, never continuously.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

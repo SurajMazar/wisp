@@ -173,3 +173,41 @@ fn host_invocation_events_are_recorded_and_junk_is_not() {
     assert_eq!(db.count_events("invocation.started").expect("count"), 1);
     assert_eq!(db.count_events("made.up").expect("count"), 0);
 }
+
+#[test]
+fn focus_regions_are_validated_kept_in_memory_and_logged_without_pixels() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut p = Proc::spawn(dir.path());
+    let id = "0199c2a8-0000-7000-8000-000000000001";
+    let region = json!({
+        "id": id, "kind": "rectangle",
+        "display": {"id": 1, "name": "Built-in", "frame": {"x":0,"y":0,"width":1512,"height":982}, "scale": 2.0},
+        "selection": {"x":100,"y":100,"width":200,"height":100},
+        "crop": {"x":76,"y":76,"width":248,"height":148},
+        "cursor": {"x":300,"y":200},
+        "image": {"url": format!("wisp://focus/{id}.png"), "widthPx": 496, "heightPx": 296},
+        "createdAtMs": 1
+    });
+    p.send_raw(
+        &json!({"kind":"event","v":1,"event":"focus.completed","payload": region}).to_string(),
+    );
+    let latest = p.call("1", "focus.latest", Value::Null);
+    assert_eq!(latest["result"]["region"]["id"], id, "{latest}");
+
+    // An inconsistent region (1x pixels on a 2x display) is rejected and doesn't replace it.
+    let mut bad = region.clone();
+    bad["id"] = json!("0199c2a8-0000-7000-8000-000000000002");
+    bad["image"]["widthPx"] = json!(248);
+    p.send_raw(&json!({"kind":"event","v":1,"event":"focus.completed","payload": bad}).to_string());
+    let latest = p.call("2", "focus.latest", Value::Null);
+    assert_eq!(latest["result"]["region"]["id"], id);
+
+    p.send_raw(&json!({"kind":"event","v":1,"event":"focus.cleared","payload": {}}).to_string());
+    let latest = p.call("3", "focus.latest", Value::Null);
+    assert!(latest["result"]["region"].is_null());
+    p.shutdown();
+
+    let db =
+        wisp_database::Database::open(&dir.path().join("database/wisp.sqlite3")).expect("open db");
+    assert_eq!(db.count_events("focus.completed").expect("count"), 1);
+}

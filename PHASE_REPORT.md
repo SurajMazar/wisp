@@ -192,3 +192,44 @@ PENDING — automated portion passes; manual checklist (Phase 3) must be run on 
 - `pnpm validate` → ✓ all validation passed
 - Launched debug app: screenshot shows the buddy rendered 38 pt below-right of the pointer and following
   it live while the Mac was in normal use (captured with `WISP_BUDDY_CAPTURABLE=1`).
+
+---
+
+# Phase 4 Report
+
+## Objective
+Let the user tell the AI exactly what to look at, with trustworthy coordinates on any display.
+
+## Implemented
+- Contracts: `FocusSettings` section, `FocusRegion` (+ display, app, window, image), focus events
+  (`started/completed/ended/cleared`), host methods (`focus.start/cancel/clear`, screen permission), core `focus.latest`
+- Rust `wisp-screen`: region validation (inside display, crop ⊇ selection, plausible scale, image pixels =
+  crop × scale ±2, URL shape, path presence); core keeps the latest valid region in memory, logs metadata only
+- Swift: `FocusGeometry` (AppKit↔CG conversion, crop/margin, point region, local rects, pixel sizes),
+  `Displays`, `ScreenPermission`, `ScreenCapturer` (SCScreenshotManager, self-exclusion, PNG save + prune),
+  `WindowLocator`, `FocusOverlayView/Controller` (per-display panels, rect/lasso/circle/point, dimming,
+  "Focused" label, teardown on every path), `FocusCoordinator` (hold flow, panel flow, permission, region
+  assembly), `wisp://focus` scheme root (PNG-only)
+- React: focus store, panel `FocusCard` + `FocusActions`, permission banner, Settings → Screen & focus
+
+## Tests Added
+- Rust: region validation accept/reject cases; stdio: valid region kept, inconsistent region rejected, clear, metadata-only log
+- Swift: coordinate round-trips incl. negative-y displays, drag rects, margin clipping, point region shifting,
+  local rect + Retina pixels, click vs drag, focus scheme confinement, **real ScreenCaptureKit capture of a
+  known target (exact pixel size, center/edge/inset colors prove no offset)**
+- React: panel starts each focus kind, card shows thumbnail/size/display/window/pixels, clear, permission guidance
+
+## Tests Passed
+- `pnpm validate` → all passed (31 Rust, 23 TS, 42 Swift)
+
+## Known Limitations
+- Secondary-display capture is covered by geometry tests; real-hardware verification needs a second display (manual).
+- Window titles require Screen Recording permission (macOS policy); without it only the app name is known.
+- Lasso and circle capture their bounding box (the exact shape is kept in `path` for later masking).
+
+## Stop Gate
+PENDING — automated portion passes, including real capture on the primary Retina display; manual checklist (Phase 4) remains.
+
+## Evidence
+- `scripts/development/swiftpm.sh test --filter ScreenCaptureIntegrationTests` → passed (not skipped) on the M1 Pro Retina display
+- `pnpm validate` → ✓ all validation passed

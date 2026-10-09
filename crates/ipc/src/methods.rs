@@ -8,7 +8,7 @@
 use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
-use crate::types::{app::*, cursor::*, invocation::*, settings::*};
+use crate::types::{app::*, cursor::*, focus::*, invocation::*, settings::*};
 
 /// Which side implements a method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -108,6 +108,19 @@ define_methods! {
     HostAssistantState = "host.assistant.state", Host, Empty => AssistantStateChanged;
     /// Play states on the real buddy (theme preview in Settings).
     HostCursorPreview = "host.cursor.preview", Host, CursorPreviewParams => Empty;
+    /// Begin a focus selection (draw, point, window or screen).
+    HostFocusStart = "host.focus.start", Host, FocusStartParams => Empty;
+    /// Cancel an in-progress selection and remove the overlay.
+    HostFocusCancel = "host.focus.cancel", Host, Empty => Empty;
+    /// Forget the current focus region (and delete its image).
+    HostFocusClear = "host.focus.clear", Host, Empty => Empty;
+    /// Screen Recording permission as macOS reports it.
+    HostScreenPermission = "host.screen.permission", Host, Empty => ScreenPermissionStatus;
+    /// Ask macOS for Screen Recording permission (shows the system prompt once).
+    HostScreenRequestPermission = "host.screen.requestPermission", Host, Empty => ScreenPermissionStatus;
+
+    /// The most recent focus region the core accepted.
+    FocusLatest = "focus.latest", Core, Empty => LatestFocus;
 }
 
 define_events! {
@@ -123,6 +136,14 @@ define_events! {
     InvocationStatusChanged = "invocation.statusChanged", InvocationStatus;
     /// The assistant changed state or the panel expanded/collapsed.
     AssistantStateChangedEvent = "assistant.stateChanged", AssistantStateChanged;
+    /// A focus selection began.
+    FocusStartedEvent = "focus.started", FocusStarted;
+    /// A focus region was captured and validated.
+    FocusCompleted = "focus.completed", FocusRegion;
+    /// A selection ended without a region (cancelled, nothing selected, permission, failure).
+    FocusEndedEvent = "focus.ended", FocusEnded;
+    /// The current focus region was cleared.
+    FocusCleared = "focus.cleared", Empty;
 }
 
 #[cfg(test)]

@@ -11,6 +11,11 @@ public enum AppPaths {
         return base.appendingPathComponent("Wisp", isDirectory: true)
     }
 
+    /// Focus captures (PNG). Pruned to the most recent few; never synced or logged.
+    public static var focusCacheDirectory: URL {
+        dataDirectory.appendingPathComponent("cache/focus", isDirectory: true)
+    }
+
     /// The `wisp-core` executable: `WISP_CORE_BIN`, else next to the host executable.
     public static var coreExecutable: URL {
         if let override = ProcessInfo.processInfo.environment["WISP_CORE_BIN"], !override.isEmpty {

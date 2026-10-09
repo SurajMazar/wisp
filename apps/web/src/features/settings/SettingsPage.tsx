@@ -4,6 +4,7 @@ import { useConnectionStore } from "../../stores/connectionStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { accents } from "./accents";
 import { CursorSettingsGroup } from "./CursorSettingsGroup";
+import { FocusSettingsGroup } from "./FocusSettingsGroup";
 import { InvocationSettingsGroup } from "./InvocationSettingsGroup";
 
 const privacyHints: Record<PrivacyMode, string> = {
@@ -39,7 +40,7 @@ export function SettingsPage() {
     );
   }
 
-  const { general, appearance, privacy, invocation, cursor } = settings;
+  const { general, appearance, privacy, invocation, cursor, focus } = settings;
 
   return (
     <>
@@ -71,6 +72,8 @@ export function SettingsPage() {
       <InvocationSettingsGroup invocation={invocation} />
 
       <CursorSettingsGroup cursor={cursor} />
+
+      <FocusSettingsGroup focus={focus} />
 
       <SettingsGroup title="Appearance">
         <SettingsRow

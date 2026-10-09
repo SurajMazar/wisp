@@ -102,3 +102,19 @@ holds still when the pointer reaches for it slowly (<320 pt/s) so it can be clic
 movement. It drops to 10 Hz polling when the pointer rests. It is excluded from screen capture
 (`sharingType = .none`) so Wisp never sees itself in screenshots; `WISP_BUDDY_CAPTURABLE=1` overrides
 this for verification and demos.
+
+## D-020 — Focus interaction and capture policy
+**Status** accepted
+* **Hold the shortcut, then drag** draws the configured shape (rectangle default, lasso, circle); a
+  **click** focuses a point (a square of `pointSize` around it, shifted to stay on screen). Releasing the
+  shortcut **without drawing captures nothing** — summoning alone never takes a screenshot.
+* The assistant panel offers Area / Point / Window / Screen buttons, so focus works without the
+  Accessibility permission the global shortcut needs.
+* One capture per completed selection via `SCScreenshotManager` at the display's native scale, with
+  Wisp's own windows excluded. The crop is the selection plus a configurable margin, snapped to whole
+  points and clipped to the display, so pixel size is exactly `crop × scale`.
+* Captures are PNGs in `<data>/cache/focus`, pruned to the 12 most recent, served to the UI only via
+  `wisp://focus/<uuid>.png` (PNG-only, confined). The core keeps the latest region **in memory** and logs
+  metadata only (kind, display, size) — never pixels.
+* The overlay is one non-activating panel per display above the menu bar, excluded from capture, and
+  torn down on every exit path (finish, Esc, display change, 60 s timeout, 2 s post-finish safety).

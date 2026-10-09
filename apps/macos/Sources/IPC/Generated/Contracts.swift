@@ -91,6 +91,27 @@ public struct CursorSettings: Codable, Sendable, Equatable {
     }
 }
 
+/// Default shape when dragging (spec §81 "Focus Style").
+public enum DrawStyle: String, Codable, Sendable, Equatable, CaseIterable {
+    case rectangle = "rectangle"
+    case lasso = "lasso"
+    case circle = "circle"
+}
+
+public struct FocusSettings: Codable, Sendable, Equatable {
+    public var dimSurroundings: Bool
+    public var drawStyle: DrawStyle
+    public var margin: UInt32
+    public var pointSize: UInt32
+
+    public init(dimSurroundings: Bool, drawStyle: DrawStyle, margin: UInt32, pointSize: UInt32) {
+        self.dimSurroundings = dimSurroundings
+        self.drawStyle = drawStyle
+        self.margin = margin
+        self.pointSize = pointSize
+    }
+}
+
 public struct GeneralSettings: Codable, Sendable, Equatable {
     public var launchAtLogin: Bool
     public var showMenuBarIcon: Bool
@@ -190,18 +211,32 @@ public struct PrivacySettings: Codable, Sendable, Equatable {
 public struct AppSettings: Codable, Sendable, Equatable {
     public var appearance: AppearanceSettings
     public var cursor: CursorSettings
+    public var focus: FocusSettings
     public var general: GeneralSettings
     public var invocation: InvocationSettings
     public var onboarding: OnboardingSettings
     public var privacy: PrivacySettings
 
-    public init(appearance: AppearanceSettings, cursor: CursorSettings, general: GeneralSettings, invocation: InvocationSettings, onboarding: OnboardingSettings, privacy: PrivacySettings) {
+    public init(appearance: AppearanceSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, onboarding: OnboardingSettings, privacy: PrivacySettings) {
         self.appearance = appearance
         self.cursor = cursor
+        self.focus = focus
         self.general = general
         self.invocation = invocation
         self.onboarding = onboarding
         self.privacy = privacy
+    }
+}
+
+public struct ApplicationInfo: Codable, Sendable, Equatable {
+    public var bundleId: String?
+    public var name: String
+    public var pid: Int
+
+    public init(bundleId: String? = nil, name: String, pid: Int) {
+        self.bundleId = bundleId
+        self.name = name
+        self.pid = pid
     }
 }
 
@@ -276,6 +311,34 @@ public struct CursorPreviewParams: Codable, Sendable, Equatable {
     }
 }
 
+public struct Rect: Codable, Sendable, Equatable {
+    public var height: Double
+    public var width: Double
+    public var x: Double
+    public var y: Double
+
+    public init(height: Double, width: Double, x: Double, y: Double) {
+        self.height = height
+        self.width = width
+        self.x = x
+        self.y = y
+    }
+}
+
+public struct DisplayInfo: Codable, Sendable, Equatable {
+    public var frame: Rect
+    public var id: UInt32
+    public var name: String
+    public var scale: Double
+
+    public init(frame: Rect, id: UInt32, name: String, scale: Double) {
+        self.frame = frame
+        self.id = id
+        self.name = name
+        self.scale = scale
+    }
+}
+
 /// Parameters for methods that take none. Accepts `{}` or an absent/`null` params field.
 public struct Empty: Codable, Sendable, Equatable {
 
@@ -295,6 +358,112 @@ public enum ErrorCode: String, Codable, Sendable, Equatable, CaseIterable {
     case cancelled = "cancelled"
     case timeout = "timeout"
     case notFound = "notFound"
+}
+
+public enum FocusEndReason: String, Codable, Sendable, Equatable, CaseIterable {
+    case cancelled = "cancelled"
+    case nothingSelected = "nothingSelected"
+    case permissionDenied = "permissionDenied"
+    case captureFailed = "captureFailed"
+}
+
+public struct FocusEnded: Codable, Sendable, Equatable {
+    public var detail: String?
+    public var reason: FocusEndReason
+
+    public init(detail: String? = nil, reason: FocusEndReason) {
+        self.detail = detail
+        self.reason = reason
+    }
+}
+
+/// A captured image of the focused area. Kept only in Wisp's cache; never logged.
+public struct FocusImage: Codable, Sendable, Equatable {
+    public var heightPx: UInt32
+    public var url: String
+    public var widthPx: UInt32
+
+    public init(heightPx: UInt32, url: String, widthPx: UInt32) {
+        self.heightPx = heightPx
+        self.url = url
+        self.widthPx = widthPx
+    }
+}
+
+public enum FocusKind: String, Codable, Sendable, Equatable, CaseIterable {
+    case rectangle = "rectangle"
+    case circle = "circle"
+    case point = "point"
+    case lasso = "lasso"
+    case window = "window"
+    case screen = "screen"
+}
+
+public struct Point: Codable, Sendable, Equatable {
+    public var x: Double
+    public var y: Double
+
+    public init(x: Double, y: Double) {
+        self.x = x
+        self.y = y
+    }
+}
+
+public struct WindowInfo: Codable, Sendable, Equatable {
+    public var frame: Rect
+    public var id: UInt32
+    public var title: String?
+
+    public init(frame: Rect, id: UInt32, title: String? = nil) {
+        self.frame = frame
+        self.id = id
+        self.title = title
+    }
+}
+
+/// What the user pointed the assistant at (spec §34).
+public struct FocusRegion: Codable, Sendable, Equatable {
+    public var application: ApplicationInfo?
+    public var createdAtMs: Int64
+    public var crop: Rect
+    public var cursor: Point
+    public var display: DisplayInfo
+    public var id: String
+    public var image: FocusImage?
+    public var kind: FocusKind
+    public var path: [Point]?
+    public var selection: Rect
+    public var window: WindowInfo?
+
+    public init(application: ApplicationInfo? = nil, createdAtMs: Int64, crop: Rect, cursor: Point, display: DisplayInfo, id: String, image: FocusImage? = nil, kind: FocusKind, path: [Point]? = nil, selection: Rect, window: WindowInfo? = nil) {
+        self.application = application
+        self.createdAtMs = createdAtMs
+        self.crop = crop
+        self.cursor = cursor
+        self.display = display
+        self.id = id
+        self.image = image
+        self.kind = kind
+        self.path = path
+        self.selection = selection
+        self.window = window
+    }
+}
+
+public struct FocusStartParams: Codable, Sendable, Equatable {
+    public var kind: FocusKind
+
+    public init(kind: FocusKind) {
+        self.kind = kind
+    }
+}
+
+public struct FocusStarted: Codable, Sendable, Equatable {
+    public var kind: FocusKind
+
+    public init(kind: FocusKind) {
+        self.kind = kind
+    }
 }
 
 public enum InvocationEndReason: String, Codable, Sendable, Equatable, CaseIterable {
@@ -358,6 +527,14 @@ public struct IpcError: Codable, Sendable, Equatable {
     }
 }
 
+public struct LatestFocus: Codable, Sendable, Equatable {
+    public var region: FocusRegion?
+
+    public init(region: FocusRegion? = nil) {
+        self.region = region
+    }
+}
+
 /// System Settings panes Wisp may open for the user.
 public enum SettingsPane: String, Codable, Sendable, Equatable, CaseIterable {
     case accessibility = "accessibility"
@@ -377,6 +554,20 @@ public struct OpenSettingsPaneParams: Codable, Sendable, Equatable {
     }
 }
 
+public enum PermissionState: String, Codable, Sendable, Equatable, CaseIterable {
+    case enabled = "enabled"
+    case needsAttention = "needsAttention"
+    case notRequested = "notRequested"
+}
+
+public struct ScreenPermissionStatus: Codable, Sendable, Equatable {
+    public var screenRecording: PermissionState
+
+    public init(screenRecording: PermissionState) {
+        self.screenRecording = screenRecording
+    }
+}
+
 /// One section replaced atomically.
 public enum SettingsSection: Codable, Sendable, Equatable {
     case general(GeneralSettings)
@@ -385,6 +576,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
     case onboarding(OnboardingSettings)
     case invocation(InvocationSettings)
     case cursor(CursorSettings)
+    case focus(FocusSettings)
 
     private enum CodingKeys: String, CodingKey {
         case tag = "section"
@@ -401,6 +593,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
         case "onboarding": self = .onboarding(try c.decode(OnboardingSettings.self, forKey: .content))
         case "invocation": self = .invocation(try c.decode(InvocationSettings.self, forKey: .content))
         case "cursor": self = .cursor(try c.decode(CursorSettings.self, forKey: .content))
+        case "focus": self = .focus(try c.decode(FocusSettings.self, forKey: .content))
         default:
             throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown SettingsSection variant \(tag)")
         }
@@ -426,6 +619,9 @@ public enum SettingsSection: Codable, Sendable, Equatable {
             try c.encode(v, forKey: .content)
         case .cursor(let v):
             try c.encode("cursor", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .focus(let v):
+            try c.encode("focus", forKey: .tag)
             try c.encode(v, forKey: .content)
         }
     }
@@ -494,6 +690,12 @@ public enum IPCMethods {
     public static let hostAssistantSetVisible = IPCMethod<AssistantVisibility, Empty>(name: "host.assistant.setVisible", target: .host)
     public static let hostAssistantState = IPCMethod<Empty, AssistantStateChanged>(name: "host.assistant.state", target: .host)
     public static let hostCursorPreview = IPCMethod<CursorPreviewParams, Empty>(name: "host.cursor.preview", target: .host)
+    public static let hostFocusStart = IPCMethod<FocusStartParams, Empty>(name: "host.focus.start", target: .host)
+    public static let hostFocusCancel = IPCMethod<Empty, Empty>(name: "host.focus.cancel", target: .host)
+    public static let hostFocusClear = IPCMethod<Empty, Empty>(name: "host.focus.clear", target: .host)
+    public static let hostScreenPermission = IPCMethod<Empty, ScreenPermissionStatus>(name: "host.screen.permission", target: .host)
+    public static let hostScreenRequestPermission = IPCMethod<Empty, ScreenPermissionStatus>(name: "host.screen.requestPermission", target: .host)
+    public static let focusLatest = IPCMethod<Empty, LatestFocus>(name: "focus.latest", target: .core)
 
     /// Every known method and which side implements it. Used to route and reject unknown methods.
     public static let targets: [String: IPCTarget] = [
@@ -507,6 +709,12 @@ public enum IPCMethods {
         "host.assistant.setVisible": .host,
         "host.assistant.state": .host,
         "host.cursor.preview": .host,
+        "host.focus.start": .host,
+        "host.focus.cancel": .host,
+        "host.focus.clear": .host,
+        "host.screen.permission": .host,
+        "host.screen.requestPermission": .host,
+        "focus.latest": .core,
     ]
 }
 
@@ -517,4 +725,8 @@ public enum IPCEvents {
     public static let invocationEnded = IPCEvent<InvocationEnded>(name: "invocation.ended")
     public static let invocationStatusChanged = IPCEvent<InvocationStatus>(name: "invocation.statusChanged")
     public static let assistantStateChanged = IPCEvent<AssistantStateChanged>(name: "assistant.stateChanged")
+    public static let focusStarted = IPCEvent<FocusStarted>(name: "focus.started")
+    public static let focusCompleted = IPCEvent<FocusRegion>(name: "focus.completed")
+    public static let focusEnded = IPCEvent<FocusEnded>(name: "focus.ended")
+    public static let focusCleared = IPCEvent<Empty>(name: "focus.cleared")
 }

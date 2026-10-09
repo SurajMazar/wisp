@@ -3,6 +3,9 @@ import { WispMark } from "@wisp/icons";
 import { Button } from "@wisp/ui";
 import { useEffect } from "react";
 import { useAssistantStore } from "../../stores/assistantStore";
+import { useFocusStore } from "../../stores/focusStore";
+import { FocusActions } from "./FocusActions";
+import { FocusCard } from "./FocusCard";
 
 const stateText: Record<AssistantState, string> = {
   idle: "Ready",
@@ -22,6 +25,7 @@ const stateText: Record<AssistantState, string> = {
 /** Content of the floating assistant that expands out of the buddy (spec §91). */
 export function AssistantPanel() {
   const { state, dismiss } = useAssistantStore();
+  const region = useFocusStore((s) => s.region);
 
   useEffect(() => {
     document.documentElement.dataset.surface = "panel";
@@ -42,11 +46,15 @@ export function AssistantPanel() {
         </span>
       </header>
 
-      <div className="flex flex-1 flex-col justify-center">
-        <p className="text-lg font-medium tracking-tight">What can I help with?</p>
-        <p className="mt-1 text-text-muted">
-          Asking questions becomes available once an AI model is connected.
-        </p>
+      <div className="flex flex-1 flex-col justify-center gap-3">
+        <div>
+          <p className="text-lg font-medium tracking-tight">What can I help with?</p>
+          <p className="mt-0.5 text-sm text-text-muted">
+            Hold your shortcut and drag around something, or choose what to focus on.
+          </p>
+        </div>
+        {region && <FocusCard region={region} />}
+        <FocusActions />
       </div>
 
       <footer className="flex items-center justify-between text-sm text-text-faint">

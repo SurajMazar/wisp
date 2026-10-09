@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Phase
-Phase 3 — Assistant Shell & Cursor (implemented; **waiting on manual stop gates 2 and 3**)
+Phase 4 — Screen Capture & Focus (implemented; **waiting on manual stop gates 2, 3 and 4**)
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +18,13 @@ Phase 3 — Assistant Shell & Cursor (implemented; **waiting on manual stop gate
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- Phase 4 implemented and automatically tested; manual checklist pending (Phase 4 section):
+  - Hold ⌥⌘ + drag (rectangle / lasso / circle) or click a point; panel buttons for area, point, window, screen
+  - Per-display overlay: dims surroundings, "Focused" confirmation, guaranteed teardown, excluded from capture
+  - ScreenCaptureKit one-shot capture at native scale, Wisp excluded; margin + clipping; PNG cache pruned to 12
+  - FocusRegion with display, selection, crop, path, cursor, app, window; validated in Rust, kept in memory only
+  - Panel focus card with thumbnail via `wisp://focus/…`; Screen Recording permission guidance
+  - **Verified automatically on real hardware:** capture of a known on-screen target is exactly crop × scale pixels with no offset
 - Phase 3 implemented and automatically tested; manual checklist pending (docs/release/manual-checklist.md → Phase 3):
   - Buddy beside the pointer on every display (spring follow, edge flipping, approach-hold so it can be clicked)
   - Click the buddy → assistant panel expands out of it; Esc / Close / click-away collapses it (D-019)
@@ -44,7 +51,7 @@ Phase 3 — Assistant Shell & Cursor (implemented; **waiting on manual stop gate
   - No code-signing identity yet → TCC permissions reset on every rebuild until `scripts/development/create-signing-identity.sh` is run (needed from Phase 2 onward).
 
 ## Failed Tests
-- None. `pnpm validate` passes: 28 Rust, 19 TS, 34 Swift tests; lint/format/typecheck/architecture clean.
+- None. `pnpm validate` passes: 31 Rust, 23 TS, 42 Swift tests; lint/format/typecheck/architecture clean.
 
 ## Known Issues
 - Phase 1 manual UI checklist (docs/release/manual-checklist.md) not yet run by a person; launch and React→Swift→Rust IPC were verified from logs of a real app launch.
@@ -52,6 +59,7 @@ Phase 3 — Assistant Shell & Cursor (implemented; **waiting on manual stop gate
 - Model manifests are empty until Phase 8 (entries require verified checksums).
 
 ## Next Stop Gate
+- **Gate 4 (manual):** primary + secondary display focus, Retina crop, no shift, overlay removal, no continuous capture. Checklist: Phase 4 section.
 - **Gate 3 (manual):** slow/fast movement, screen edges, two displays, resolution change, theme change, Reduce Motion, click-to-expand. Checklist: docs/release/manual-checklist.md (Phase 3).
 - **Gate 2 (manual, needs a person):** ⌘⌥ works globally; shortcut change survives restart; hold and toggle modes; menu bar invocation; conflicting shortcuts handled. Checklist: docs/release/manual-checklist.md (Phase 1 + Phase 2 sections).
 

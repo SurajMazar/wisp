@@ -244,7 +244,8 @@ public final class BuddyController {
         p.isOpaque = false
         p.backgroundColor = .clear
         p.hasShadow = false
-        p.level = .statusBar
+        // Above the focus overlay (.popUpMenu) so the buddy stays visible while selecting.
+        p.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue + 1)
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         p.ignoresMouseEvents = !clickable
         p.hidesOnDeactivate = false

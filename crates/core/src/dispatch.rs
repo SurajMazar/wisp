@@ -1,14 +1,17 @@
 //! Method dispatch: decode typed params, run the handler, encode the typed result.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
 use wisp_common::paths::DataPaths;
 use wisp_database::Database;
 use wisp_ipc::{
     IpcError, Method,
-    methods::{AppInfoMethod, SettingsChanged, SettingsGet, SettingsUpdate},
-    types::app::AppInfo,
+    methods::{AppInfoMethod, FocusLatest, SettingsChanged, SettingsGet, SettingsUpdate},
+    types::{
+        app::AppInfo,
+        focus::{FocusRegion, LatestFocus},
+    },
 };
 
 use crate::events::EventBus;
@@ -23,6 +26,8 @@ struct Inner {
     db: Database,
     events: EventBus,
     info: AppInfo,
+    /// The region the user last focused. In memory only: pixels never reach the database.
+    latest_focus: Mutex<Option<FocusRegion>>,
 }
 
 impl Core {
@@ -38,7 +43,12 @@ impl Core {
             started_at_ms: wisp_common::time::now_ms(),
         };
         Ok(Self {
-            inner: Arc::new(Inner { db, events, info }),
+            inner: Arc::new(Inner {
+                db,
+                events,
+                info,
+                latest_focus: Mutex::new(None),
+            }),
         })
     }
 
@@ -77,37 +87,82 @@ impl Core {
                 })
                 .await
             }
+            FocusLatest::NAME => {
+                self.call::<FocusLatest, _, _>(params, |c, _| async move {
+                    Ok(LatestFocus {
+                        region: c.latest_focus(),
+                    })
+                })
+                .await
+            }
             other => Err(IpcError::method_not_found(other)),
         }
     }
 
-    /// Persist metadata of host-originated events listed in the contract (e.g. invocations).
-    /// Unknown or malformed events are dropped, never stored.
+    pub fn latest_focus(&self) -> Option<FocusRegion> {
+        self.inner.latest_focus.lock().ok().and_then(|g| g.clone())
+    }
+
+    /// Handle host-originated events listed in the contract: validate the payload, update runtime
+    /// state, and persist **metadata only** in the event log. Unknown or malformed events are dropped.
     pub async fn record_host_event(&self, name: &str, payload: Value) {
         use wisp_ipc::{
             EventKind,
-            methods::{InvocationEndedEvent, InvocationStartedEvent},
+            methods::{
+                FocusCleared, FocusCompleted, FocusEndedEvent, FocusStartedEvent,
+                InvocationEndedEvent, InvocationStartedEvent,
+            },
         };
-        let valid = match name {
-            InvocationStartedEvent::NAME => serde_json::from_value::<
-                <InvocationStartedEvent as EventKind>::Payload,
-            >(payload.clone())
-            .is_ok(),
-            InvocationEndedEvent::NAME => serde_json::from_value::<
-                <InvocationEndedEvent as EventKind>::Payload,
-            >(payload.clone())
-            .is_ok(),
-            _ => false,
+        fn parse<E: EventKind>(v: &Value) -> Option<E::Payload> {
+            serde_json::from_value::<E::Payload>(v.clone()).ok()
+        }
+        let record: Option<Value> = match name {
+            InvocationStartedEvent::NAME => {
+                parse::<InvocationStartedEvent>(&payload).map(|_| payload.clone())
+            }
+            InvocationEndedEvent::NAME => {
+                parse::<InvocationEndedEvent>(&payload).map(|_| payload.clone())
+            }
+            FocusStartedEvent::NAME => {
+                parse::<FocusStartedEvent>(&payload).map(|_| payload.clone())
+            }
+            FocusEndedEvent::NAME => parse::<FocusEndedEvent>(&payload).map(|_| payload.clone()),
+            FocusCompleted::NAME => match parse::<FocusCompleted>(&payload) {
+                Some(region) => match wisp_screen::validate(&region) {
+                    Ok(()) => {
+                        let meta = serde_json::json!({
+                            "kind": region.kind,
+                            "displayId": region.display.id,
+                            "scale": region.display.scale,
+                            "cropPoints": [region.crop.width.round(), region.crop.height.round()],
+                            "hasImage": region.image.is_some(),
+                        });
+                        if let Ok(mut g) = self.inner.latest_focus.lock() {
+                            *g = Some(region);
+                        }
+                        Some(meta)
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %e, "focus region rejected");
+                        None
+                    }
+                },
+                None => None,
+            },
+            FocusCleared::NAME => {
+                if let Ok(mut g) = self.inner.latest_focus.lock() {
+                    *g = None;
+                }
+                Some(Value::Object(Default::default()))
+            }
+            _ => None,
         };
-        if !valid {
+        let Some(meta) = record else {
             tracing::debug!(event = name, "host event ignored");
             return;
-        }
+        };
         let name = name.to_owned();
-        if let Err(e) = self
-            .blocking(move |db| db.record_event(&name, &payload))
-            .await
-        {
+        if let Err(e) = self.blocking(move |db| db.record_event(&name, &meta)).await {
             tracing::warn!(error = %e, "failed to record event");
         }
     }

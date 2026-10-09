@@ -20,9 +20,9 @@ public final class WebSurface: NSObject, EnvelopeSink {
 
         let config = WKWebViewConfiguration()
         config.suppressesIncrementalRendering = true
-        if let root = AppPaths.webRoot {
-            config.setURLSchemeHandler(WispSchemeHandler(root: root), forURLScheme: WispSchemeHandler.scheme)
-        }
+        var roots = ["focus": AppPaths.focusCacheDirectory]
+        if let root = AppPaths.webRoot { roots["app"] = root }
+        config.setURLSchemeHandler(WispSchemeHandler(roots: roots), forURLScheme: WispSchemeHandler.scheme)
         config.preferences.isElementFullscreenEnabled = false
         config.defaultWebpagePreferences.allowsContentJavaScript = true
 

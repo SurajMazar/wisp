@@ -5,7 +5,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::{cursor::CursorSettings, invocation::InvocationSettings};
+use super::{cursor::CursorSettings, focus::FocusSettings, invocation::InvocationSettings};
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields, default)]
@@ -16,6 +16,7 @@ pub struct AppSettings {
     pub onboarding: OnboardingSettings,
     pub invocation: InvocationSettings,
     pub cursor: CursorSettings,
+    pub focus: FocusSettings,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -107,6 +108,7 @@ pub enum SettingsSection {
     Onboarding(OnboardingSettings),
     Invocation(InvocationSettings),
     Cursor(CursorSettings),
+    Focus(FocusSettings),
 }
 
 impl SettingsSection {
@@ -119,6 +121,7 @@ impl SettingsSection {
             Self::Onboarding(_) => "onboarding",
             Self::Invocation(_) => "invocation",
             Self::Cursor(_) => "cursor",
+            Self::Focus(_) => "focus",
         }
     }
 
@@ -127,6 +130,7 @@ impl SettingsSection {
         match self {
             Self::Invocation(i) => i.validate(),
             Self::Cursor(c) => c.validate(),
+            Self::Focus(f) => f.validate(),
             Self::Appearance(AppearanceSettings {
                 custom_color: Some(c),
                 ..

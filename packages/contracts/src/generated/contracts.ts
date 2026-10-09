@@ -48,6 +48,18 @@ export const CursorSettings = z.strictObject({
 });
 export type CursorSettings = z.output<typeof CursorSettings>;
 
+/** Default shape when dragging (spec §81 "Focus Style"). */
+export const DrawStyle = z.enum(["rectangle","lasso","circle"]);
+export type DrawStyle = z.output<typeof DrawStyle>;
+
+export const FocusSettings = z.strictObject({
+  "dimSurroundings": z.boolean().default(true),
+  "drawStyle": DrawStyle.default(() => DrawStyle.parse("rectangle")),
+  "margin": z.number().int().nonnegative().default(24),
+  "pointSize": z.number().int().nonnegative().default(480),
+});
+export type FocusSettings = z.output<typeof FocusSettings>;
+
 export const GeneralSettings = z.strictObject({
   "launchAtLogin": z.boolean().default(false),
   "showMenuBarIcon": z.boolean().default(true),
@@ -105,12 +117,20 @@ export type PrivacySettings = z.output<typeof PrivacySettings>;
 export const AppSettings = z.strictObject({
   "appearance": AppearanceSettings.default(() => AppearanceSettings.parse({"accent":"default","theme":"system"})),
   "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"label":"Wisp","opacity":0.95,"showLabel":false,"size":1,"theme":"default","visibility":"always"})),
+  "focus": FocusSettings.default(() => FocusSettings.parse({"dimSurroundings":true,"drawStyle":"rectangle","margin":24,"pointSize":480})),
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
   "invocation": InvocationSettings.default(() => InvocationSettings.parse({"behavior":"hold","holdDelayMs":150,"mouseAction":"focusCursor","mouseButton":"none","shortcut":{"modifiers":["option","command"]}})),
   "onboarding": OnboardingSettings.default(() => OnboardingSettings.parse({"completed":false})),
   "privacy": PrivacySettings.default(() => PrivacySettings.parse({"mode":"localOnly"})),
 });
 export type AppSettings = z.output<typeof AppSettings>;
+
+export const ApplicationInfo = z.strictObject({
+  "bundleId": z.string().nullable().optional(),
+  "name": z.string(),
+  "pid": z.number().int(),
+});
+export type ApplicationInfo = z.output<typeof ApplicationInfo>;
 
 /** Everything the assistant can be doing, shown on the buddy and in the panel (spec §28, §92). */
 export const AssistantState = z.enum(["listening","selecting","drawing","analyzing","thinking","speaking","executing","waitingForPermission","success","error","idle","following"]);
@@ -147,6 +167,22 @@ export const CursorPreviewParams = z.strictObject({
 });
 export type CursorPreviewParams = z.output<typeof CursorPreviewParams>;
 
+export const Rect = z.object({
+  "height": z.number(),
+  "width": z.number(),
+  "x": z.number(),
+  "y": z.number(),
+});
+export type Rect = z.output<typeof Rect>;
+
+export const DisplayInfo = z.strictObject({
+  "frame": Rect,
+  "id": z.number().int().nonnegative(),
+  "name": z.string(),
+  "scale": z.number(),
+});
+export type DisplayInfo = z.output<typeof DisplayInfo>;
+
 /** Parameters for methods that take none. Accepts `{}` or an absent/`null` params field. */
 export const Empty = z.strictObject({
 
@@ -155,6 +191,65 @@ export type Empty = z.output<typeof Empty>;
 
 export const ErrorCode = z.enum(["invalidRequest","methodNotFound","invalidParams","internal","unavailable","permissionDenied","cancelled","timeout","notFound"]);
 export type ErrorCode = z.output<typeof ErrorCode>;
+
+export const FocusEndReason = z.enum(["cancelled","nothingSelected","permissionDenied","captureFailed"]);
+export type FocusEndReason = z.output<typeof FocusEndReason>;
+
+export const FocusEnded = z.strictObject({
+  "detail": z.string().nullable().optional(),
+  "reason": FocusEndReason,
+});
+export type FocusEnded = z.output<typeof FocusEnded>;
+
+/** A captured image of the focused area. Kept only in Wisp's cache; never logged. */
+export const FocusImage = z.strictObject({
+  "heightPx": z.number().int().nonnegative(),
+  "url": z.string(),
+  "widthPx": z.number().int().nonnegative(),
+});
+export type FocusImage = z.output<typeof FocusImage>;
+
+export const FocusKind = z.enum(["rectangle","circle","point","lasso","window","screen"]);
+export type FocusKind = z.output<typeof FocusKind>;
+
+export const Point = z.object({
+  "x": z.number(),
+  "y": z.number(),
+});
+export type Point = z.output<typeof Point>;
+
+export const WindowInfo = z.strictObject({
+  "frame": Rect,
+  "id": z.number().int().nonnegative(),
+  "title": z.string().nullable().optional(),
+});
+export type WindowInfo = z.output<typeof WindowInfo>;
+
+/** What the user pointed the assistant at (spec §34). */
+export const FocusRegion = z.strictObject({
+  "application": ApplicationInfo.nullable().optional(),
+  "createdAtMs": z.number().int(),
+  "crop": Rect,
+  "cursor": Point,
+  "display": DisplayInfo,
+  "id": z.string(),
+  "image": FocusImage.nullable().optional(),
+  "kind": FocusKind,
+  "path": z.array(Point).optional(),
+  "selection": Rect,
+  "window": WindowInfo.nullable().optional(),
+});
+export type FocusRegion = z.output<typeof FocusRegion>;
+
+export const FocusStartParams = z.strictObject({
+  "kind": FocusKind,
+});
+export type FocusStartParams = z.output<typeof FocusStartParams>;
+
+export const FocusStarted = z.strictObject({
+  "kind": FocusKind,
+});
+export type FocusStarted = z.output<typeof FocusStarted>;
 
 export const InvocationEndReason = z.enum(["released","toggled","dismissed","cancelled"]);
 export type InvocationEndReason = z.output<typeof InvocationEndReason>;
@@ -190,6 +285,11 @@ export const IpcError = z.strictObject({
 });
 export type IpcError = z.output<typeof IpcError>;
 
+export const LatestFocus = z.strictObject({
+  "region": FocusRegion.nullable().optional(),
+});
+export type LatestFocus = z.output<typeof LatestFocus>;
+
 /** System Settings panes Wisp may open for the user. */
 export const SettingsPane = z.enum(["accessibility","inputMonitoring","screenRecording","microphone","automation","notifications","keyboard"]);
 export type SettingsPane = z.output<typeof SettingsPane>;
@@ -199,8 +299,16 @@ export const OpenSettingsPaneParams = z.strictObject({
 });
 export type OpenSettingsPaneParams = z.output<typeof OpenSettingsPaneParams>;
 
+export const PermissionState = z.enum(["enabled","needsAttention","notRequested"]);
+export type PermissionState = z.output<typeof PermissionState>;
+
+export const ScreenPermissionStatus = z.strictObject({
+  "screenRecording": PermissionState,
+});
+export type ScreenPermissionStatus = z.output<typeof ScreenPermissionStatus>;
+
 /** One section replaced atomically. */
-export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings })]);
+export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings })]);
 export type SettingsSection = z.output<typeof SettingsSection>;
 
 export const SettingsUpdateParams = z.strictObject({
@@ -246,6 +354,12 @@ export const methods = {
   "host.assistant.setVisible": { target: "host", params: AssistantVisibility, result: Empty },
   "host.assistant.state": { target: "host", params: Empty, result: AssistantStateChanged },
   "host.cursor.preview": { target: "host", params: CursorPreviewParams, result: Empty },
+  "host.focus.start": { target: "host", params: FocusStartParams, result: Empty },
+  "host.focus.cancel": { target: "host", params: Empty, result: Empty },
+  "host.focus.clear": { target: "host", params: Empty, result: Empty },
+  "host.screen.permission": { target: "host", params: Empty, result: ScreenPermissionStatus },
+  "host.screen.requestPermission": { target: "host", params: Empty, result: ScreenPermissionStatus },
+  "focus.latest": { target: "core", params: Empty, result: LatestFocus },
 } as const;
 
 export const events = {
@@ -255,6 +369,10 @@ export const events = {
   "invocation.ended": InvocationEnded,
   "invocation.statusChanged": InvocationStatus,
   "assistant.stateChanged": AssistantStateChanged,
+  "focus.started": FocusStarted,
+  "focus.completed": FocusRegion,
+  "focus.ended": FocusEnded,
+  "focus.cleared": Empty,
 } as const;
 
 export type MethodName = keyof typeof methods;

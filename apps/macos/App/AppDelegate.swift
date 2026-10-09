@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindow: MainWindowController?
     private var menuBar: MenuBarController?
     private var assistant: AssistantCoordinator?
+    private var focus: FocusCoordinator?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let deps = DependencyContainer()
@@ -18,6 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let assistant = AssistantCoordinator(router: deps.router, invocation: deps.invocation)
         self.assistant = assistant
+        let focus = FocusCoordinator(router: deps.router, assistant: assistant)
+        self.focus = focus
 
         let menuBar = MenuBarController(actions: .init(
             summon: { assistant.toggleExpanded() },
@@ -33,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         deps.invocation.delegate = self
-        HostMethods.register(on: deps.router, deps: deps, assistant: assistant)
+        HostMethods.register(on: deps.router, deps: deps, assistant: assistant, focus: focus)
 
         Task { @MainActor in
             await deps.router.connect()
@@ -104,6 +107,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if previous?.cursor != settings.cursor {
             assistant?.apply(settings.cursor)
+            focus?.apply(cursor: settings.cursor)
+        }
+        if previous?.focus != settings.focus {
+            focus?.apply(settings.focus)
         }
     }
 }
@@ -111,12 +118,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 extension AppDelegate: InvocationDelegate {
     func invocationStarted(source: InvocationSource, behavior: InvocationBehavior) {
         assistant?.invocationStarted(behavior: behavior)
+        if behavior != .toggle { focus?.holdStarted() }
         deps?.router.emit(IPCEvents.invocationStarted, InvocationStarted(
             atMs: Int64(Date().timeIntervalSince1970 * 1000), behavior: behavior, source: source
         ))
     }
 
     func invocationEnded(source: InvocationSource, reason: InvocationEndReason, duration: Duration) {
+        focus?.holdEnded()
         assistant?.invocationEnded()
         let ms = duration.components.seconds * 1000 + duration.components.attoseconds / 1_000_000_000_000_000
         deps?.router.emit(IPCEvents.invocationEnded, InvocationEnded(durationMs: ms, reason: reason, source: source))

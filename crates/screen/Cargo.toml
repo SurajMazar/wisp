@@ -13,3 +13,4 @@ workspace = true
 [dependencies]
 wisp-common.workspace = true
 wisp-ipc.workspace = true
+thiserror.workspace = true

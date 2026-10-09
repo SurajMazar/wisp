@@ -6,7 +6,7 @@ import WispUI
 /// Swift implementations of `host.*` IPC methods.
 @MainActor
 enum HostMethods {
-    static func register(on router: IPCRouter, deps: DependencyContainer, assistant: AssistantCoordinator) {
+    static func register(on router: IPCRouter, deps: DependencyContainer, assistant: AssistantCoordinator, focus: FocusCoordinator) {
         router.register(IPCMethods.hostInvocationStatus) { _ in
             deps.invocation.refresh()
             return deps.invocation.status
@@ -44,6 +44,32 @@ enum HostMethods {
 
         router.register(IPCMethods.hostAssistantState) { _ in
             assistant.snapshot
+        }
+
+        router.register(IPCMethods.hostFocusStart) { params in
+            // Let the panel's click finish and the panel step aside before the overlay appears.
+            assistant.collapse()
+            try? await Task.sleep(for: .milliseconds(180))
+            focus.start(kind: params.kind)
+            return Empty()
+        }
+
+        router.register(IPCMethods.hostFocusCancel) { _ in
+            focus.cancel()
+            return Empty()
+        }
+
+        router.register(IPCMethods.hostFocusClear) { _ in
+            focus.clear()
+            return Empty()
+        }
+
+        router.register(IPCMethods.hostScreenPermission) { _ in
+            ScreenPermissionStatus(screenRecording: ScreenPermission.status)
+        }
+
+        router.register(IPCMethods.hostScreenRequestPermission) { _ in
+            ScreenPermissionStatus(screenRecording: ScreenPermission.request())
         }
 
         router.register(IPCMethods.hostCursorPreview) { params in

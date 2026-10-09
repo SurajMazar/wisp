@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { ipc } from "../../services/ipc";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { useConnectionStore } from "../../stores/connectionStore";
+import { useFocusStore } from "../../stores/focusStore";
 import { useInvocationStore } from "../../stores/invocationStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { applyAppearance } from "../../lib/theme";
@@ -17,6 +18,9 @@ export function Bootstrap({ children }: { children: ReactNode }) {
       client.on("invocation.statusChanged", (st) => useInvocationStore.getState().receiveStatus(st)),
       client.on("invocation.started", (e) => useAssistantStore.getState().invoked(e.source, e.behavior)),
       client.on("assistant.stateChanged", (e) => useAssistantStore.getState().receive(e.state, e.expanded)),
+      client.on("focus.completed", (r) => useFocusStore.getState().receive(r)),
+      client.on("focus.ended", (e) => useFocusStore.getState().ended(e)),
+      client.on("focus.cleared", () => useFocusStore.getState().cleared()),
       client.on("core.ready", (info) => {
         useConnectionStore.getState().setConnected(info);
         void useSettingsStore.getState().load();
@@ -29,6 +33,7 @@ export function Bootstrap({ children }: { children: ReactNode }) {
     void useSettingsStore.getState().load();
     void useInvocationStore.getState().loadStatus();
     void useAssistantStore.getState().load();
+    void useFocusStore.getState().load();
     return () => offs.forEach((off) => off());
   }, []);
 

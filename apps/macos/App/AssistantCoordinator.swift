@@ -16,6 +16,8 @@ final class AssistantCoordinator {
     let buddy = BuddyController()
     private var panel: FloatingAssistantPanel?
     private(set) var state: AssistantState = .idle
+    /// The panel was opened by a toggle invocation, so ending that invocation closes it.
+    private var expandedByInvocation = false
 
     init(router: IPCRouter, invocation: InvocationController) {
         self.router = router
@@ -48,6 +50,7 @@ final class AssistantCoordinator {
     func collapse() {
         guard let panel, panel.isExpanded else { return }
         panel.collapse(to: buddy.anchorFrame)
+        expandedByInvocation = false
         buddy.setSuppressed(false)
         publish()
         // An invocation in toggle mode ends when its panel goes away.
@@ -62,6 +65,7 @@ final class AssistantCoordinator {
             buddy.summon(true)
             set(state: .following)
         case .toggle:
+            expandedByInvocation = !isExpanded
             expand()
         }
     }
@@ -69,7 +73,8 @@ final class AssistantCoordinator {
     func invocationEnded() {
         buddy.summon(false)
         if state == .following { set(state: .idle) }
-        collapse()
+        if expandedByInvocation { collapse() }
+        expandedByInvocation = false
     }
 
     // MARK: State

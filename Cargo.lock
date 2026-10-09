@@ -974,6 +974,7 @@ dependencies = [
  "wisp-database",
  "wisp-ipc",
  "wisp-permissions",
+ "wisp-screen",
  "wisp-security",
 ]
 
@@ -1046,6 +1047,7 @@ dependencies = [
 name = "wisp-screen"
 version = "0.1.0"
 dependencies = [
+ "thiserror",
  "wisp-common",
  "wisp-ipc",
 ]
