@@ -73,6 +73,19 @@ public struct AppearanceSettings: Codable, Sendable, Equatable {
     }
 }
 
+/// How the buddy's glow is colored.
+public enum GlowMode: String, Codable, Sendable, Equatable, CaseIterable {
+    case accent = "accent"
+    case gradient = "gradient"
+}
+
+/// The buddy's shape.
+public enum CursorShape: String, Codable, Sendable, Equatable, CaseIterable {
+    case wisp = "wisp"
+    case pointer = "pointer"
+    case dot = "dot"
+}
+
 /// When the buddy is on screen.
 public enum CursorVisibility: String, Codable, Sendable, Equatable, CaseIterable {
     case always = "always"
@@ -84,20 +97,28 @@ public struct CursorSettings: Codable, Sendable, Equatable {
     public var customColor: String?
     public var enabled: Bool
     public var glow: Double
+    public var glowFrom: String
+    public var glowMode: GlowMode
+    public var glowTo: String
     public var label: String
     public var opacity: Double
+    public var shape: CursorShape
     public var showLabel: Bool
     public var size: Double
     public var theme: AccentColor
     public var visibility: CursorVisibility
 
-    public init(animation: AnimationLevel, customColor: String? = nil, enabled: Bool, glow: Double, label: String, opacity: Double, showLabel: Bool, size: Double, theme: AccentColor, visibility: CursorVisibility) {
+    public init(animation: AnimationLevel, customColor: String? = nil, enabled: Bool, glow: Double, glowFrom: String, glowMode: GlowMode, glowTo: String, label: String, opacity: Double, shape: CursorShape, showLabel: Bool, size: Double, theme: AccentColor, visibility: CursorVisibility) {
         self.animation = animation
         self.customColor = customColor
         self.enabled = enabled
         self.glow = glow
+        self.glowFrom = glowFrom
+        self.glowMode = glowMode
+        self.glowTo = glowTo
         self.label = label
         self.opacity = opacity
+        self.shape = shape
         self.showLabel = showLabel
         self.size = size
         self.theme = theme

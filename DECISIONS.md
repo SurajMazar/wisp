@@ -151,3 +151,11 @@ trailing the real cursor's tip diagonally below-right. It is fully click-through
 still or dodges — anything else distracts from moving the mouse. The panel opens with a **quick tap of the
 shortcut** (< 350 ms, no other key), the menu bar, or automatically when there's an answer; **holding**
 remains talk-and-point, and a hold that turns out to be a tap discards its recording unheard.
+
+## D-025 — Buddy shapes and gradient glow
+**Status** accepted (owner direction, 2026-10-09)
+Default shape is Wisp's flat arrowhead (rounded triangle with a deep V-notch, pointing up-left toward
+the real cursor); users can pick Pointer or Dot. Flat fill in the cursor color with a hairline edge — no
+3D extrusion or gloss (explicitly rejected). The glow is either the cursor color or a two-color gradient
+(presets Aurora, Sunset, Ocean, Mint, Ember, or custom colors), rendered as the gradient-filled shape
+blurred with Core Image, because layer shadows can only be a single color.

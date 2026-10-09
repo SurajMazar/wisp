@@ -26,6 +26,30 @@ pub enum AssistantState {
     Error,
 }
 
+/// The buddy's shape.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum CursorShape {
+    /// Wisp's glossy 3D arrowhead.
+    #[default]
+    Wisp,
+    /// A classic pointer arrow.
+    Pointer,
+    /// A glowing dot.
+    Dot,
+}
+
+/// How the buddy's glow is colored.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum GlowMode {
+    /// Glow in the cursor's color.
+    Accent,
+    /// Glow blends from `glowFrom` to `glowTo`.
+    #[default]
+    Gradient,
+}
+
 /// When the buddy is on screen.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -51,6 +75,7 @@ pub enum AnimationLevel {
 #[serde(rename_all = "camelCase", deny_unknown_fields, default)]
 pub struct CursorSettings {
     pub enabled: bool,
+    pub shape: CursorShape,
     pub visibility: CursorVisibility,
     pub theme: AccentColor,
     /// `#RRGGBB`, used when `theme` is `custom`.
@@ -62,6 +87,11 @@ pub struct CursorSettings {
     pub opacity: f64,
     /// Glow strength, 0–1.
     pub glow: f64,
+    pub glow_mode: GlowMode,
+    /// `#RRGGBB` gradient start (Gradient mode).
+    pub glow_from: String,
+    /// `#RRGGBB` gradient end (Gradient mode).
+    pub glow_to: String,
     pub animation: AnimationLevel,
     pub show_label: bool,
     pub label: String,
@@ -71,12 +101,16 @@ impl Default for CursorSettings {
     fn default() -> Self {
         Self {
             enabled: true,
+            shape: CursorShape::Wisp,
             visibility: CursorVisibility::Always,
             theme: AccentColor::Default,
             custom_color: None,
             size: 1.0,
             opacity: 0.95,
             glow: 0.6,
+            glow_mode: GlowMode::Gradient,
+            glow_from: "#8B7CF6".into(),
+            glow_to: "#5EC8F2".into(),
             animation: AnimationLevel::Normal,
             show_label: false,
             label: "Wisp".into(),
@@ -96,6 +130,11 @@ impl CursorSettings {
         range("size", self.size, 0.6, 1.6)?;
         range("opacity", self.opacity, 0.3, 1.0)?;
         range("glow", self.glow, 0.0, 1.0)?;
+        if !super::settings::is_hex_color(&self.glow_from)
+            || !super::settings::is_hex_color(&self.glow_to)
+        {
+            return Err("glow colors must be #RRGGBB".into());
+        }
         if self.label.trim().is_empty() || self.label.chars().count() > 24 {
             return Err("label must be 1–24 characters".into());
         }

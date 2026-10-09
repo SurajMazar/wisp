@@ -1,10 +1,24 @@
-import type { AnimationLevel, AssistantState, CursorSettings, CursorVisibility } from "@wisp/contracts";
+import type {
+  AnimationLevel,
+  AssistantState,
+  CursorSettings,
+  CursorShape,
+  CursorVisibility,
+  GlowMode,
+} from "@wisp/contracts";
 import { Button, Segmented, SettingsGroup, SettingsRow, Slider, Switch, cn } from "@wisp/ui";
 import { useEffect, useState } from "react";
 import { ipc } from "../../services/ipc";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { accents } from "./accents";
 import { BuddyPreview } from "./BuddyPreview";
+import { glowPresets, shapePaths } from "./buddyShapes";
+
+const shapes: { value: CursorShape; label: string }[] = [
+  { value: "wisp", label: "Wisp" },
+  { value: "pointer", label: "Pointer" },
+  { value: "dot", label: "Dot" },
+];
 
 const previewStates: { value: AssistantState; label: string }[] = [
   { value: "idle", label: "Idle" },
@@ -139,6 +153,35 @@ export function CursorSettingsGroup({ cursor }: { cursor: CursorSettings }) {
         }
       />
       <SettingsRow
+        label="Shape"
+        control={
+          <div role="radiogroup" aria-label="Cursor shape" className="flex gap-1.5">
+            {shapes.map((sh) => (
+              <button
+                key={sh.value}
+                type="button"
+                role="radio"
+                aria-checked={draft.shape === sh.value}
+                aria-label={`${sh.label} shape`}
+                title={sh.label}
+                onClick={() => save({ shape: sh.value })}
+                className={cn(
+                  "flex h-9 w-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-sm)] border text-[10px] text-text-muted",
+                  draft.shape === sh.value
+                    ? "border-accent bg-accent-soft text-text"
+                    : "border-border hover:bg-surface-hover",
+                )}
+              >
+                <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden>
+                  <path d={shapePaths[sh.value]} fill="currentColor" />
+                </svg>
+                {sh.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
+      <SettingsRow
         label="Color"
         control={
           <div role="radiogroup" aria-label="Assistant cursor color" className="flex items-center gap-1.5">
@@ -203,6 +246,70 @@ export function CursorSettingsGroup({ cursor }: { cursor: CursorSettings }) {
           }
         />
       ))}
+      <SettingsRow
+        label="Glow color"
+        control={
+          <Segmented<GlowMode>
+            label="Glow color"
+            value={draft.glowMode}
+            disabled={!draft.enabled}
+            onValueChange={(glowMode) => save({ glowMode })}
+            options={[
+              { value: "accent", label: "Cursor color" },
+              { value: "gradient", label: "Gradient" },
+            ]}
+          />
+        }
+      />
+      {draft.glowMode === "gradient" && (
+        <SettingsRow
+          label="Gradient"
+          hint={
+            glowPresets.find((p) => p.from === draft.glowFrom && p.to === draft.glowTo)?.label ?? "Custom"
+          }
+          control={
+            <div className="flex items-center gap-1.5">
+              <div role="radiogroup" aria-label="Glow gradient" className="flex gap-1.5">
+                {glowPresets.map((p) => {
+                  const on = p.from === draft.glowFrom && p.to === draft.glowTo;
+                  return (
+                    <button
+                      key={p.label}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      aria-label={`${p.label} glow`}
+                      title={p.label}
+                      onClick={() => save({ glowFrom: p.from, glowTo: p.to })}
+                      className={cn(
+                        "h-5 w-5 rounded-full ring-offset-2 ring-offset-surface",
+                        on ? "ring-2 ring-text-muted" : "hover:ring-2 hover:ring-border-strong",
+                      )}
+                      style={{ background: `linear-gradient(135deg, ${p.from}, ${p.to})` }}
+                    />
+                  );
+                })}
+              </div>
+              <input
+                type="color"
+                aria-label="Glow start color"
+                className="h-5 w-6 cursor-pointer rounded border border-border-strong bg-transparent"
+                value={draft.glowFrom.toLowerCase()}
+                onChange={(e) => setDraft({ ...draft, glowFrom: e.target.value.toUpperCase() })}
+                onBlur={(e) => save({ glowFrom: e.target.value.toUpperCase() })}
+              />
+              <input
+                type="color"
+                aria-label="Glow end color"
+                className="h-5 w-6 cursor-pointer rounded border border-border-strong bg-transparent"
+                value={draft.glowTo.toLowerCase()}
+                onChange={(e) => setDraft({ ...draft, glowTo: e.target.value.toUpperCase() })}
+                onBlur={(e) => save({ glowTo: e.target.value.toUpperCase() })}
+              />
+            </div>
+          }
+        />
+      )}
       <SettingsRow
         label="Animation"
         hint={reduceMotion ? "Reduce Motion is on in macOS, so the cursor stays still." : undefined}

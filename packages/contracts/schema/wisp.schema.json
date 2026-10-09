@@ -87,8 +87,12 @@
             "animation": "normal",
             "enabled": true,
             "glow": 0.6,
+            "glowFrom": "#8B7CF6",
+            "glowMode": "gradient",
+            "glowTo": "#5EC8F2",
             "label": "Wisp",
             "opacity": 0.95,
+            "shape": "wisp",
             "showLabel": false,
             "size": 1,
             "theme": "default",
@@ -836,6 +840,20 @@
           "format": "double",
           "type": "number"
         },
+        "glowFrom": {
+          "default": "#8B7CF6",
+          "description": "`#RRGGBB` gradient start (Gradient mode).",
+          "type": "string"
+        },
+        "glowMode": {
+          "$ref": "#/definitions/GlowMode",
+          "default": "gradient"
+        },
+        "glowTo": {
+          "default": "#5EC8F2",
+          "description": "`#RRGGBB` gradient end (Gradient mode).",
+          "type": "string"
+        },
         "label": {
           "default": "Wisp",
           "type": "string"
@@ -845,6 +863,10 @@
           "description": "0.3–1.0.",
           "format": "double",
           "type": "number"
+        },
+        "shape": {
+          "$ref": "#/definitions/CursorShape",
+          "default": "wisp"
         },
         "showLabel": {
           "default": false,
@@ -866,6 +888,26 @@
         }
       },
       "type": "object"
+    },
+    "CursorShape": {
+      "description": "The buddy's shape.",
+      "oneOf": [
+        {
+          "const": "wisp",
+          "description": "Wisp's glossy 3D arrowhead.",
+          "type": "string"
+        },
+        {
+          "const": "pointer",
+          "description": "A classic pointer arrow.",
+          "type": "string"
+        },
+        {
+          "const": "dot",
+          "description": "A glowing dot.",
+          "type": "string"
+        }
+      ]
     },
     "CursorVisibility": {
       "description": "When the buddy is on screen.",
@@ -1233,6 +1275,21 @@
         }
       },
       "type": "object"
+    },
+    "GlowMode": {
+      "description": "How the buddy's glow is colored.",
+      "oneOf": [
+        {
+          "const": "accent",
+          "description": "Glow in the cursor's color.",
+          "type": "string"
+        },
+        {
+          "const": "gradient",
+          "description": "Glow blends from `glowFrom` to `glowTo`.",
+          "type": "string"
+        }
+      ]
     },
     "HostVoiceStartParams": {
       "additionalProperties": false,

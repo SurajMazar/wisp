@@ -69,3 +69,40 @@ describe("Assistant cursor settings", () => {
     expect(stored.cursor.label.startsWith("My very own")).toBe(true);
   });
 });
+
+describe("Cursor shape and glow", () => {
+  let transport: MockTransport;
+  let stored: AppSettings;
+
+  beforeEach(async () => {
+    stored = defaultSettings();
+    transport = new MockTransport()
+      .handle("settings.get", () => stored)
+      .handle("settings.update", ({ update }) => {
+        stored = { ...stored, [update.section]: update.value } as AppSettings;
+        return stored;
+      });
+    setIpcClient(new IpcClient(transport));
+    await useSettingsStore.getState().load();
+  });
+
+  it("defaults to the Wisp shape with an Aurora gradient glow", () => {
+    expect(stored.cursor.shape).toBe("wisp");
+    expect(stored.cursor.glowMode).toBe("gradient");
+    render(<CursorSettingsGroup cursor={stored.cursor} />);
+    expect(screen.getByRole("radio", { name: "Wisp shape" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Aurora glow" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("changes shape and glow gradient", async () => {
+    render(<CursorSettingsGroup cursor={stored.cursor} />);
+    await userEvent.click(screen.getByRole("radio", { name: "Pointer shape" }));
+    await waitFor(() => expect(stored.cursor.shape).toBe("pointer"));
+    await userEvent.click(screen.getByRole("radio", { name: "Sunset glow" }));
+    await waitFor(() =>
+      expect([stored.cursor.glowFrom, stored.cursor.glowTo]).toEqual(["#F97316", "#EC4899"]),
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "Cursor color" }));
+    await waitFor(() => expect(stored.cursor.glowMode).toBe("accent"));
+  });
+});

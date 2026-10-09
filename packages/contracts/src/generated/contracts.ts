@@ -38,6 +38,14 @@ export const AppearanceSettings = z.strictObject({
 });
 export type AppearanceSettings = z.output<typeof AppearanceSettings>;
 
+/** How the buddy's glow is colored. */
+export const GlowMode = z.enum(["accent","gradient"]);
+export type GlowMode = z.output<typeof GlowMode>;
+
+/** The buddy's shape. */
+export const CursorShape = z.enum(["wisp","pointer","dot"]);
+export type CursorShape = z.output<typeof CursorShape>;
+
 /** When the buddy is on screen. */
 export const CursorVisibility = z.enum(["always","whenSummoned"]);
 export type CursorVisibility = z.output<typeof CursorVisibility>;
@@ -47,8 +55,12 @@ export const CursorSettings = z.strictObject({
   "customColor": z.string().nullable().optional(),
   "enabled": z.boolean().default(true),
   "glow": z.number().default(0.6),
+  "glowFrom": z.string().default("#8B7CF6"),
+  "glowMode": GlowMode.default(() => GlowMode.parse("gradient")),
+  "glowTo": z.string().default("#5EC8F2"),
   "label": z.string().default("Wisp"),
   "opacity": z.number().default(0.95),
+  "shape": CursorShape.default(() => CursorShape.parse("wisp")),
   "showLabel": z.boolean().default(false),
   "size": z.number().default(1),
   "theme": AccentColor.default(() => AccentColor.parse("default")),
@@ -166,7 +178,7 @@ export type VoiceSettings = z.output<typeof VoiceSettings>;
 
 export const AppSettings = z.strictObject({
   "appearance": AppearanceSettings.default(() => AppearanceSettings.parse({"accent":"default","theme":"system"})),
-  "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"label":"Wisp","opacity":0.95,"showLabel":false,"size":1,"theme":"default","visibility":"always"})),
+  "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"glowFrom":"#8B7CF6","glowMode":"gradient","glowTo":"#5EC8F2","label":"Wisp","opacity":0.95,"shape":"wisp","showLabel":false,"size":1,"theme":"default","visibility":"always"})),
   "focus": FocusSettings.default(() => FocusSettings.parse({"dimSurroundings":true,"drawStyle":"rectangle","margin":24,"pointSize":480})),
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
   "invocation": InvocationSettings.default(() => InvocationSettings.parse({"behavior":"hold","holdDelayMs":150,"mouseAction":"focusCursor","mouseButton":"none","shortcut":{"modifiers":["option","command"]}})),

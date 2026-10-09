@@ -1,5 +1,6 @@
 import type { AssistantState, CursorSettings } from "@wisp/contracts";
 import { accentColor } from "./accents";
+import { shapePaths } from "./buddyShapes";
 
 const stateLabel: Partial<Record<AssistantState, string>> = {
   listening: "Listening…",
@@ -28,7 +29,8 @@ export function BuddyPreview({
   reduceMotion: boolean;
 }) {
   const accent = accentColor(cursor.theme, cursor.customColor);
-  const secondary = cursor.theme === "default" ? "#5ec8f2" : accent;
+  const glowFrom = cursor.glowMode === "gradient" ? cursor.glowFrom : accent;
+  const glowTo = cursor.glowMode === "gradient" ? cursor.glowTo : accent;
   const ring = stateColor(state, accent);
   const orb = 18 * cursor.size;
   const animate = !reduceMotion && cursor.animation !== "minimal";
@@ -90,34 +92,51 @@ export function BuddyPreview({
               }}
             />
           )}
-          <svg
-            width={14 * cursor.size}
-            height={20 * cursor.size}
-            viewBox="0 0 14 20"
-            style={{
-              overflow: "visible",
-              filter: `drop-shadow(0 0 ${(2 + 7 * cursor.glow) * cursor.size}px color-mix(in srgb, ${secondary} ${Math.round(20 + 70 * cursor.glow)}%, transparent))`,
-              opacity: state === "idle" ? 0.92 : 1,
-              animation:
-                state === "following" && animate ? "wisp-breathe 1.6s ease-in-out infinite" : undefined,
-              transformOrigin: "0 0",
-            }}
-          >
-            <defs>
-              <linearGradient id="wisp-buddy-fill" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor={`color-mix(in srgb, ${accent} 65%, white)`} />
-                <stop offset="55%" stopColor={accent} />
-                <stop offset="100%" stopColor={secondary} />
-              </linearGradient>
-            </defs>
-            <path
-              d="M0 0 L0 16.5 L4.2 12.8 L7.1 19.6 L9.6 18.5 L6.8 11.9 L12.4 11.9 Z"
-              fill="url(#wisp-buddy-fill)"
-              stroke="white"
-              strokeWidth={1.3}
-              strokeLinejoin="round"
-            />
-          </svg>
+          <span className="relative" style={{ width: 20 * cursor.size, height: 20 * cursor.size }}>
+            {/* Gradient glow: the same shape, gradient-filled and blurred. */}
+            <svg
+              width={20 * cursor.size}
+              height={20 * cursor.size}
+              viewBox="0 0 20 20"
+              className="absolute inset-0"
+              style={{
+                overflow: "visible",
+                filter: `blur(${(3 + 8 * cursor.glow) * cursor.size * 0.5}px)`,
+                opacity: cursor.glow > 0.01 ? 0.55 + 0.45 * cursor.glow : 0,
+              }}
+              aria-hidden
+            >
+              <defs>
+                <linearGradient id="wisp-glow" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor={glowFrom} />
+                  <stop offset="100%" stopColor={glowTo} />
+                </linearGradient>
+              </defs>
+              <path d={shapePaths[cursor.shape]} fill="url(#wisp-glow)" />
+            </svg>
+            <svg
+              width={20 * cursor.size}
+              height={20 * cursor.size}
+              viewBox="0 0 20 20"
+              className="absolute inset-0"
+              style={{
+                overflow: "visible",
+                opacity: state === "idle" ? 0.95 : 1,
+                animation:
+                  state === "following" && animate ? "wisp-breathe 1.6s ease-in-out infinite" : undefined,
+                transformOrigin: "0 0",
+              }}
+              data-shape={cursor.shape}
+            >
+              <path
+                d={shapePaths[cursor.shape]}
+                fill={accent}
+                stroke="rgba(255,255,255,0.75)"
+                strokeWidth={0.9}
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
         </div>
         {label && (
           <span className="flex items-center gap-1.5 rounded-full border border-border bg-surface/90 px-2 py-0.5 text-xs font-medium shadow-[var(--shadow-sm)]">

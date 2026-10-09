@@ -30,8 +30,9 @@ public final class BuddyController {
     private var suppressed = false
 
     public init(settings: CursorSettings = CursorSettings(
-        animation: .normal, customColor: nil, enabled: true, glow: 0.6, label: "Wisp", opacity: 0.95,
-        showLabel: false, size: 1, theme: .default, visibility: .always
+        animation: .normal, customColor: nil, enabled: true, glow: 0.6, glowFrom: "#8B7CF6", glowMode: .gradient,
+        glowTo: "#5EC8F2", label: "Wisp", opacity: 0.95, shape: .wisp, showLabel: false, size: 1, theme: .default,
+        visibility: .always
     )) {
         self.settings = settings
         view = BuddyView(style: Self.style(for: settings))
@@ -219,8 +220,12 @@ public final class BuddyController {
 
     private static func style(for s: CursorSettings, reduceMotion: Bool = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) -> BuddyView.Style {
         let accent = BuddyTheme.color(for: s.theme, custom: s.customColor)
+        let gradient = s.glowMode == .gradient
         return BuddyView.Style(
-            accent: accent, secondary: BuddyTheme.secondary(for: s.theme, primary: accent),
+            shape: s.shape,
+            accent: accent,
+            glowFrom: gradient ? (NSColor(hexString: s.glowFrom) ?? accent) : accent,
+            glowTo: gradient ? (NSColor(hexString: s.glowTo) ?? accent) : accent,
             scale: CGFloat(s.size), opacity: CGFloat(s.opacity), glow: CGFloat(s.glow),
             animation: s.animation, reduceMotion: reduceMotion
         )
