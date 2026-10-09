@@ -19,6 +19,8 @@ final class VoiceCoordinator {
     var lastFocusAt = Date.distantPast
     /// Waits for a drawing the user just finished to be captured (set by the app delegate).
     var settleFocus: (() async -> Void)?
+    /// The conversation a spoken question went to; its reply ends "Thinking…" by the pointer.
+    private var awaiting: String?
 
     init(router: IPCRouter, assistant: AssistantCoordinator) {
         self.router = router
@@ -33,6 +35,9 @@ final class VoiceCoordinator {
         player.onStart = { [weak assistant] _ in assistant?.set(state: .speaking) }
         player.onFinish = { [weak assistant] _ in
             if assistant?.state == .speaking { assistant?.set(state: .idle) }
+        }
+        router.subscribe(IPCEvents.conversationMessageUpdated) { [weak self] message in
+            self?.replyUpdated(message)
         }
         router.subscribe(IPCEvents.voiceSpeechChunk) { [weak self] chunk in
             self?.player.enqueue(utterance: chunk.utteranceId, seq: chunk.seq, path: chunk.path, last: chunk.last)
@@ -104,6 +109,25 @@ final class VoiceCoordinator {
 
     // MARK: Internals
 
+    /// The reply to a spoken question finished: leave "Thinking…" once speech has had a chance to
+    /// start (or right away if it failed or won't be spoken).
+    private func replyUpdated(_ m: Message) {
+        guard m.conversationId == awaiting, m.role == .assistant, m.status != .streaming else { return }
+        awaiting = nil
+        switch m.status {
+        case .error:
+            assistant.set(state: .error)
+            Task { try? await Task.sleep(for: .seconds(2.5)); if self.assistant.state == .error { self.assistant.set(state: .idle) } }
+        case .complete where settings.speakAnswers != .never && !m.content.isEmpty:
+            Task {
+                try? await Task.sleep(for: .seconds(8))
+                if self.assistant.state == .thinking { self.assistant.set(state: .idle) }
+            }
+        default:
+            if assistant.state == .thinking { assistant.set(state: .idle) }
+        }
+    }
+
     private func begin(_ p: VoicePurpose) {
         let id = UUID().uuidString.lowercased()
         do {
@@ -137,7 +161,10 @@ final class VoiceCoordinator {
             )
             if let transcript = result.transcript, let sent = result.sent {
                 router.broadcast(event: IPCEvents.voiceAsked.name, payload: try? JSONValue.from(VoiceAsked(conversationId: sent.conversationId, transcript: transcript)))
-                assistant.expand()
+                // Answer out loud beside the pointer; the panel opens only when the user opens it
+                // (or when answers aren't spoken, since there'd be no other way to see it).
+                awaiting = sent.conversationId
+                if settings.speakAnswers == .never { assistant.expand() }
             } else if result.transcript == nil {
                 assistant.set(state: .idle)
             }

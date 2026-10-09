@@ -51,7 +51,7 @@ final class FocusCoordinator {
         overlay.begin(style: .lasso, dim: false, accent: accent, showHint: true, ink: true) { [weak self] result in
             guard let self else { return }
             if let result {
-                self.pending = Task { await self.complete(result) }
+                self.pending = Task { await self.complete(result, spoken: true) }
             } else {
                 self.end(.cancelled)
             }
@@ -139,7 +139,9 @@ final class FocusCoordinator {
         await complete(FocusOverlayController.Result(kind: kind, selection: rect, path: [], screen: screen))
     }
 
-    private func complete(_ r: FocusOverlayController.Result) async {
+    /// `spoken`: drawn while asking out loud. The answer comes as speech beside the pointer, so
+    /// the panel stays closed (the user opens it when they want it).
+    private func complete(_ r: FocusOverlayController.Result, spoken: Bool = false) async {
         assistant.set(state: .analyzing)
         let display = Displays.info(for: r.screen)
         let displayRect = display.frame.cg
@@ -187,6 +189,7 @@ final class FocusCoordinator {
             latest = region
             onCompleted?()
             router.emit(IPCEvents.focusCompleted, region)
+            if spoken { return }  // voice takes it from here ("Thinking…" by the pointer)
             assistant.set(state: .success)
             assistant.expand()
             try? await Task.sleep(for: .milliseconds(900))
