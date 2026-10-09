@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { ipc } from "../../services/ipc";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { useConnectionStore } from "../../stores/connectionStore";
+import { useToolStore } from "../../stores/toolStore";
 import { useConversationStore } from "../../stores/conversationStore";
 import { useFocusStore } from "../../stores/focusStore";
 import { useModelsStore } from "../../stores/modelsStore";
@@ -30,6 +31,9 @@ export function Bootstrap({ children }: { children: ReactNode }) {
       client.on("conversation.messageUpdated", (m) => useConversationStore.getState().receiveMessage(m)),
       client.on("conversation.updated", (c) => useConversationStore.getState().receiveSummary(c)),
       client.on("conversation.messageRemoved", (m) => useConversationStore.getState().receiveRemoved(m)),
+      client.on("tool.approvalRequested", (r) => useToolStore.getState().receiveRequest(r)),
+      client.on("tool.approvalResolved", (r) => useToolStore.getState().receiveResolved(r.id)),
+      client.on("tool.callUpdated", (r) => useToolStore.getState().receiveCall(r)),
       client.on("voice.level", (l) => useVoiceStore.getState().setLevel(l.level)),
       client.on("voice.modelProgress", (p) => useVoiceStore.getState().receiveProgress(p)),
       client.on("voice.asked", (a) => {

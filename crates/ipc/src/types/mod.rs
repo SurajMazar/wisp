@@ -9,4 +9,5 @@ pub mod guidance;
 pub mod invocation;
 pub mod models;
 pub mod settings;
+pub mod tools;
 pub mod voice;

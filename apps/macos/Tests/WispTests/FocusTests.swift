@@ -73,6 +73,12 @@ import Testing
             print("skipping: no Screen Recording permission for the test runner")
             return
         }
+        // On the lock screen nothing the test draws is visible to capture.
+        let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+        if session?["CGSSessionScreenIsLocked"] as? Bool == true {
+            print("skipping: the screen is locked")
+            return
+        }
         _ = NSApplication.shared
         guard let screen = NSScreen.main else { return }
         let display = Displays.info(for: screen)

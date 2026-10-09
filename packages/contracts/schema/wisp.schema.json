@@ -157,6 +157,19 @@
         }
       ]
     },
+    "AppArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "app": {
+          "description": "Application name (\"Safari\") or bundle identifier (\"com.apple.Safari\").",
+          "type": "string"
+        }
+      },
+      "required": [
+        "app"
+      ],
+      "type": "object"
+    },
     "AppInfo": {
       "additionalProperties": false,
       "properties": {
@@ -199,6 +212,13 @@
           "default": {
             "accent": "default",
             "theme": "system"
+          }
+        },
+        "computer": {
+          "$ref": "#/definitions/ComputerSettings",
+          "default": {
+            "confirmEveryAction": false,
+            "enabled": false
           }
         },
         "cursor": {
@@ -406,6 +426,100 @@
       "required": [
         "name",
         "pid"
+      ],
+      "type": "object"
+    },
+    "ApprovalDecision": {
+      "enum": [
+        "allowOnce",
+        "allowSession",
+        "alwaysAllow",
+        "deny"
+      ],
+      "type": "string"
+    },
+    "ApprovalRequest": {
+      "additionalProperties": false,
+      "description": "The assistant wants to do something and needs the user's OK (spec §58).",
+      "properties": {
+        "choices": {
+          "description": "The choices offered (riskier actions offer fewer).",
+          "items": {
+            "$ref": "#/definitions/ApprovalDecision"
+          },
+          "type": "array"
+        },
+        "detail": {
+          "description": "Plain-language detail, e.g. which app and where.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expiresAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "risk": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "riskReason": {
+          "description": "Why it's this risky, when it was raised above the tool's default.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "description": "e.g. `Click “Save”`.",
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "tool",
+        "title",
+        "risk",
+        "choices",
+        "expiresAtMs"
+      ],
+      "type": "object"
+    },
+    "ApprovalResolved": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "$ref": "#/definitions/ApprovalDecision"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "decision"
+      ],
+      "type": "object"
+    },
+    "ApprovalResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "$ref": "#/definitions/ApprovalDecision"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "decision"
       ],
       "type": "object"
     },
@@ -846,6 +960,22 @@
       ],
       "type": "object"
     },
+    "ComputerSettings": {
+      "additionalProperties": false,
+      "description": "Computer control (spec §55–58). Off until the user turns it on.",
+      "properties": {
+        "confirmEveryAction": {
+          "default": false,
+          "description": "Ask before every action, even ones allowed for the session or always.",
+          "type": "boolean"
+        },
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "ConflictSeverity": {
       "oneOf": [
         {
@@ -1199,6 +1329,22 @@
       ],
       "type": "object"
     },
+    "DragArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "#/definitions/Point"
+        },
+        "to": {
+          "$ref": "#/definitions/Point"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "type": "object"
+    },
     "DrawStyle": {
       "description": "Default shape when dragging (spec §81 \"Focus Style\").",
       "enum": [
@@ -1253,6 +1399,18 @@
         "notFound"
       ],
       "type": "string"
+    },
+    "FindArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "type": "object"
     },
     "FocusAttachment": {
       "additionalProperties": false,
@@ -1618,6 +1776,26 @@
       ],
       "type": "object"
     },
+    "HotkeyArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "description": "A letter, digit or named key.",
+          "type": "string"
+        },
+        "modifiers": {
+          "items": {
+            "$ref": "#/definitions/KeyModifier"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "modifiers"
+      ],
+      "type": "object"
+    },
     "IdParams": {
       "additionalProperties": false,
       "properties": {
@@ -1833,6 +2011,28 @@
         "message"
       ],
       "type": "object"
+    },
+    "KeyArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "description": "A named key: return, tab, escape, space, delete, forwardDelete, up, down, left, right,\nhome, end, pageUp, pageDown, f1–f12.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "type": "object"
+    },
+    "KeyModifier": {
+      "enum": [
+        "command",
+        "option",
+        "control",
+        "shift"
+      ],
+      "type": "string"
     },
     "KeychainAccount": {
       "additionalProperties": false,
@@ -2482,6 +2682,31 @@
       ],
       "type": "object"
     },
+    "PointerArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "description": "What's there, e.g. \"Save\" — shown in approvals, used to press the element directly and\nto judge risk.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "x": {
+          "format": "double",
+          "type": "number"
+        },
+        "y": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "type": "object"
+    },
     "PrivacyMode": {
       "description": "Spec §14.",
       "oneOf": [
@@ -2724,6 +2949,16 @@
       ],
       "type": "object"
     },
+    "RiskLevel": {
+      "enum": [
+        "safe",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "type": "string"
+    },
     "RouteInfo": {
       "additionalProperties": false,
       "properties": {
@@ -2802,6 +3037,35 @@
       "required": [
         "lines",
         "elapsedMs"
+      ],
+      "type": "object"
+    },
+    "ScrollArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "dx": {
+          "default": 0,
+          "format": "int32",
+          "type": "integer"
+        },
+        "dy": {
+          "description": "Lines; positive scrolls down / right. −50…50.",
+          "format": "int32",
+          "type": "integer"
+        },
+        "x": {
+          "format": "double",
+          "type": "number"
+        },
+        "y": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "dy"
       ],
       "type": "object"
     },
@@ -3029,6 +3293,22 @@
             },
             "value": {
               "$ref": "#/definitions/VoiceSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "computer",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/ComputerSettings"
             }
           },
           "required": [
@@ -3328,6 +3608,18 @@
         }
       ]
     },
+    "TextArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
     "TextLine": {
       "additionalProperties": false,
       "properties": {
@@ -3358,6 +3650,621 @@
         "dark"
       ],
       "type": "string"
+    },
+    "ToolActivity": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/ToolCallRecord"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "ToolActivityParams": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "1–500.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "limit"
+      ],
+      "type": "object"
+    },
+    "ToolCall": {
+      "description": "Every action Wisp can take on the computer.",
+      "oneOf": [
+        {
+          "description": "Describe the frontmost window's controls (read-only).",
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/Empty"
+            },
+            "tool": {
+              "const": "readScreen",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Find a control by its label (read-only).",
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/FindArgs"
+            },
+            "tool": {
+              "const": "findElement",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/PointerArgs"
+            },
+            "tool": {
+              "const": "click",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/PointerArgs"
+            },
+            "tool": {
+              "const": "doubleClick",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/PointerArgs"
+            },
+            "tool": {
+              "const": "rightClick",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/PointerArgs"
+            },
+            "tool": {
+              "const": "moveMouse",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/DragArgs"
+            },
+            "tool": {
+              "const": "drag",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/ScrollArgs"
+            },
+            "tool": {
+              "const": "scroll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/TextArgs"
+            },
+            "tool": {
+              "const": "typeText",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/KeyArgs"
+            },
+            "tool": {
+              "const": "keypress",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/HotkeyArgs"
+            },
+            "tool": {
+              "const": "hotkey",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/Empty"
+            },
+            "tool": {
+              "const": "copy",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/Empty"
+            },
+            "tool": {
+              "const": "paste",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/AppArgs"
+            },
+            "tool": {
+              "const": "openApplication",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/AppArgs"
+            },
+            "tool": {
+              "const": "switchApplication",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/AppArgs"
+            },
+            "tool": {
+              "const": "closeApplication",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/UrlArgs"
+            },
+            "tool": {
+              "const": "openUrl",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/Empty"
+            },
+            "tool": {
+              "const": "readClipboard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/TextArgs"
+            },
+            "tool": {
+              "const": "writeClipboard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ToolCallRecord": {
+      "additionalProperties": false,
+      "description": "One audited tool call (spec §105: no private content — arguments are summarized).",
+      "properties": {
+        "createdAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "decision": {
+          "description": "allowOnce | allowSession | alwaysAllow | deny | policyDeny | autoAllow | granted",
+          "type": "string"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finishedAtMs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "messageId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "risk": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "status": {
+          "$ref": "#/definitions/ToolCallStatus"
+        },
+        "title": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "verification": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Verification"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "tool",
+        "title",
+        "risk",
+        "decision",
+        "status",
+        "createdAtMs"
+      ],
+      "type": "object"
+    },
+    "ToolCallStatus": {
+      "enum": [
+        "waitingForApproval",
+        "running",
+        "succeeded",
+        "failed",
+        "denied"
+      ],
+      "type": "string"
+    },
+    "ToolDefinition": {
+      "additionalProperties": false,
+      "description": "What a tool is and how risky it is by default (for UIs and agents).",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "requiresPermission": {
+          "type": "boolean"
+        },
+        "risk": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "title",
+        "description",
+        "risk",
+        "requiresPermission"
+      ],
+      "type": "object"
+    },
+    "ToolExecution": {
+      "additionalProperties": false,
+      "description": "What the host reports after performing an action.",
+      "properties": {
+        "output": {
+          "description": "Text result for read-only tools (clipboard, screen description).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verification": {
+          "$ref": "#/definitions/Verification"
+        }
+      },
+      "required": [
+        "verification"
+      ],
+      "type": "object"
+    },
+    "ToolGrant": {
+      "additionalProperties": false,
+      "description": "A standing \"always allow\" or \"never allow\" for a tool.",
+      "properties": {
+        "createdAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "decision": {
+          "$ref": "#/definitions/ApprovalDecision"
+        },
+        "id": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "tool",
+        "decision",
+        "createdAtMs"
+      ],
+      "type": "object"
+    },
+    "ToolGrants": {
+      "additionalProperties": false,
+      "properties": {
+        "grants": {
+          "items": {
+            "$ref": "#/definitions/ToolGrant"
+          },
+          "type": "array"
+        },
+        "session": {
+          "description": "Tools allowed for the rest of this session.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "grants",
+        "session"
+      ],
+      "type": "object"
+    },
+    "ToolList": {
+      "additionalProperties": false,
+      "properties": {
+        "tools": {
+          "items": {
+            "$ref": "#/definitions/ToolDefinition"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tools"
+      ],
+      "type": "object"
+    },
+    "ToolRunParams": {
+      "additionalProperties": false,
+      "properties": {
+        "call": {
+          "$ref": "#/definitions/ToolCall"
+        },
+        "messageId": {
+          "description": "The answer this action came from, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "call"
+      ],
+      "type": "object"
+    },
+    "ToolRunResult": {
+      "additionalProperties": false,
+      "description": "Result of `tool.run`: the audit record plus any text output.",
+      "properties": {
+        "output": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "record": {
+          "$ref": "#/definitions/ToolCallRecord"
+        }
+      },
+      "required": [
+        "record"
+      ],
+      "type": "object"
+    },
+    "UrlArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "description": "http(s) only.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
+    "Verification": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/VerificationStatus"
+        }
+      },
+      "required": [
+        "status",
+        "detail"
+      ],
+      "type": "object"
+    },
+    "VerificationStatus": {
+      "oneOf": [
+        {
+          "enum": [
+            "verified",
+            "failed"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "unknown",
+          "description": "Nothing observable either way (spec §62: never assume success).",
+          "type": "string"
+        }
+      ]
     },
     "VoiceAsked": {
       "additionalProperties": false,
@@ -3680,6 +4587,24 @@
       "name": "conversation.messageRemoved",
       "payload": {
         "$ref": "#/definitions/Message"
+      }
+    },
+    {
+      "name": "tool.approvalRequested",
+      "payload": {
+        "$ref": "#/definitions/ApprovalRequest"
+      }
+    },
+    {
+      "name": "tool.approvalResolved",
+      "payload": {
+        "$ref": "#/definitions/ApprovalResolved"
+      }
+    },
+    {
+      "name": "tool.callUpdated",
+      "payload": {
+        "$ref": "#/definitions/ToolCallRecord"
       }
     },
     {
@@ -4125,6 +5050,66 @@
       "target": "core"
     },
     {
+      "name": "tool.list",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/ToolList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "tool.run",
+      "params": {
+        "$ref": "#/definitions/ToolRunParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ToolRunResult"
+      },
+      "target": "core"
+    },
+    {
+      "name": "tool.respond",
+      "params": {
+        "$ref": "#/definitions/ApprovalResponse"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "tool.activity",
+      "params": {
+        "$ref": "#/definitions/ToolActivityParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ToolActivity"
+      },
+      "target": "core"
+    },
+    {
+      "name": "tool.grants",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/ToolGrants"
+      },
+      "target": "core"
+    },
+    {
+      "name": "tool.revoke",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ToolGrants"
+      },
+      "target": "core"
+    },
+    {
       "name": "conversation.showGuidance",
       "params": {
         "$ref": "#/definitions/IdParams"
@@ -4161,6 +5146,16 @@
       },
       "result": {
         "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.input.perform",
+      "params": {
+        "$ref": "#/definitions/ToolCall"
+      },
+      "result": {
+        "$ref": "#/definitions/ToolExecution"
       },
       "target": "host"
     },

@@ -4,6 +4,7 @@ import { useConnectionStore } from "../../stores/connectionStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { accents } from "./accents";
 import { CursorSettingsGroup } from "./CursorSettingsGroup";
+import { ComputerSettingsGroup } from "./ComputerSettingsGroup";
 import { FocusSettingsGroup } from "./FocusSettingsGroup";
 import { InvocationSettingsGroup } from "./InvocationSettingsGroup";
 
@@ -40,7 +41,7 @@ export function SettingsPage() {
     );
   }
 
-  const { general, appearance, privacy, invocation, cursor, focus } = settings;
+  const { general, appearance, privacy, invocation, cursor, focus, computer } = settings;
 
   return (
     <>
@@ -74,6 +75,8 @@ export function SettingsPage() {
       <CursorSettingsGroup cursor={cursor} />
 
       <FocusSettingsGroup focus={focus} />
+
+      <ComputerSettingsGroup computer={computer} />
 
       <SettingsGroup title="Appearance">
         <SettingsRow

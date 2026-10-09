@@ -63,6 +63,11 @@ export type LabelAnnotation = z.output<typeof LabelAnnotation>;
 export const Annotation = z.discriminatedUnion("type", [z.strictObject({ "type": z.literal("arrow"), "data": ArrowAnnotation }), z.strictObject({ "type": z.literal("circle"), "data": CircleAnnotation }), z.strictObject({ "type": z.literal("rectangle"), "data": RectAnnotation }), z.strictObject({ "type": z.literal("highlight"), "data": RectAnnotation }), z.strictObject({ "type": z.literal("spotlight"), "data": RectAnnotation }), z.strictObject({ "type": z.literal("label"), "data": LabelAnnotation }), z.strictObject({ "type": z.literal("pointer"), "data": LabelAnnotation })]);
 export type Annotation = z.output<typeof Annotation>;
 
+export const AppArgs = z.strictObject({
+  "app": z.string(),
+});
+export type AppArgs = z.output<typeof AppArgs>;
+
 export const AppInfo = z.strictObject({
   "coreVersion": z.string(),
   "dataDir": z.string(),
@@ -81,6 +86,13 @@ export const AppearanceSettings = z.strictObject({
   "theme": ThemePreference.default(() => ThemePreference.parse("system")),
 });
 export type AppearanceSettings = z.output<typeof AppearanceSettings>;
+
+/** Computer control (spec §55–58). Off until the user turns it on. */
+export const ComputerSettings = z.strictObject({
+  "confirmEveryAction": z.boolean().default(false),
+  "enabled": z.boolean().default(false),
+});
+export type ComputerSettings = z.output<typeof ComputerSettings>;
 
 /** How the buddy's glow is colored. */
 export const GlowMode = z.enum(["accent","gradient"]);
@@ -222,6 +234,7 @@ export type VoiceSettings = z.output<typeof VoiceSettings>;
 
 export const AppSettings = z.strictObject({
   "appearance": AppearanceSettings.default(() => AppearanceSettings.parse({"accent":"default","theme":"system"})),
+  "computer": ComputerSettings.default(() => ComputerSettings.parse({"confirmEveryAction":false,"enabled":false})),
   "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"glowFrom":"#8B7CF6","glowMode":"gradient","glowTo":"#5EC8F2","label":"Wisp","opacity":0.95,"shape":"wisp","showLabel":false,"size":1,"theme":"default","visibility":"always"})),
   "focus": FocusSettings.default(() => FocusSettings.parse({"dimSurroundings":true,"drawStyle":"rectangle","margin":24,"pointSize":480})),
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
@@ -269,6 +282,37 @@ export const ApplicationInfo = z.strictObject({
   "pid": z.number().int(),
 });
 export type ApplicationInfo = z.output<typeof ApplicationInfo>;
+
+export const ApprovalDecision = z.enum(["allowOnce","allowSession","alwaysAllow","deny"]);
+export type ApprovalDecision = z.output<typeof ApprovalDecision>;
+
+export const RiskLevel = z.enum(["safe","low","medium","high","critical"]);
+export type RiskLevel = z.output<typeof RiskLevel>;
+
+/** The assistant wants to do something and needs the user's OK (spec §58). */
+export const ApprovalRequest = z.strictObject({
+  "choices": z.array(ApprovalDecision),
+  "detail": z.string().nullable().optional(),
+  "expiresAtMs": z.number().int(),
+  "id": z.string(),
+  "risk": RiskLevel,
+  "riskReason": z.string().nullable().optional(),
+  "title": z.string(),
+  "tool": z.string(),
+});
+export type ApprovalRequest = z.output<typeof ApprovalRequest>;
+
+export const ApprovalResolved = z.strictObject({
+  "decision": ApprovalDecision,
+  "id": z.string(),
+});
+export type ApprovalResolved = z.output<typeof ApprovalResolved>;
+
+export const ApprovalResponse = z.strictObject({
+  "decision": ApprovalDecision,
+  "id": z.string(),
+});
+export type ApprovalResponse = z.output<typeof ApprovalResponse>;
 
 /** Everything the assistant can be doing, shown on the buddy and in the panel (spec §28, §92). */
 export const AssistantState = z.enum(["listening","selecting","drawing","analyzing","thinking","speaking","executing","waitingForPermission","success","error","idle","following"]);
@@ -490,6 +534,12 @@ export const DisplayInfo = z.strictObject({
 });
 export type DisplayInfo = z.output<typeof DisplayInfo>;
 
+export const DragArgs = z.strictObject({
+  "from": Point,
+  "to": Point,
+});
+export type DragArgs = z.output<typeof DragArgs>;
+
 /** Parameters for methods that take none. Accepts `{}` or an absent/`null` params field. */
 export const Empty = z.strictObject({
 
@@ -498,6 +548,11 @@ export type Empty = z.output<typeof Empty>;
 
 export const ErrorCode = z.enum(["invalidRequest","methodNotFound","invalidParams","internal","unavailable","permissionDenied","cancelled","timeout","notFound"]);
 export type ErrorCode = z.output<typeof ErrorCode>;
+
+export const FindArgs = z.strictObject({
+  "label": z.string(),
+});
+export type FindArgs = z.output<typeof FindArgs>;
 
 export const FocusEndReason = z.enum(["cancelled","nothingSelected","permissionDenied","captureFailed"]);
 export type FocusEndReason = z.output<typeof FocusEndReason>;
@@ -575,6 +630,15 @@ export const HostVoiceStartParams = z.strictObject({
 });
 export type HostVoiceStartParams = z.output<typeof HostVoiceStartParams>;
 
+export const KeyModifier = z.enum(["command","option","control","shift"]);
+export type KeyModifier = z.output<typeof KeyModifier>;
+
+export const HotkeyArgs = z.strictObject({
+  "key": z.string(),
+  "modifiers": z.array(KeyModifier),
+});
+export type HotkeyArgs = z.output<typeof HotkeyArgs>;
+
 export const IdParams = z.strictObject({
   "id": z.string(),
 });
@@ -613,6 +677,11 @@ export const IpcError = z.strictObject({
   "message": z.string(),
 });
 export type IpcError = z.output<typeof IpcError>;
+
+export const KeyArgs = z.strictObject({
+  "key": z.string(),
+});
+export type KeyArgs = z.output<typeof KeyArgs>;
 
 export const KeychainAccount = z.strictObject({
   "account": z.string(),
@@ -726,6 +795,13 @@ export const PinParams = z.strictObject({
 });
 export type PinParams = z.output<typeof PinParams>;
 
+export const PointerArgs = z.strictObject({
+  "label": z.string().nullable().optional(),
+  "x": z.number(),
+  "y": z.number(),
+});
+export type PointerArgs = z.output<typeof PointerArgs>;
+
 export const PullProgress = z.strictObject({
   "completed": z.number().int().nonnegative().nullable().optional(),
   "done": z.boolean(),
@@ -773,6 +849,14 @@ export const ScreenPermissionStatus = z.strictObject({
 });
 export type ScreenPermissionStatus = z.output<typeof ScreenPermissionStatus>;
 
+export const ScrollArgs = z.strictObject({
+  "dx": z.number().int().default(0),
+  "dy": z.number().int(),
+  "x": z.number(),
+  "y": z.number(),
+});
+export type ScrollArgs = z.output<typeof ScrollArgs>;
+
 export const SendParams = z.strictObject({
   "allowCloud": z.boolean().default(false),
   "conversationId": z.string().nullable().optional(),
@@ -795,7 +879,7 @@ export const SessionParams = z.strictObject({
 export type SessionParams = z.output<typeof SessionParams>;
 
 /** One section replaced atomically. */
-export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings }), z.strictObject({ "section": z.literal("voice"), "value": VoiceSettings })]);
+export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings }), z.strictObject({ "section": z.literal("voice"), "value": VoiceSettings }), z.strictObject({ "section": z.literal("computer"), "value": ComputerSettings })]);
 export type SettingsSection = z.output<typeof SettingsSection>;
 
 export const SettingsUpdateParams = z.strictObject({
@@ -866,6 +950,108 @@ export const SpeechModelProgress = z.strictObject({
   "total": z.number().int().nonnegative(),
 });
 export type SpeechModelProgress = z.output<typeof SpeechModelProgress>;
+
+export const TextArgs = z.strictObject({
+  "text": z.string(),
+});
+export type TextArgs = z.output<typeof TextArgs>;
+
+export const ToolCallStatus = z.enum(["waitingForApproval","running","succeeded","failed","denied"]);
+export type ToolCallStatus = z.output<typeof ToolCallStatus>;
+
+export const VerificationStatus = z.enum(["verified","failed","unknown"]);
+export type VerificationStatus = z.output<typeof VerificationStatus>;
+
+export const Verification = z.strictObject({
+  "detail": z.string(),
+  "status": VerificationStatus,
+});
+export type Verification = z.output<typeof Verification>;
+
+/** One audited tool call (spec §105: no private content — arguments are summarized). */
+export const ToolCallRecord = z.strictObject({
+  "createdAtMs": z.number().int(),
+  "decision": z.string(),
+  "error": z.string().nullable().optional(),
+  "finishedAtMs": z.number().int().nullable().optional(),
+  "id": z.string(),
+  "messageId": z.string().nullable().optional(),
+  "risk": RiskLevel,
+  "status": ToolCallStatus,
+  "title": z.string(),
+  "tool": z.string(),
+  "verification": Verification.nullable().optional(),
+});
+export type ToolCallRecord = z.output<typeof ToolCallRecord>;
+
+export const ToolActivity = z.strictObject({
+  "items": z.array(ToolCallRecord),
+});
+export type ToolActivity = z.output<typeof ToolActivity>;
+
+export const ToolActivityParams = z.strictObject({
+  "limit": z.number().int().nonnegative(),
+});
+export type ToolActivityParams = z.output<typeof ToolActivityParams>;
+
+export const UrlArgs = z.strictObject({
+  "url": z.string(),
+});
+export type UrlArgs = z.output<typeof UrlArgs>;
+
+/** Every action Wisp can take on the computer. */
+export const ToolCall = z.discriminatedUnion("tool", [z.strictObject({ "tool": z.literal("readScreen"), "args": Empty }), z.strictObject({ "tool": z.literal("findElement"), "args": FindArgs }), z.strictObject({ "tool": z.literal("click"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("doubleClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("rightClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("moveMouse"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("drag"), "args": DragArgs }), z.strictObject({ "tool": z.literal("scroll"), "args": ScrollArgs }), z.strictObject({ "tool": z.literal("typeText"), "args": TextArgs }), z.strictObject({ "tool": z.literal("keypress"), "args": KeyArgs }), z.strictObject({ "tool": z.literal("hotkey"), "args": HotkeyArgs }), z.strictObject({ "tool": z.literal("copy"), "args": Empty }), z.strictObject({ "tool": z.literal("paste"), "args": Empty }), z.strictObject({ "tool": z.literal("openApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("switchApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("closeApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("openUrl"), "args": UrlArgs }), z.strictObject({ "tool": z.literal("readClipboard"), "args": Empty }), z.strictObject({ "tool": z.literal("writeClipboard"), "args": TextArgs })]);
+export type ToolCall = z.output<typeof ToolCall>;
+
+/** What a tool is and how risky it is by default (for UIs and agents). */
+export const ToolDefinition = z.strictObject({
+  "description": z.string(),
+  "name": z.string(),
+  "requiresPermission": z.boolean(),
+  "risk": RiskLevel,
+  "title": z.string(),
+});
+export type ToolDefinition = z.output<typeof ToolDefinition>;
+
+/** What the host reports after performing an action. */
+export const ToolExecution = z.strictObject({
+  "output": z.string().nullable().optional(),
+  "verification": Verification,
+});
+export type ToolExecution = z.output<typeof ToolExecution>;
+
+/** A standing "always allow" or "never allow" for a tool. */
+export const ToolGrant = z.strictObject({
+  "createdAtMs": z.number().int(),
+  "decision": ApprovalDecision,
+  "id": z.string(),
+  "tool": z.string(),
+});
+export type ToolGrant = z.output<typeof ToolGrant>;
+
+export const ToolGrants = z.strictObject({
+  "grants": z.array(ToolGrant),
+  "session": z.array(z.string()),
+});
+export type ToolGrants = z.output<typeof ToolGrants>;
+
+export const ToolList = z.strictObject({
+  "tools": z.array(ToolDefinition),
+});
+export type ToolList = z.output<typeof ToolList>;
+
+export const ToolRunParams = z.strictObject({
+  "call": ToolCall,
+  "messageId": z.string().nullable().optional(),
+});
+export type ToolRunParams = z.output<typeof ToolRunParams>;
+
+/** Result of `tool.run`: the audit record plus any text output. */
+export const ToolRunResult = z.strictObject({
+  "output": z.string().nullable().optional(),
+  "record": ToolCallRecord,
+});
+export type ToolRunResult = z.output<typeof ToolRunResult>;
 
 /** Host → UI: a spoken question was asked in this conversation. */
 export const VoiceAsked = z.strictObject({
@@ -948,10 +1134,17 @@ export const methods = {
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
   "conversation.regenerate": { target: "core", params: RegenerateParams, result: Message },
+  "tool.list": { target: "core", params: Empty, result: ToolList },
+  "tool.run": { target: "core", params: ToolRunParams, result: ToolRunResult },
+  "tool.respond": { target: "core", params: ApprovalResponse, result: Empty },
+  "tool.activity": { target: "core", params: ToolActivityParams, result: ToolActivity },
+  "tool.grants": { target: "core", params: Empty, result: ToolGrants },
+  "tool.revoke": { target: "core", params: IdParams, result: ToolGrants },
   "conversation.showGuidance": { target: "core", params: IdParams, result: Empty },
   "host.clipboard.writeText": { target: "host", params: ClipboardText, result: Empty },
   "host.guidance.show": { target: "host", params: GuidanceShow, result: Empty },
   "host.guidance.clear": { target: "host", params: Empty, result: Empty },
+  "host.input.perform": { target: "host", params: ToolCall, result: ToolExecution },
   "host.voice.start": { target: "host", params: HostVoiceStartParams, result: Empty },
   "host.voice.stop": { target: "host", params: Empty, result: VoiceFinishResult },
   "host.voice.stopSpeaking": { target: "host", params: Empty, result: Empty },
@@ -985,6 +1178,9 @@ export const events = {
   "conversation.messageUpdated": Message,
   "conversation.updated": ConversationSummary,
   "conversation.messageRemoved": Message,
+  "tool.approvalRequested": ApprovalRequest,
+  "tool.approvalResolved": ApprovalResolved,
+  "tool.callUpdated": ToolCallRecord,
   "audio.chunk": AudioChunk,
   "voice.speechChunk": SpeechChunk,
   "voice.modelProgress": SpeechModelProgress,

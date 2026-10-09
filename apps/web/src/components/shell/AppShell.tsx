@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from "react-router";
+import { ApprovalStack } from "../tools/ApprovalCard";
 import { Sidebar } from "./Sidebar";
 
 /** Chat surfaces own their full height (pinned composer, scrolling thread). */
@@ -7,8 +8,9 @@ const fullBleed = (path: string) => path === "/home" || path.startsWith("/conver
 export function AppShell() {
   const { pathname } = useLocation();
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full">
       <Sidebar />
+      <ApprovalStack className="absolute right-4 top-10 z-[var(--z-popover)] w-[380px]" />
       {fullBleed(pathname) ? (
         <main className="flex min-w-0 flex-1 flex-col">
           <Outlet />

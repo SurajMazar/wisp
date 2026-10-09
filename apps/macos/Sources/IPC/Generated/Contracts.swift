@@ -166,6 +166,14 @@ public enum Annotation: Codable, Sendable, Equatable {
     }
 }
 
+public struct AppArgs: Codable, Sendable, Equatable {
+    public var app: String
+
+    public init(app: String) {
+        self.app = app
+    }
+}
+
 public struct AppInfo: Codable, Sendable, Equatable {
     public var coreVersion: String
     public var dataDir: String
@@ -197,6 +205,17 @@ public struct AppearanceSettings: Codable, Sendable, Equatable {
         self.accent = accent
         self.customColor = customColor
         self.theme = theme
+    }
+}
+
+/// Computer control (spec §55–58). Off until the user turns it on.
+public struct ComputerSettings: Codable, Sendable, Equatable {
+    public var confirmEveryAction: Bool
+    public var enabled: Bool
+
+    public init(confirmEveryAction: Bool, enabled: Bool) {
+        self.confirmEveryAction = confirmEveryAction
+        self.enabled = enabled
     }
 }
 
@@ -446,6 +465,7 @@ public struct VoiceSettings: Codable, Sendable, Equatable {
 
 public struct AppSettings: Codable, Sendable, Equatable {
     public var appearance: AppearanceSettings
+    public var computer: ComputerSettings
     public var cursor: CursorSettings
     public var focus: FocusSettings
     public var general: GeneralSettings
@@ -455,8 +475,9 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var privacy: PrivacySettings
     public var voice: VoiceSettings
 
-    public init(appearance: AppearanceSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings, voice: VoiceSettings) {
+    public init(appearance: AppearanceSettings, computer: ComputerSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings, voice: VoiceSettings) {
         self.appearance = appearance
+        self.computer = computer
         self.cursor = cursor
         self.focus = focus
         self.general = general
@@ -529,6 +550,64 @@ public struct ApplicationInfo: Codable, Sendable, Equatable {
         self.bundleId = bundleId
         self.name = name
         self.pid = pid
+    }
+}
+
+public enum ApprovalDecision: String, Codable, Sendable, Equatable, CaseIterable {
+    case allowOnce = "allowOnce"
+    case allowSession = "allowSession"
+    case alwaysAllow = "alwaysAllow"
+    case deny = "deny"
+}
+
+public enum RiskLevel: String, Codable, Sendable, Equatable, CaseIterable {
+    case safe = "safe"
+    case low = "low"
+    case medium = "medium"
+    case high = "high"
+    case critical = "critical"
+}
+
+/// The assistant wants to do something and needs the user's OK (spec §58).
+public struct ApprovalRequest: Codable, Sendable, Equatable {
+    public var choices: [ApprovalDecision]
+    public var detail: String?
+    public var expiresAtMs: Int64
+    public var id: String
+    public var risk: RiskLevel
+    public var riskReason: String?
+    public var title: String
+    public var tool: String
+
+    public init(choices: [ApprovalDecision], detail: String? = nil, expiresAtMs: Int64, id: String, risk: RiskLevel, riskReason: String? = nil, title: String, tool: String) {
+        self.choices = choices
+        self.detail = detail
+        self.expiresAtMs = expiresAtMs
+        self.id = id
+        self.risk = risk
+        self.riskReason = riskReason
+        self.title = title
+        self.tool = tool
+    }
+}
+
+public struct ApprovalResolved: Codable, Sendable, Equatable {
+    public var decision: ApprovalDecision
+    public var id: String
+
+    public init(decision: ApprovalDecision, id: String) {
+        self.decision = decision
+        self.id = id
+    }
+}
+
+public struct ApprovalResponse: Codable, Sendable, Equatable {
+    public var decision: ApprovalDecision
+    public var id: String
+
+    public init(decision: ApprovalDecision, id: String) {
+        self.decision = decision
+        self.id = id
     }
 }
 
@@ -938,6 +1017,16 @@ public struct DisplayInfo: Codable, Sendable, Equatable {
     }
 }
 
+public struct DragArgs: Codable, Sendable, Equatable {
+    public var from: Point
+    public var to: Point
+
+    public init(from: Point, to: Point) {
+        self.from = from
+        self.to = to
+    }
+}
+
 /// Parameters for methods that take none. Accepts `{}` or an absent/`null` params field.
 public struct Empty: Codable, Sendable, Equatable {
 
@@ -957,6 +1046,14 @@ public enum ErrorCode: String, Codable, Sendable, Equatable, CaseIterable {
     case cancelled = "cancelled"
     case timeout = "timeout"
     case notFound = "notFound"
+}
+
+public struct FindArgs: Codable, Sendable, Equatable {
+    public var label: String
+
+    public init(label: String) {
+        self.label = label
+    }
 }
 
 public enum FocusEndReason: String, Codable, Sendable, Equatable, CaseIterable {
@@ -1089,6 +1186,23 @@ public struct HostVoiceStartParams: Codable, Sendable, Equatable {
     }
 }
 
+public enum KeyModifier: String, Codable, Sendable, Equatable, CaseIterable {
+    case command = "command"
+    case option = "option"
+    case control = "control"
+    case shift = "shift"
+}
+
+public struct HotkeyArgs: Codable, Sendable, Equatable {
+    public var key: String
+    public var modifiers: [KeyModifier]
+
+    public init(key: String, modifiers: [KeyModifier]) {
+        self.key = key
+        self.modifiers = modifiers
+    }
+}
+
 public struct IdParams: Codable, Sendable, Equatable {
     public var id: String
 
@@ -1156,6 +1270,14 @@ public struct IpcError: Codable, Sendable, Equatable {
         self.code = code
         self.details = details
         self.message = message
+    }
+}
+
+public struct KeyArgs: Codable, Sendable, Equatable {
+    public var key: String
+
+    public init(key: String) {
+        self.key = key
     }
 }
 
@@ -1360,6 +1482,18 @@ public struct PinParams: Codable, Sendable, Equatable {
     }
 }
 
+public struct PointerArgs: Codable, Sendable, Equatable {
+    public var label: String?
+    public var x: Double
+    public var y: Double
+
+    public init(label: String? = nil, x: Double, y: Double) {
+        self.label = label
+        self.x = x
+        self.y = y
+    }
+}
+
 public struct PullProgress: Codable, Sendable, Equatable {
     public var completed: UInt64?
     public var done: Bool
@@ -1440,6 +1574,20 @@ public struct ScreenPermissionStatus: Codable, Sendable, Equatable {
     }
 }
 
+public struct ScrollArgs: Codable, Sendable, Equatable {
+    public var dx: Int
+    public var dy: Int
+    public var x: Double
+    public var y: Double
+
+    public init(dx: Int, dy: Int, x: Double, y: Double) {
+        self.dx = dx
+        self.dy = dy
+        self.x = x
+        self.y = y
+    }
+}
+
 public struct SendParams: Codable, Sendable, Equatable {
     public var allowCloud: Bool
     public var conversationId: String?
@@ -1487,6 +1635,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
     case focus(FocusSettings)
     case models(ModelSettings)
     case voice(VoiceSettings)
+    case computer(ComputerSettings)
 
     private enum CodingKeys: String, CodingKey {
         case tag = "section"
@@ -1506,6 +1655,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
         case "focus": self = .focus(try c.decode(FocusSettings.self, forKey: .content))
         case "models": self = .models(try c.decode(ModelSettings.self, forKey: .content))
         case "voice": self = .voice(try c.decode(VoiceSettings.self, forKey: .content))
+        case "computer": self = .computer(try c.decode(ComputerSettings.self, forKey: .content))
         default:
             throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown SettingsSection variant \(tag)")
         }
@@ -1540,6 +1690,9 @@ public enum SettingsSection: Codable, Sendable, Equatable {
             try c.encode(v, forKey: .content)
         case .voice(let v):
             try c.encode("voice", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .computer(let v):
+            try c.encode("computer", forKey: .tag)
             try c.encode(v, forKey: .content)
         }
     }
@@ -1662,6 +1815,292 @@ public struct SpeechModelProgress: Codable, Sendable, Equatable {
     }
 }
 
+public struct TextArgs: Codable, Sendable, Equatable {
+    public var text: String
+
+    public init(text: String) {
+        self.text = text
+    }
+}
+
+public enum ToolCallStatus: String, Codable, Sendable, Equatable, CaseIterable {
+    case waitingForApproval = "waitingForApproval"
+    case running = "running"
+    case succeeded = "succeeded"
+    case failed = "failed"
+    case denied = "denied"
+}
+
+public enum VerificationStatus: String, Codable, Sendable, Equatable, CaseIterable {
+    case verified = "verified"
+    case failed = "failed"
+    case unknown = "unknown"
+}
+
+public struct Verification: Codable, Sendable, Equatable {
+    public var detail: String
+    public var status: VerificationStatus
+
+    public init(detail: String, status: VerificationStatus) {
+        self.detail = detail
+        self.status = status
+    }
+}
+
+/// One audited tool call (spec §105: no private content — arguments are summarized).
+public struct ToolCallRecord: Codable, Sendable, Equatable {
+    public var createdAtMs: Int64
+    public var decision: String
+    public var error: String?
+    public var finishedAtMs: Int64?
+    public var id: String
+    public var messageId: String?
+    public var risk: RiskLevel
+    public var status: ToolCallStatus
+    public var title: String
+    public var tool: String
+    public var verification: Verification?
+
+    public init(createdAtMs: Int64, decision: String, error: String? = nil, finishedAtMs: Int64? = nil, id: String, messageId: String? = nil, risk: RiskLevel, status: ToolCallStatus, title: String, tool: String, verification: Verification? = nil) {
+        self.createdAtMs = createdAtMs
+        self.decision = decision
+        self.error = error
+        self.finishedAtMs = finishedAtMs
+        self.id = id
+        self.messageId = messageId
+        self.risk = risk
+        self.status = status
+        self.title = title
+        self.tool = tool
+        self.verification = verification
+    }
+}
+
+public struct ToolActivity: Codable, Sendable, Equatable {
+    public var items: [ToolCallRecord]
+
+    public init(items: [ToolCallRecord]) {
+        self.items = items
+    }
+}
+
+public struct ToolActivityParams: Codable, Sendable, Equatable {
+    public var limit: UInt32
+
+    public init(limit: UInt32) {
+        self.limit = limit
+    }
+}
+
+public struct UrlArgs: Codable, Sendable, Equatable {
+    public var url: String
+
+    public init(url: String) {
+        self.url = url
+    }
+}
+
+/// Every action Wisp can take on the computer.
+public enum ToolCall: Codable, Sendable, Equatable {
+    case readScreen(Empty)
+    case findElement(FindArgs)
+    case click(PointerArgs)
+    case doubleClick(PointerArgs)
+    case rightClick(PointerArgs)
+    case moveMouse(PointerArgs)
+    case drag(DragArgs)
+    case scroll(ScrollArgs)
+    case typeText(TextArgs)
+    case keypress(KeyArgs)
+    case hotkey(HotkeyArgs)
+    case copy(Empty)
+    case paste(Empty)
+    case openApplication(AppArgs)
+    case switchApplication(AppArgs)
+    case closeApplication(AppArgs)
+    case openUrl(UrlArgs)
+    case readClipboard(Empty)
+    case writeClipboard(TextArgs)
+
+    private enum CodingKeys: String, CodingKey {
+        case tag = "tool"
+        case content = "args"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let tag = try c.decode(String.self, forKey: .tag)
+        switch tag {
+        case "readScreen": self = .readScreen(try c.decode(Empty.self, forKey: .content))
+        case "findElement": self = .findElement(try c.decode(FindArgs.self, forKey: .content))
+        case "click": self = .click(try c.decode(PointerArgs.self, forKey: .content))
+        case "doubleClick": self = .doubleClick(try c.decode(PointerArgs.self, forKey: .content))
+        case "rightClick": self = .rightClick(try c.decode(PointerArgs.self, forKey: .content))
+        case "moveMouse": self = .moveMouse(try c.decode(PointerArgs.self, forKey: .content))
+        case "drag": self = .drag(try c.decode(DragArgs.self, forKey: .content))
+        case "scroll": self = .scroll(try c.decode(ScrollArgs.self, forKey: .content))
+        case "typeText": self = .typeText(try c.decode(TextArgs.self, forKey: .content))
+        case "keypress": self = .keypress(try c.decode(KeyArgs.self, forKey: .content))
+        case "hotkey": self = .hotkey(try c.decode(HotkeyArgs.self, forKey: .content))
+        case "copy": self = .copy(try c.decode(Empty.self, forKey: .content))
+        case "paste": self = .paste(try c.decode(Empty.self, forKey: .content))
+        case "openApplication": self = .openApplication(try c.decode(AppArgs.self, forKey: .content))
+        case "switchApplication": self = .switchApplication(try c.decode(AppArgs.self, forKey: .content))
+        case "closeApplication": self = .closeApplication(try c.decode(AppArgs.self, forKey: .content))
+        case "openUrl": self = .openUrl(try c.decode(UrlArgs.self, forKey: .content))
+        case "readClipboard": self = .readClipboard(try c.decode(Empty.self, forKey: .content))
+        case "writeClipboard": self = .writeClipboard(try c.decode(TextArgs.self, forKey: .content))
+        default:
+            throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown ToolCall variant \(tag)")
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .readScreen(let v):
+            try c.encode("readScreen", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .findElement(let v):
+            try c.encode("findElement", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .click(let v):
+            try c.encode("click", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .doubleClick(let v):
+            try c.encode("doubleClick", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .rightClick(let v):
+            try c.encode("rightClick", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .moveMouse(let v):
+            try c.encode("moveMouse", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .drag(let v):
+            try c.encode("drag", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .scroll(let v):
+            try c.encode("scroll", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .typeText(let v):
+            try c.encode("typeText", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .keypress(let v):
+            try c.encode("keypress", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .hotkey(let v):
+            try c.encode("hotkey", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .copy(let v):
+            try c.encode("copy", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .paste(let v):
+            try c.encode("paste", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .openApplication(let v):
+            try c.encode("openApplication", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .switchApplication(let v):
+            try c.encode("switchApplication", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .closeApplication(let v):
+            try c.encode("closeApplication", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .openUrl(let v):
+            try c.encode("openUrl", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .readClipboard(let v):
+            try c.encode("readClipboard", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .writeClipboard(let v):
+            try c.encode("writeClipboard", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        }
+    }
+}
+
+/// What a tool is and how risky it is by default (for UIs and agents).
+public struct ToolDefinition: Codable, Sendable, Equatable {
+    public var description: String
+    public var name: String
+    public var requiresPermission: Bool
+    public var risk: RiskLevel
+    public var title: String
+
+    public init(description: String, name: String, requiresPermission: Bool, risk: RiskLevel, title: String) {
+        self.description = description
+        self.name = name
+        self.requiresPermission = requiresPermission
+        self.risk = risk
+        self.title = title
+    }
+}
+
+/// What the host reports after performing an action.
+public struct ToolExecution: Codable, Sendable, Equatable {
+    public var output: String?
+    public var verification: Verification
+
+    public init(output: String? = nil, verification: Verification) {
+        self.output = output
+        self.verification = verification
+    }
+}
+
+/// A standing "always allow" or "never allow" for a tool.
+public struct ToolGrant: Codable, Sendable, Equatable {
+    public var createdAtMs: Int64
+    public var decision: ApprovalDecision
+    public var id: String
+    public var tool: String
+
+    public init(createdAtMs: Int64, decision: ApprovalDecision, id: String, tool: String) {
+        self.createdAtMs = createdAtMs
+        self.decision = decision
+        self.id = id
+        self.tool = tool
+    }
+}
+
+public struct ToolGrants: Codable, Sendable, Equatable {
+    public var grants: [ToolGrant]
+    public var session: [String]
+
+    public init(grants: [ToolGrant], session: [String]) {
+        self.grants = grants
+        self.session = session
+    }
+}
+
+public struct ToolList: Codable, Sendable, Equatable {
+    public var tools: [ToolDefinition]
+
+    public init(tools: [ToolDefinition]) {
+        self.tools = tools
+    }
+}
+
+public struct ToolRunParams: Codable, Sendable, Equatable {
+    public var call: ToolCall
+    public var messageId: String?
+
+    public init(call: ToolCall, messageId: String? = nil) {
+        self.call = call
+        self.messageId = messageId
+    }
+}
+
+/// Result of `tool.run`: the audit record plus any text output.
+public struct ToolRunResult: Codable, Sendable, Equatable {
+    public var output: String?
+    public var record: ToolCallRecord
+
+    public init(output: String? = nil, record: ToolCallRecord) {
+        self.output = output
+        self.record = record
+    }
+}
+
 /// Host → UI: a spoken question was asked in this conversation.
 public struct VoiceAsked: Codable, Sendable, Equatable {
     public var conversationId: String
@@ -1770,10 +2209,17 @@ public enum IPCMethods {
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
     public static let conversationRegenerate = IPCMethod<RegenerateParams, Message>(name: "conversation.regenerate", target: .core)
+    public static let toolList = IPCMethod<Empty, ToolList>(name: "tool.list", target: .core)
+    public static let toolRun = IPCMethod<ToolRunParams, ToolRunResult>(name: "tool.run", target: .core)
+    public static let toolRespond = IPCMethod<ApprovalResponse, Empty>(name: "tool.respond", target: .core)
+    public static let toolActivity = IPCMethod<ToolActivityParams, ToolActivity>(name: "tool.activity", target: .core)
+    public static let toolGrants = IPCMethod<Empty, ToolGrants>(name: "tool.grants", target: .core)
+    public static let toolRevoke = IPCMethod<IdParams, ToolGrants>(name: "tool.revoke", target: .core)
     public static let conversationShowGuidance = IPCMethod<IdParams, Empty>(name: "conversation.showGuidance", target: .core)
     public static let hostClipboardWriteText = IPCMethod<ClipboardText, Empty>(name: "host.clipboard.writeText", target: .host)
     public static let hostGuidanceShow = IPCMethod<GuidanceShow, Empty>(name: "host.guidance.show", target: .host)
     public static let hostGuidanceClear = IPCMethod<Empty, Empty>(name: "host.guidance.clear", target: .host)
+    public static let hostInputPerform = IPCMethod<ToolCall, ToolExecution>(name: "host.input.perform", target: .host)
     public static let hostVoiceStart = IPCMethod<HostVoiceStartParams, Empty>(name: "host.voice.start", target: .host)
     public static let hostVoiceStop = IPCMethod<Empty, VoiceFinishResult>(name: "host.voice.stop", target: .host)
     public static let hostVoiceStopSpeaking = IPCMethod<Empty, Empty>(name: "host.voice.stopSpeaking", target: .host)
@@ -1831,10 +2277,17 @@ public enum IPCMethods {
         "conversation.pin": .core,
         "conversation.delete": .core,
         "conversation.regenerate": .core,
+        "tool.list": .core,
+        "tool.run": .core,
+        "tool.respond": .core,
+        "tool.activity": .core,
+        "tool.grants": .core,
+        "tool.revoke": .core,
         "conversation.showGuidance": .core,
         "host.clipboard.writeText": .host,
         "host.guidance.show": .host,
         "host.guidance.clear": .host,
+        "host.input.perform": .host,
         "host.voice.start": .host,
         "host.voice.stop": .host,
         "host.voice.stopSpeaking": .host,
@@ -1869,6 +2322,9 @@ public enum IPCEvents {
     public static let conversationMessageUpdated = IPCEvent<Message>(name: "conversation.messageUpdated")
     public static let conversationUpdated = IPCEvent<ConversationSummary>(name: "conversation.updated")
     public static let conversationMessageRemoved = IPCEvent<Message>(name: "conversation.messageRemoved")
+    public static let toolApprovalRequested = IPCEvent<ApprovalRequest>(name: "tool.approvalRequested")
+    public static let toolApprovalResolved = IPCEvent<ApprovalResolved>(name: "tool.approvalResolved")
+    public static let toolCallUpdated = IPCEvent<ToolCallRecord>(name: "tool.callUpdated")
     public static let audioChunk = IPCEvent<AudioChunk>(name: "audio.chunk")
     public static let voiceSpeechChunk = IPCEvent<SpeechChunk>(name: "voice.speechChunk")
     public static let voiceModelProgress = IPCEvent<SpeechModelProgress>(name: "voice.modelProgress")

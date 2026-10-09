@@ -1,4 +1,5 @@
 import {
+  ActivityIcon,
   AgentsIcon,
   ConversationsIcon,
   FilesIcon,
@@ -68,6 +69,11 @@ export const sections: Section[] = [
     path: "/voice",
     label: "Voice",
     icon: VoiceIcon,
+  },
+  {
+    path: "/activity",
+    label: "Activity",
+    icon: ActivityIcon,
   },
   {
     path: "/permissions",

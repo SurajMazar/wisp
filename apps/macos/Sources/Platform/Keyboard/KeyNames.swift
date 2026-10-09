@@ -83,6 +83,11 @@ public enum KeyNames {
         kVK_ANSI_Equal: "=", kVK_ANSI_Grave: "`",
     ]
 
+    /// The key code whose label is `label` (e.g. "S" → kVK_ANSI_S).
+    public static func keyCode(forLabel label: String) -> Int? {
+        special.first { $0.value == label }?.key
+    }
+
     public static func label(forKeyCode code: Int) -> String {
         special[code] ?? "Key \(code)"
     }

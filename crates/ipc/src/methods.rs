@@ -10,7 +10,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
     accessibility::*, app::*, conversations::*, cursor::*, focus::*, guidance::*, invocation::*,
-    models::*, settings::*, voice::*,
+    models::*, settings::*, tools::*, voice::*,
 };
 
 /// Which side implements a method.
@@ -169,6 +169,18 @@ define_methods! {
     ConversationDelete = "conversation.delete", Core, IdParams => Empty;
     /// Answer the same question again, replacing an assistant message.
     ConversationRegenerate = "conversation.regenerate", Core, RegenerateParams => Message;
+    /// Computer-control tools and their default risk.
+    ToolListMethod = "tool.list", Core, Empty => ToolList;
+    /// Run a tool through validation, risk analysis, policy, approval, execution and verification.
+    ToolRun = "tool.run", Core, ToolRunParams => ToolRunResult;
+    /// Answer a pending approval request.
+    ToolRespond = "tool.respond", Core, ApprovalResponse => Empty;
+    /// Recent tool calls (audit log).
+    ToolActivityMethod = "tool.activity", Core, ToolActivityParams => ToolActivity;
+    /// Standing and session permissions.
+    ToolGrantsMethod = "tool.grants", Core, Empty => ToolGrants;
+    /// Remove a standing permission (or clear a session one by tool name).
+    ToolRevoke = "tool.revoke", Core, IdParams => ToolGrants;
     /// Show an answer's guidance on screen again.
     ConversationShowGuidance = "conversation.showGuidance", Core, IdParams => Empty;
     /// Put text on the clipboard (Copy buttons).
@@ -177,6 +189,8 @@ define_methods! {
     HostGuidanceShow = "host.guidance.show", Host, GuidanceShow => Empty;
     /// Remove any guidance from the screen.
     HostGuidanceClear = "host.guidance.clear", Host, Empty => Empty;
+    /// Perform an approved action and observe whether it worked (needs Accessibility).
+    HostInputPerform = "host.input.perform", Host, ToolCall => ToolExecution;
 
     /// Start listening (push-to-talk from the panel or a microphone test).
     HostVoiceStart = "host.voice.start", Host, HostVoiceStartParams => Empty;
@@ -239,6 +253,12 @@ define_events! {
     ConversationUpdated = "conversation.updated", ConversationSummary;
     /// A message was removed (e.g. replaced by a regenerated answer).
     MessageRemoved = "conversation.messageRemoved", Message;
+    /// The assistant needs permission for an action.
+    ToolApprovalRequested = "tool.approvalRequested", ApprovalRequest;
+    /// An approval was answered (here or elsewhere) or expired.
+    ToolApprovalResolved = "tool.approvalResolved", ApprovalResolved;
+    /// A tool call changed state (activity log).
+    ToolCallUpdated = "tool.callUpdated", ToolCallRecord;
     /// Captured microphone audio (host → core only).
     AudioChunkEvent = "audio.chunk", AudioChunk;
     /// Synthesized speech ready to play (core → host).

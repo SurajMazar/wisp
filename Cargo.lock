@@ -2348,9 +2348,10 @@ dependencies = [
 name = "wisp-computer"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
+ "thiserror",
  "wisp-common",
  "wisp-ipc",
- "wisp-permissions",
 ]
 
 [[package]]
@@ -2374,6 +2375,7 @@ dependencies = [
  "wisp-ai",
  "wisp-audio",
  "wisp-common",
+ "wisp-computer",
  "wisp-database",
  "wisp-ipc",
  "wisp-permissions",

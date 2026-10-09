@@ -41,6 +41,7 @@ struct Inner {
     info: AppInfo,
     /// The region the user last focused. In memory only: pixels never reach the database.
     latest_focus: Mutex<Option<FocusRegion>>,
+    tools: crate::tools::ToolService,
 }
 
 impl Core {
@@ -53,6 +54,8 @@ impl Core {
         {
             tracing::info!(count = n, "recovered interrupted answers");
         }
+        // Tool calls interrupted mid-approval or mid-action are recorded as failed.
+        let _ = db.fail_unfinished_tool_calls();
         let schema_version = db
             .schema_version()
             .map_err(|e| IpcError::internal(e.to_string()))?;
@@ -72,6 +75,7 @@ impl Core {
                 events,
                 info,
                 latest_focus: Mutex::new(None),
+                tools: Default::default(),
             }),
         })
     }
@@ -215,6 +219,51 @@ impl Core {
             ConversationSend::NAME => {
                 self.call::<ConversationSend, _, _>(params, |c, p| async move { c.send(p).await })
                     .await
+            }
+            wisp_ipc::methods::ToolListMethod::NAME => {
+                self.call::<wisp_ipc::methods::ToolListMethod, _, _>(params, |_, _| async move {
+                    Ok(wisp_ipc::types::tools::ToolList {
+                        tools: wisp_computer::definitions(),
+                    })
+                })
+                .await
+            }
+            wisp_ipc::methods::ToolRun::NAME => {
+                self.call::<wisp_ipc::methods::ToolRun, _, _>(params, |c, p| async move {
+                    c.run_tool(p).await
+                })
+                .await
+            }
+            wisp_ipc::methods::ToolRespond::NAME => {
+                self.call::<wisp_ipc::methods::ToolRespond, _, _>(params, |c, p| async move {
+                    c.respond_tool(p)
+                })
+                .await
+            }
+            wisp_ipc::methods::ToolActivityMethod::NAME => {
+                self.call::<wisp_ipc::methods::ToolActivityMethod, _, _>(
+                    params,
+                    |c, p| async move {
+                        if !(1..=500).contains(&p.limit) {
+                            return Err(IpcError::invalid_params("limit must be 1–500"));
+                        }
+                        let items = c.blocking(move |db| db.list_tool_calls(p.limit)).await?;
+                        Ok(wisp_ipc::types::tools::ToolActivity { items })
+                    },
+                )
+                .await
+            }
+            wisp_ipc::methods::ToolGrantsMethod::NAME => {
+                self.call::<wisp_ipc::methods::ToolGrantsMethod, _, _>(params, |c, _| async move {
+                    c.tool_grants().await
+                })
+                .await
+            }
+            wisp_ipc::methods::ToolRevoke::NAME => {
+                self.call::<wisp_ipc::methods::ToolRevoke, _, _>(params, |c, p| async move {
+                    c.revoke_tool(p.id).await
+                })
+                .await
             }
             wisp_ipc::methods::ConversationShowGuidance::NAME => {
                 self.call::<wisp_ipc::methods::ConversationShowGuidance, _, _>(
@@ -387,6 +436,10 @@ impl Core {
             .events
             .publish::<wisp_ipc::methods::ConversationUpdated>(&s);
         Ok(s)
+    }
+
+    pub(crate) fn tool_service(&self) -> &crate::tools::ToolService {
+        &self.inner.tools
     }
 
     pub fn latest_focus(&self) -> Option<FocusRegion> {

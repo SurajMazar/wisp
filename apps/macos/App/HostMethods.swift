@@ -173,12 +173,27 @@ enum HostMethods {
             return Empty()
         }
 
+        router.register(IPCMethods.hostInputPerform) { params in
+            do {
+                return try await InputController.perform(params)
+            } catch InputController.Failure.notTrusted {
+                throw IpcError(code: .permissionDenied, details: nil, message: InputController.Failure.notTrusted.localizedDescription)
+            } catch let f as InputController.Failure {
+                throw IpcError(code: .unavailable, details: nil, message: f.localizedDescription)
+            }
+        }
+
         router.register(IPCMethods.hostCursorPreview) { params in
             guard (300...5_000).contains(params.stepMs), (1...12).contains(params.states.count) else {
                 throw IpcError.invalidRequest("stepMs must be 300–5000 and 1–12 states")
             }
             assistant.preview(params)
             return Empty()
+        }
+
+        // An action needs approval: make sure the user sees the request.
+        router.subscribe(IPCEvents.toolApprovalRequested) { _ in
+            assistant.expand()
         }
     }
 }

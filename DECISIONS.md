@@ -183,3 +183,18 @@ soon as their marker streams in; markers are stripped from stored text, the UI a
 click-through, non-activating, capture-excluded overlay per display and the buddy flies to the last target.
 Guidance is persisted on the message so it can be replayed.
 
+## D-028 — Computer control: typed tools, central policy, host execution, verification
+**Status** accepted (2026-10-09)
+Tools are a closed, typed set (`ToolCall`, adjacently tagged) — 19 from spec §55; **no shell tool** (spec §59 makes it
+optional and it is the highest-risk capability; revisit only with a sandbox). Pipeline in the core: structural
+validation (`wisp-computer::validate`: ranges, http(s)-only URLs, app names without paths, no control characters) →
+risk (`assess`: tool default, raised by destructive/financial/irreversible target labels as whole words, risky
+shortcuts, line breaks in typed text, insecure URLs) → policy (`wisp-permissions::evaluate`): off by default; Safe runs
+without asking; Low/Medium ask unless granted (Allow once / session / always, or never), High/Critical always ask and
+only offer "Allow once"; answers outside the offer are denials; unanswered requests deny after 2 minutes. The host
+executes with Accessibility press when the labeled control is under the point, synthetic events otherwise, refuses
+secure input, password fields and Wisp's own windows, and verifies by comparing frontmost app, window title, focus and
+the element at the point before/after (verified / failed / unknown — never assumed). Every call is audited in
+`tool_calls` with arguments redacted (typed text becomes a length); unfinished calls are marked failed at startup.
+First integration: "Click “…” for me" on what an answer pointed at; the model-driven loop arrives with agents (Phase 13).
+

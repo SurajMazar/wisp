@@ -7,6 +7,7 @@ import { useComposerFocus } from "../../components/chat/useComposerFocus";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { streamingMessage, useConversationStore } from "../../stores/conversationStore";
 import { useFocusStore } from "../../stores/focusStore";
+import { ApprovalStack } from "../../components/tools/ApprovalCard";
 import { FocusActions } from "./FocusActions";
 
 const stateText: Record<AssistantState, string> = {
@@ -107,6 +108,7 @@ export function AssistantPanel() {
       )}
 
       <div className="mt-2">
+        <ApprovalStack className="mb-2" />
         {error && (
           <p className="mb-1 px-1 text-xs text-danger" role="alert">
             {error}

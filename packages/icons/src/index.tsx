@@ -38,6 +38,9 @@ export {
   ChevronRight as ChevronRightIcon,
   CircleCheck as StepDoneIcon,
   Lightbulb as ThinkingIcon,
+  Activity as ActivityIcon,
+  ShieldAlert as RiskIcon,
+  Hand as ControlIcon,
 } from "lucide-react";
 
 /** Wisp's mark: a small luminous core with a soft trailing halo. */

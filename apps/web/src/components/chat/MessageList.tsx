@@ -7,6 +7,7 @@ import { copyText } from "../../lib/clipboard";
 import { stripMarkers } from "../../lib/guidance";
 import { ipc } from "../../services/ipc";
 import { useConversationStore } from "../../stores/conversationStore";
+import { useToolStore } from "../../stores/toolStore";
 import { useVoiceStore } from "../../stores/voiceStore";
 import { ReasoningBlock, StepTrail } from "./AnswerProgress";
 import { ContextButton } from "./ContextInfo";
@@ -87,6 +88,31 @@ function GuidanceChips({ m }: { m: Message }) {
     void ipc()
       .call("conversation.showGuidance", { id: m.id })
       .catch(() => {});
+  const run = useToolStore((s) => s.run);
+  const [result, setResult] = useState<string | null>(null);
+  const target = m.guidance?.at(-1);
+  const doIt = async () => {
+    if (!target) return;
+    setResult("Waiting for your OK…");
+    const r = await run(
+      {
+        tool: "click",
+        args: {
+          x: target.rect.x + target.rect.width / 2,
+          y: target.rect.y + target.rect.height / 2,
+          ...(target.label ? { label: target.label } : {}),
+        },
+      },
+      m.id,
+    );
+    if (!r) return setResult(useToolStore.getState().error ?? "Couldn't do it.");
+    const rec = r.record;
+    setResult(
+      rec.status === "succeeded"
+        ? `Done${rec.verification ? ` — ${rec.verification.detail}` : ""}`
+        : (rec.error ?? "Not done."),
+    );
+  };
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1.5">
       <span className="text-xs text-text-faint">Pointed at</span>
@@ -102,6 +128,20 @@ function GuidanceChips({ m }: { m: Message }) {
           {g.label || "this spot"}
         </button>
       ))}
+      {target && (
+        <button
+          type="button"
+          onClick={() => void doIt()}
+          className="rounded-full px-2 py-0.5 text-xs text-text-muted underline-offset-2 hover:text-text hover:underline"
+        >
+          {target.label ? `Click “${target.label}” for me` : "Click it for me"}
+        </button>
+      )}
+      {result && (
+        <span role="status" className="text-xs text-text-faint">
+          {result}
+        </span>
+      )}
     </div>
   );
 }

@@ -22,6 +22,16 @@ pub struct AppSettings {
     pub focus: FocusSettings,
     pub models: ModelSettings,
     pub voice: VoiceSettings,
+    pub computer: ComputerSettings,
+}
+
+/// Computer control (spec §55–58). Off until the user turns it on.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+pub struct ComputerSettings {
+    pub enabled: bool,
+    /// Ask before every action, even ones allowed for the session or always.
+    pub confirm_every_action: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -116,6 +126,7 @@ pub enum SettingsSection {
     Focus(FocusSettings),
     Models(ModelSettings),
     Voice(VoiceSettings),
+    Computer(ComputerSettings),
 }
 
 impl SettingsSection {
@@ -131,6 +142,7 @@ impl SettingsSection {
             Self::Focus(_) => "focus",
             Self::Models(_) => "models",
             Self::Voice(_) => "voice",
+            Self::Computer(_) => "computer",
         }
     }
 

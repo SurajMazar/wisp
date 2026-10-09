@@ -344,3 +344,35 @@ point at it, while the answer is still streaming.
 ## Stop Gate 10
 Automated portions PASS; manual checklist (Phase 10) pending.
 
+---
+
+# Phase 11 — Computer Control (2026-10-09)
+
+## Summary
+Wisp can act on the Mac — click, type, press keys and shortcuts, scroll, drag, open/switch/quit apps, open links, use
+the clipboard — only through validation, risk analysis, a central policy and the user's approval, with every action
+verified and audited.
+
+## Implemented
+- Contracts: `ToolCall` (19 tools), `RiskLevel`, `ToolDefinition`, `ApprovalRequest/Response/Resolved`,
+  `ToolExecution`, `Verification`, `ToolCallRecord`, grants; methods `tool.list|run|respond|activity|grants|revoke`,
+  `host.input.perform`; events `tool.approvalRequested|approvalResolved|callUpdated`; `computer` settings section
+- `wisp-computer` (definitions, validation, risk escalation, titles, redaction), `wisp-permissions` (policy)
+- Database: tool audit + standing grants repository; startup recovery of unfinished calls
+- Core `ToolService`: pipeline, approvals with timeout, session grants, read-only tools from Accessibility
+- Host `InputController`: AX press / CGEvent input, typing with secure-input and password-field refusal, app control,
+  clipboard, own-window refusal, before/after verification; panel opens for approvals
+- UI: approval cards (panel + main window), "Click “…” for me" on guidance, Computer control settings with revocable
+  permissions, Activity page
+
+## Tests Added
+- Rust: validation (URLs, apps, keys, text), risk escalation (whole words, critical phrases, shortcuts), titles and
+  redaction (4); policy (4); audit + grants repo (2); engine pipeline with fake host — off by default, read-only
+  allowed, approvals, session grants, High never covered by grants, forged choices denied, audit order, invalid calls
+  never reach policy (3)
+- Swift: key mapping, clipboard round trip (restores the user's clipboard), non-web URL refusal, observation
+- React: approval choices and response, critical card, Do-it flow, Activity list (4)
+
+## Stop Gate 11
+Automated portions PASS; real input needs Accessibility for the app — manual checklist (Phase 11) pending.
+

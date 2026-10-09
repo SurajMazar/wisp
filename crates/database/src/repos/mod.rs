@@ -3,3 +3,4 @@
 pub mod conversations;
 pub mod events;
 pub mod settings;
+pub mod tools;

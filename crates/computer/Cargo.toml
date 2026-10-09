@@ -13,4 +13,5 @@ workspace = true
 [dependencies]
 wisp-common.workspace = true
 wisp-ipc.workspace = true
-wisp-permissions.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

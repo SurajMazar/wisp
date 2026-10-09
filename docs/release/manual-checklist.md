@@ -118,5 +118,16 @@ Prerequisite: Microphone permission; `brew install espeak-ng` (already installed
 - [ ] On two displays, the highlight appears on the display where the target is.
 - [ ] The overlay never steals focus and clicks pass straight through it; Reduce Motion turns off the animations.
 
+## Phase 11 — Computer control
+Prerequisite: Accessibility permission for Wisp.
+- [ ] Settings → Computer control is off by default; with it off, "Click “Save” for me" says it's off and nothing happens.
+- [ ] Turn it on. Ask where to save in TextEdit; click "Click “Save” for me": an approval card appears in the panel (Allow once / for this session / Always / Deny) with a 2-minute countdown.
+- [ ] Allow once: the Save dialog opens; the result says what changed; Activity lists it with "Done".
+- [ ] Allow for this session, then repeat: no card the second time. Settings lists the session permission; Revoke removes it.
+- [ ] Point at a "Delete" or "Move to Trash" button and ask Wisp to click it: the card is marked High risk, explains why, and only offers Allow once / Deny — even if click is always allowed.
+- [ ] Let a card expire: the action is denied and Activity says so.
+- [ ] Ask Wisp to type into a password field: it refuses.
+- [ ] Turn on "Ask before every action": every action asks, whatever was allowed before.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).
