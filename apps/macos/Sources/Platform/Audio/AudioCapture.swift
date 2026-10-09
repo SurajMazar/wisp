@@ -104,13 +104,17 @@ public final class AudioCapture {
             Task { @MainActor in self?.onLevel?(l) }
         })
         self.sink = sink
-        input.installTap(onBus: 0, bufferSize: 2048, format: mono) { buffer, _ in
-            sink.process(buffer)
-        }
+        input.installTap(onBus: 0, bufferSize: 2048, format: mono, block: Self.tapBlock { sink.process($0) })
         engine.prepare()
         try engine.start()
         self.sessionId = sessionId
         capturedMs = 0
+    }
+
+    /// The tap runs on a CoreAudio thread. Built outside the main actor: a closure written inline
+    /// in `start` would inherit `@MainActor`, and Swift traps when the audio thread calls it.
+    nonisolated static func tapBlock(_ onBuffer: @escaping @Sendable (AVAudioPCMBuffer) -> Void) -> AVAudioNodeTapBlock {
+        { buffer, _ in onBuffer(buffer) }
     }
 
     /// Stop the microphone and deliver any remaining audio.
