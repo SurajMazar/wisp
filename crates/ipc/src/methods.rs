@@ -8,7 +8,9 @@
 use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
-use crate::types::{accessibility::*, app::*, cursor::*, focus::*, invocation::*, settings::*};
+use crate::types::{
+    accessibility::*, app::*, cursor::*, focus::*, invocation::*, models::*, settings::*,
+};
 
 /// Which side implements a method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -130,6 +132,30 @@ define_methods! {
     /// Ask for microphone access (system prompt the first time).
     HostMicRequestPermission = "host.mic.requestPermission", Host, Empty => MicrophoneStatus;
 
+    /// Apple Foundation Models availability on this Mac.
+    HostAppleStatus = "host.apple.status", Host, Empty => AppleStatus;
+    /// Generate with Apple Foundation Models; streams `apple.delta` events to the core.
+    HostAppleGenerate = "host.apple.generate", Host, AppleGenerateParams => AppleGenerateResult;
+    HostAppleCancel = "host.apple.cancel", Host, RequestIdParams => Empty;
+    /// Store a secret in the macOS Keychain (UI → host). Never passes through the core's storage.
+    HostKeychainSet = "host.keychain.set", Host, KeychainSetParams => Empty;
+    HostKeychainDelete = "host.keychain.delete", Host, KeychainAccount => Empty;
+    /// Read a secret for an outgoing request (core → host only).
+    HostKeychainGet = "host.keychain.get", Host, KeychainAccount => KeychainSecret;
+    /// Start a local Ollama installation that isn't running.
+    HostOllamaStart = "host.ollama.start", Host, Empty => Empty;
+
+    /// Providers with live status and every model they offer.
+    ModelsListMethod = "models.list", Core, Empty => ModelsList;
+    /// Download an Ollama model; progress arrives as `models.pullProgress`.
+    ModelsPull = "models.pull", Core, ModelNameParams => Empty;
+    ModelsCancelPull = "models.cancelPull", Core, ModelNameParams => Empty;
+    ModelsDelete = "models.delete", Core, ModelNameParams => Empty;
+    /// Ask a model a quick question and time it.
+    ModelsTest = "models.test", Core, ModelTestParams => ModelTestResult;
+    /// Which model would answer, and why (respects privacy mode).
+    AiRoute = "ai.route", Core, RouteParams => RouteInfo;
+
     /// Rank and trim an accessibility snapshot into model-ready context.
     AccessibilityRank = "accessibility.rank", Core, AxRankParams => AxContext;
     /// The most recent focus region the core accepted.
@@ -157,6 +183,10 @@ define_events! {
     FocusEndedEvent = "focus.ended", FocusEnded;
     /// The current focus region was cleared.
     FocusCleared = "focus.cleared", Empty;
+    /// Model download progress.
+    ModelsPullProgress = "models.pullProgress", PullProgress;
+    /// Streaming text from Apple Foundation Models (host → core).
+    AppleDeltaEvent = "apple.delta", AppleDelta;
 }
 
 #[cfg(test)]

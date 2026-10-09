@@ -197,6 +197,52 @@ public struct InvocationSettings: Codable, Sendable, Equatable {
     }
 }
 
+/// A user-configured OpenAI-compatible endpoint (LM Studio, llama.cpp server, or a cloud API).
+/// Its API key lives in the Keychain under `keychain_account`, never here.
+public struct EndpointConfig: Codable, Sendable, Equatable {
+    public var baseUrl: String
+    public var id: String
+    public var keychainAccount: String?
+    public var name: String
+
+    public init(baseUrl: String, id: String, keychainAccount: String? = nil, name: String) {
+        self.baseUrl = baseUrl
+        self.id = id
+        self.keychainAccount = keychainAccount
+        self.name = name
+    }
+}
+
+public struct ModelRef: Codable, Sendable, Equatable {
+    public var model: String
+    public var providerId: String
+
+    public init(model: String, providerId: String) {
+        self.model = model
+        self.providerId = providerId
+    }
+}
+
+public struct ModelSettings: Codable, Sendable, Equatable {
+    public var contextLength: UInt32
+    public var endpoints: [EndpointConfig]
+    public var general: ModelRef?
+    public var maxTokens: UInt32
+    public var ollamaUrl: String
+    public var temperature: Double
+    public var vision: ModelRef?
+
+    public init(contextLength: UInt32, endpoints: [EndpointConfig], general: ModelRef? = nil, maxTokens: UInt32, ollamaUrl: String, temperature: Double, vision: ModelRef? = nil) {
+        self.contextLength = contextLength
+        self.endpoints = endpoints
+        self.general = general
+        self.maxTokens = maxTokens
+        self.ollamaUrl = ollamaUrl
+        self.temperature = temperature
+        self.vision = vision
+    }
+}
+
 public struct OnboardingSettings: Codable, Sendable, Equatable {
     public var completed: Bool
     public var completedAtMs: Int64?
@@ -228,17 +274,71 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var focus: FocusSettings
     public var general: GeneralSettings
     public var invocation: InvocationSettings
+    public var models: ModelSettings
     public var onboarding: OnboardingSettings
     public var privacy: PrivacySettings
 
-    public init(appearance: AppearanceSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, onboarding: OnboardingSettings, privacy: PrivacySettings) {
+    public init(appearance: AppearanceSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings) {
         self.appearance = appearance
         self.cursor = cursor
         self.focus = focus
         self.general = general
         self.invocation = invocation
+        self.models = models
         self.onboarding = onboarding
         self.privacy = privacy
+    }
+}
+
+public struct AppleDelta: Codable, Sendable, Equatable {
+    public var delta: String
+    public var requestId: String
+
+    public init(delta: String, requestId: String) {
+        self.delta = delta
+        self.requestId = requestId
+    }
+}
+
+public struct AppleGenerateParams: Codable, Sendable, Equatable {
+    public var instructions: String
+    public var maxTokens: UInt32
+    public var prompt: String
+    public var requestId: String
+    public var temperature: Double
+
+    public init(instructions: String, maxTokens: UInt32, prompt: String, requestId: String, temperature: Double) {
+        self.instructions = instructions
+        self.maxTokens = maxTokens
+        self.prompt = prompt
+        self.requestId = requestId
+        self.temperature = temperature
+    }
+}
+
+public struct AppleGenerateResult: Codable, Sendable, Equatable {
+    public var text: String
+
+    public init(text: String) {
+        self.text = text
+    }
+}
+
+/// Provider health as observed right now (spec §111). Never assumed.
+public enum ProviderState: String, Codable, Sendable, Equatable, CaseIterable {
+    case available = "available"
+    case notRunning = "notRunning"
+    case notInstalled = "notInstalled"
+    case unavailable = "unavailable"
+}
+
+public struct AppleStatus: Codable, Sendable, Equatable {
+    public var detail: String?
+    public var state: ProviderState
+
+    public init(detail: String? = nil, state: ProviderState) {
+        self.detail = detail
+        self.state = state
     }
 }
 
@@ -639,6 +739,32 @@ public struct IpcError: Codable, Sendable, Equatable {
     }
 }
 
+public struct KeychainAccount: Codable, Sendable, Equatable {
+    public var account: String
+
+    public init(account: String) {
+        self.account = account
+    }
+}
+
+public struct KeychainSecret: Codable, Sendable, Equatable {
+    public var secret: String?
+
+    public init(secret: String? = nil) {
+        self.secret = secret
+    }
+}
+
+public struct KeychainSetParams: Codable, Sendable, Equatable {
+    public var account: String
+    public var secret: String
+
+    public init(account: String, secret: String) {
+        self.account = account
+        self.secret = secret
+    }
+}
+
 public struct LatestFocus: Codable, Sendable, Equatable {
     public var region: FocusRegion?
 
@@ -647,11 +773,121 @@ public struct LatestFocus: Codable, Sendable, Equatable {
     }
 }
 
+public enum Locality: String, Codable, Sendable, Equatable, CaseIterable {
+    case local = "local"
+    case cloud = "cloud"
+}
+
 public struct MicrophoneStatus: Codable, Sendable, Equatable {
     public var state: PermissionState
 
     public init(state: PermissionState) {
         self.state = state
+    }
+}
+
+public enum ModelCapability: String, Codable, Sendable, Equatable, CaseIterable {
+    case text = "text"
+    case vision = "vision"
+    case audioInput = "audioInput"
+    case audioOutput = "audioOutput"
+    case toolCalling = "toolCalling"
+    case structuredOutput = "structuredOutput"
+    case streaming = "streaming"
+    case reasoning = "reasoning"
+}
+
+public struct ModelInfo: Codable, Sendable, Equatable {
+    public var capabilities: [ModelCapability]
+    public var contextLength: UInt32?
+    public var family: String?
+    public var id: String
+    public var locality: Locality
+    public var name: String
+    public var parameterSize: String?
+    public var providerId: String
+    public var sizeBytes: UInt64?
+
+    public init(capabilities: [ModelCapability], contextLength: UInt32? = nil, family: String? = nil, id: String, locality: Locality, name: String, parameterSize: String? = nil, providerId: String, sizeBytes: UInt64? = nil) {
+        self.capabilities = capabilities
+        self.contextLength = contextLength
+        self.family = family
+        self.id = id
+        self.locality = locality
+        self.name = name
+        self.parameterSize = parameterSize
+        self.providerId = providerId
+        self.sizeBytes = sizeBytes
+    }
+}
+
+public struct ModelNameParams: Codable, Sendable, Equatable {
+    public var name: String
+
+    public init(name: String) {
+        self.name = name
+    }
+}
+
+public struct ModelTestParams: Codable, Sendable, Equatable {
+    public var model: ModelRef?
+    public var prompt: String?
+
+    public init(model: ModelRef? = nil, prompt: String? = nil) {
+        self.model = model
+        self.prompt = prompt
+    }
+}
+
+public struct ModelTestResult: Codable, Sendable, Equatable {
+    public var firstTokenMs: UInt32
+    public var locality: Locality
+    public var model: ModelRef
+    public var text: String
+    public var totalMs: UInt32
+
+    public init(firstTokenMs: UInt32, locality: Locality, model: ModelRef, text: String, totalMs: UInt32) {
+        self.firstTokenMs = firstTokenMs
+        self.locality = locality
+        self.model = model
+        self.text = text
+        self.totalMs = totalMs
+    }
+}
+
+public enum ProviderKind: String, Codable, Sendable, Equatable, CaseIterable {
+    case apple = "apple"
+    case ollama = "ollama"
+    case openaiCompatible = "openaiCompatible"
+}
+
+public struct ProviderInfo: Codable, Sendable, Equatable {
+    public var detail: String?
+    public var id: String
+    public var kind: ProviderKind
+    public var locality: Locality
+    public var name: String
+    public var state: ProviderState
+    public var version: String?
+
+    public init(detail: String? = nil, id: String, kind: ProviderKind, locality: Locality, name: String, state: ProviderState, version: String? = nil) {
+        self.detail = detail
+        self.id = id
+        self.kind = kind
+        self.locality = locality
+        self.name = name
+        self.state = state
+        self.version = version
+    }
+}
+
+public struct ModelsList: Codable, Sendable, Equatable {
+    public var models: [ModelInfo]
+    public var providers: [ProviderInfo]
+
+    public init(models: [ModelInfo], providers: [ProviderInfo]) {
+        self.models = models
+        self.providers = providers
     }
 }
 
@@ -674,6 +910,58 @@ public struct OpenSettingsPaneParams: Codable, Sendable, Equatable {
     }
 }
 
+public struct PullProgress: Codable, Sendable, Equatable {
+    public var completed: UInt64?
+    public var done: Bool
+    public var error: String?
+    public var name: String
+    public var status: String
+    public var total: UInt64?
+
+    public init(completed: UInt64? = nil, done: Bool, error: String? = nil, name: String, status: String, total: UInt64? = nil) {
+        self.completed = completed
+        self.done = done
+        self.error = error
+        self.name = name
+        self.status = status
+        self.total = total
+    }
+}
+
+public struct RequestIdParams: Codable, Sendable, Equatable {
+    public var requestId: String
+
+    public init(requestId: String) {
+        self.requestId = requestId
+    }
+}
+
+public struct RouteInfo: Codable, Sendable, Equatable {
+    public var locality: Locality
+    public var model: ModelRef
+    public var modelName: String
+    public var providerName: String
+    public var reason: String
+
+    public init(locality: Locality, model: ModelRef, modelName: String, providerName: String, reason: String) {
+        self.locality = locality
+        self.model = model
+        self.modelName = modelName
+        self.providerName = providerName
+        self.reason = reason
+    }
+}
+
+public struct RouteParams: Codable, Sendable, Equatable {
+    public var allowCloud: Bool
+    public var needsVision: Bool
+
+    public init(allowCloud: Bool, needsVision: Bool) {
+        self.allowCloud = allowCloud
+        self.needsVision = needsVision
+    }
+}
+
 public struct ScreenPermissionStatus: Codable, Sendable, Equatable {
     public var screenRecording: PermissionState
 
@@ -691,6 +979,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
     case invocation(InvocationSettings)
     case cursor(CursorSettings)
     case focus(FocusSettings)
+    case models(ModelSettings)
 
     private enum CodingKeys: String, CodingKey {
         case tag = "section"
@@ -708,6 +997,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
         case "invocation": self = .invocation(try c.decode(InvocationSettings.self, forKey: .content))
         case "cursor": self = .cursor(try c.decode(CursorSettings.self, forKey: .content))
         case "focus": self = .focus(try c.decode(FocusSettings.self, forKey: .content))
+        case "models": self = .models(try c.decode(ModelSettings.self, forKey: .content))
         default:
             throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown SettingsSection variant \(tag)")
         }
@@ -736,6 +1026,9 @@ public enum SettingsSection: Codable, Sendable, Equatable {
             try c.encode(v, forKey: .content)
         case .focus(let v):
             try c.encode("focus", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .models(let v):
+            try c.encode("models", forKey: .tag)
             try c.encode(v, forKey: .content)
         }
     }
@@ -814,6 +1107,19 @@ public enum IPCMethods {
     public static let hostAxSnapshot = IPCMethod<AxSnapshotParams, AxSnapshot>(name: "host.ax.snapshot", target: .host)
     public static let hostMicPermission = IPCMethod<Empty, MicrophoneStatus>(name: "host.mic.permission", target: .host)
     public static let hostMicRequestPermission = IPCMethod<Empty, MicrophoneStatus>(name: "host.mic.requestPermission", target: .host)
+    public static let hostAppleStatus = IPCMethod<Empty, AppleStatus>(name: "host.apple.status", target: .host)
+    public static let hostAppleGenerate = IPCMethod<AppleGenerateParams, AppleGenerateResult>(name: "host.apple.generate", target: .host)
+    public static let hostAppleCancel = IPCMethod<RequestIdParams, Empty>(name: "host.apple.cancel", target: .host)
+    public static let hostKeychainSet = IPCMethod<KeychainSetParams, Empty>(name: "host.keychain.set", target: .host)
+    public static let hostKeychainDelete = IPCMethod<KeychainAccount, Empty>(name: "host.keychain.delete", target: .host)
+    public static let hostKeychainGet = IPCMethod<KeychainAccount, KeychainSecret>(name: "host.keychain.get", target: .host)
+    public static let hostOllamaStart = IPCMethod<Empty, Empty>(name: "host.ollama.start", target: .host)
+    public static let modelsList = IPCMethod<Empty, ModelsList>(name: "models.list", target: .core)
+    public static let modelsPull = IPCMethod<ModelNameParams, Empty>(name: "models.pull", target: .core)
+    public static let modelsCancelPull = IPCMethod<ModelNameParams, Empty>(name: "models.cancelPull", target: .core)
+    public static let modelsDelete = IPCMethod<ModelNameParams, Empty>(name: "models.delete", target: .core)
+    public static let modelsTest = IPCMethod<ModelTestParams, ModelTestResult>(name: "models.test", target: .core)
+    public static let aiRoute = IPCMethod<RouteParams, RouteInfo>(name: "ai.route", target: .core)
     public static let accessibilityRank = IPCMethod<AxRankParams, AxContext>(name: "accessibility.rank", target: .core)
     public static let focusLatest = IPCMethod<Empty, LatestFocus>(name: "focus.latest", target: .core)
 
@@ -839,6 +1145,19 @@ public enum IPCMethods {
         "host.ax.snapshot": .host,
         "host.mic.permission": .host,
         "host.mic.requestPermission": .host,
+        "host.apple.status": .host,
+        "host.apple.generate": .host,
+        "host.apple.cancel": .host,
+        "host.keychain.set": .host,
+        "host.keychain.delete": .host,
+        "host.keychain.get": .host,
+        "host.ollama.start": .host,
+        "models.list": .core,
+        "models.pull": .core,
+        "models.cancelPull": .core,
+        "models.delete": .core,
+        "models.test": .core,
+        "ai.route": .core,
         "accessibility.rank": .core,
         "focus.latest": .core,
     ]
@@ -855,4 +1174,6 @@ public enum IPCEvents {
     public static let focusCompleted = IPCEvent<FocusRegion>(name: "focus.completed")
     public static let focusEnded = IPCEvent<FocusEnded>(name: "focus.ended")
     public static let focusCleared = IPCEvent<Empty>(name: "focus.cleared")
+    public static let modelsPullProgress = IPCEvent<PullProgress>(name: "models.pullProgress")
+    public static let appleDelta = IPCEvent<AppleDelta>(name: "apple.delta")
 }

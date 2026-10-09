@@ -107,6 +107,33 @@ export const InvocationSettings = z.strictObject({
 });
 export type InvocationSettings = z.output<typeof InvocationSettings>;
 
+/** A user-configured OpenAI-compatible endpoint (LM Studio, llama.cpp server, or a cloud API).
+Its API key lives in the Keychain under `keychain_account`, never here. */
+export const EndpointConfig = z.strictObject({
+  "baseUrl": z.string(),
+  "id": z.string(),
+  "keychainAccount": z.string().nullable().optional(),
+  "name": z.string(),
+});
+export type EndpointConfig = z.output<typeof EndpointConfig>;
+
+export const ModelRef = z.strictObject({
+  "model": z.string(),
+  "providerId": z.string(),
+});
+export type ModelRef = z.output<typeof ModelRef>;
+
+export const ModelSettings = z.strictObject({
+  "contextLength": z.number().int().nonnegative().default(8192),
+  "endpoints": z.array(EndpointConfig).default([]),
+  "general": ModelRef.nullable().optional(),
+  "maxTokens": z.number().int().nonnegative().default(1024),
+  "ollamaUrl": z.string().default("http://127.0.0.1:11434"),
+  "temperature": z.number().default(0.4),
+  "vision": ModelRef.nullable().optional(),
+});
+export type ModelSettings = z.output<typeof ModelSettings>;
+
 export const OnboardingSettings = z.strictObject({
   "completed": z.boolean().default(false),
   "completedAtMs": z.number().int().nullable().optional(),
@@ -128,10 +155,41 @@ export const AppSettings = z.strictObject({
   "focus": FocusSettings.default(() => FocusSettings.parse({"dimSurroundings":true,"drawStyle":"rectangle","margin":24,"pointSize":480})),
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
   "invocation": InvocationSettings.default(() => InvocationSettings.parse({"behavior":"hold","holdDelayMs":150,"mouseAction":"focusCursor","mouseButton":"none","shortcut":{"modifiers":["option","command"]}})),
+  "models": ModelSettings.default(() => ModelSettings.parse({"contextLength":8192,"endpoints":[],"maxTokens":1024,"ollamaUrl":"http://127.0.0.1:11434","temperature":0.4})),
   "onboarding": OnboardingSettings.default(() => OnboardingSettings.parse({"completed":false})),
   "privacy": PrivacySettings.default(() => PrivacySettings.parse({"mode":"localOnly"})),
 });
 export type AppSettings = z.output<typeof AppSettings>;
+
+export const AppleDelta = z.strictObject({
+  "delta": z.string(),
+  "requestId": z.string(),
+});
+export type AppleDelta = z.output<typeof AppleDelta>;
+
+export const AppleGenerateParams = z.strictObject({
+  "instructions": z.string(),
+  "maxTokens": z.number().int().nonnegative(),
+  "prompt": z.string(),
+  "requestId": z.string(),
+  "temperature": z.number(),
+});
+export type AppleGenerateParams = z.output<typeof AppleGenerateParams>;
+
+export const AppleGenerateResult = z.strictObject({
+  "text": z.string(),
+});
+export type AppleGenerateResult = z.output<typeof AppleGenerateResult>;
+
+/** Provider health as observed right now (spec §111). Never assumed. */
+export const ProviderState = z.enum(["available","notRunning","notInstalled","unavailable"]);
+export type ProviderState = z.output<typeof ProviderState>;
+
+export const AppleStatus = z.strictObject({
+  "detail": z.string().nullable().optional(),
+  "state": ProviderState,
+});
+export type AppleStatus = z.output<typeof AppleStatus>;
 
 export const ApplicationInfo = z.strictObject({
   "bundleId": z.string().nullable().optional(),
@@ -348,15 +406,90 @@ export const IpcError = z.strictObject({
 });
 export type IpcError = z.output<typeof IpcError>;
 
+export const KeychainAccount = z.strictObject({
+  "account": z.string(),
+});
+export type KeychainAccount = z.output<typeof KeychainAccount>;
+
+export const KeychainSecret = z.strictObject({
+  "secret": z.string().nullable().optional(),
+});
+export type KeychainSecret = z.output<typeof KeychainSecret>;
+
+export const KeychainSetParams = z.strictObject({
+  "account": z.string(),
+  "secret": z.string(),
+});
+export type KeychainSetParams = z.output<typeof KeychainSetParams>;
+
 export const LatestFocus = z.strictObject({
   "region": FocusRegion.nullable().optional(),
 });
 export type LatestFocus = z.output<typeof LatestFocus>;
 
+export const Locality = z.enum(["local","cloud"]);
+export type Locality = z.output<typeof Locality>;
+
 export const MicrophoneStatus = z.strictObject({
   "state": PermissionState,
 });
 export type MicrophoneStatus = z.output<typeof MicrophoneStatus>;
+
+export const ModelCapability = z.enum(["text","vision","audioInput","audioOutput","toolCalling","structuredOutput","streaming","reasoning"]);
+export type ModelCapability = z.output<typeof ModelCapability>;
+
+export const ModelInfo = z.strictObject({
+  "capabilities": z.array(ModelCapability),
+  "contextLength": z.number().int().nonnegative().nullable().optional(),
+  "family": z.string().nullable().optional(),
+  "id": z.string(),
+  "locality": Locality,
+  "name": z.string(),
+  "parameterSize": z.string().nullable().optional(),
+  "providerId": z.string(),
+  "sizeBytes": z.number().int().nonnegative().nullable().optional(),
+});
+export type ModelInfo = z.output<typeof ModelInfo>;
+
+export const ModelNameParams = z.strictObject({
+  "name": z.string(),
+});
+export type ModelNameParams = z.output<typeof ModelNameParams>;
+
+export const ModelTestParams = z.strictObject({
+  "model": ModelRef.nullable().optional(),
+  "prompt": z.string().nullable().optional(),
+});
+export type ModelTestParams = z.output<typeof ModelTestParams>;
+
+export const ModelTestResult = z.strictObject({
+  "firstTokenMs": z.number().int().nonnegative(),
+  "locality": Locality,
+  "model": ModelRef,
+  "text": z.string(),
+  "totalMs": z.number().int().nonnegative(),
+});
+export type ModelTestResult = z.output<typeof ModelTestResult>;
+
+export const ProviderKind = z.enum(["apple","ollama","openaiCompatible"]);
+export type ProviderKind = z.output<typeof ProviderKind>;
+
+export const ProviderInfo = z.strictObject({
+  "detail": z.string().nullable().optional(),
+  "id": z.string(),
+  "kind": ProviderKind,
+  "locality": Locality,
+  "name": z.string(),
+  "state": ProviderState,
+  "version": z.string().nullable().optional(),
+});
+export type ProviderInfo = z.output<typeof ProviderInfo>;
+
+export const ModelsList = z.strictObject({
+  "models": z.array(ModelInfo),
+  "providers": z.array(ProviderInfo),
+});
+export type ModelsList = z.output<typeof ModelsList>;
 
 /** System Settings panes Wisp may open for the user. */
 export const SettingsPane = z.enum(["accessibility","inputMonitoring","screenRecording","microphone","automation","notifications","keyboard"]);
@@ -367,13 +500,43 @@ export const OpenSettingsPaneParams = z.strictObject({
 });
 export type OpenSettingsPaneParams = z.output<typeof OpenSettingsPaneParams>;
 
+export const PullProgress = z.strictObject({
+  "completed": z.number().int().nonnegative().nullable().optional(),
+  "done": z.boolean(),
+  "error": z.string().nullable().optional(),
+  "name": z.string(),
+  "status": z.string(),
+  "total": z.number().int().nonnegative().nullable().optional(),
+});
+export type PullProgress = z.output<typeof PullProgress>;
+
+export const RequestIdParams = z.strictObject({
+  "requestId": z.string(),
+});
+export type RequestIdParams = z.output<typeof RequestIdParams>;
+
+export const RouteInfo = z.strictObject({
+  "locality": Locality,
+  "model": ModelRef,
+  "modelName": z.string(),
+  "providerName": z.string(),
+  "reason": z.string(),
+});
+export type RouteInfo = z.output<typeof RouteInfo>;
+
+export const RouteParams = z.strictObject({
+  "allowCloud": z.boolean().default(false),
+  "needsVision": z.boolean(),
+});
+export type RouteParams = z.output<typeof RouteParams>;
+
 export const ScreenPermissionStatus = z.strictObject({
   "screenRecording": PermissionState,
 });
 export type ScreenPermissionStatus = z.output<typeof ScreenPermissionStatus>;
 
 /** One section replaced atomically. */
-export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings })]);
+export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings })]);
 export type SettingsSection = z.output<typeof SettingsSection>;
 
 export const SettingsUpdateParams = z.strictObject({
@@ -429,6 +592,19 @@ export const methods = {
   "host.ax.snapshot": { target: "host", params: AxSnapshotParams, result: AxSnapshot },
   "host.mic.permission": { target: "host", params: Empty, result: MicrophoneStatus },
   "host.mic.requestPermission": { target: "host", params: Empty, result: MicrophoneStatus },
+  "host.apple.status": { target: "host", params: Empty, result: AppleStatus },
+  "host.apple.generate": { target: "host", params: AppleGenerateParams, result: AppleGenerateResult },
+  "host.apple.cancel": { target: "host", params: RequestIdParams, result: Empty },
+  "host.keychain.set": { target: "host", params: KeychainSetParams, result: Empty },
+  "host.keychain.delete": { target: "host", params: KeychainAccount, result: Empty },
+  "host.keychain.get": { target: "host", params: KeychainAccount, result: KeychainSecret },
+  "host.ollama.start": { target: "host", params: Empty, result: Empty },
+  "models.list": { target: "core", params: Empty, result: ModelsList },
+  "models.pull": { target: "core", params: ModelNameParams, result: Empty },
+  "models.cancelPull": { target: "core", params: ModelNameParams, result: Empty },
+  "models.delete": { target: "core", params: ModelNameParams, result: Empty },
+  "models.test": { target: "core", params: ModelTestParams, result: ModelTestResult },
+  "ai.route": { target: "core", params: RouteParams, result: RouteInfo },
   "accessibility.rank": { target: "core", params: AxRankParams, result: AxContext },
   "focus.latest": { target: "core", params: Empty, result: LatestFocus },
 } as const;
@@ -444,6 +620,8 @@ export const events = {
   "focus.completed": FocusRegion,
   "focus.ended": FocusEnded,
   "focus.cleared": Empty,
+  "models.pullProgress": PullProgress,
+  "apple.delta": AppleDelta,
 } as const;
 
 export type MethodName = keyof typeof methods;

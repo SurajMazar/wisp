@@ -34,22 +34,52 @@ pub struct HostClient {
 }
 
 impl HostClient {
+    /// Long-running host work (on-device generation) gets minutes; everything else seconds.
+    fn timeout_for(method: &str) -> std::time::Duration {
+        match method {
+            "host.apple.generate" => std::time::Duration::from_secs(600),
+            _ => std::time::Duration::from_secs(5),
+        }
+    }
+
     pub async fn call(&self, method: &str, params: Value) -> Result<Value, IpcError> {
         let id = format!("c{}", self.next.fetch_add(1, Ordering::Relaxed));
         let (tx, rx) = oneshot::channel();
         self.pending.lock().await.insert(id.clone(), tx);
-        self.out
-            .send(Envelope::request(id, method, params))
+        if self
+            .out
+            .send(Envelope::request(id.clone(), method, params))
             .await
-            .map_err(|_| {
-                IpcError::new(
-                    wisp_ipc::ErrorCode::Unavailable,
-                    "The Wisp app isn't connected.",
+            .is_err()
+        {
+            self.pending.lock().await.remove(&id);
+            return Err(IpcError::new(
+                wisp_ipc::ErrorCode::Unavailable,
+                "The Wisp app isn't connected.",
+            ));
+        }
+        match tokio::time::timeout(Self::timeout_for(method), rx).await {
+            Ok(Ok(r)) => r,
+            Ok(Err(_)) => Err(IpcError::new(
+                wisp_ipc::ErrorCode::Cancelled,
+                "The request was cancelled.",
+            )),
+            Err(_) => {
+                self.pending.lock().await.remove(&id);
+                Err(IpcError::new(
+                    wisp_ipc::ErrorCode::Timeout,
+                    "The Wisp app didn't respond in time.",
                 )
-            })?;
-        rx.await.map_err(|_| {
-            IpcError::new(wisp_ipc::ErrorCode::Cancelled, "The request was cancelled.")
-        })?
+                .with_details(method.to_owned()))
+            }
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl wisp_providers::HostBridge for HostClient {
+    async fn call(&self, method: &str, params: Value) -> Result<Value, IpcError> {
+        HostClient::call(self, method, params).await
     }
 }
 
@@ -65,6 +95,7 @@ where
         pending: pending.clone(),
         next: Arc::default(),
     };
+    core.attach_host(Arc::new(host.clone()));
 
     // Writer: the only task that touches stdout.
     let writer = tokio::spawn(async move {
@@ -154,6 +185,7 @@ where
 
     tracing::info!("stdin closed; shutting down");
     forwarder.abort();
+    core.detach_host();
     drop(host);
     drop(out_tx);
     // Give in-flight responses a moment to drain, then stop.

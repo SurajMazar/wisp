@@ -3,6 +3,7 @@ import { ipc } from "../../services/ipc";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { useConnectionStore } from "../../stores/connectionStore";
 import { useFocusStore } from "../../stores/focusStore";
+import { useModelsStore } from "../../stores/modelsStore";
 import { useInvocationStore } from "../../stores/invocationStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { applyAppearance } from "../../lib/theme";
@@ -21,6 +22,7 @@ export function Bootstrap({ children }: { children: ReactNode }) {
       client.on("focus.completed", (r) => useFocusStore.getState().receive(r)),
       client.on("focus.ended", (e) => useFocusStore.getState().ended(e)),
       client.on("focus.cleared", () => useFocusStore.getState().cleared()),
+      client.on("models.pullProgress", (p) => useModelsStore.getState().receivePull(p)),
       client.on("core.ready", (info) => {
         useConnectionStore.getState().setConnected(info);
         void useSettingsStore.getState().load();

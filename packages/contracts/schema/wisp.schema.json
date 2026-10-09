@@ -126,6 +126,16 @@
             }
           }
         },
+        "models": {
+          "$ref": "#/definitions/ModelSettings",
+          "default": {
+            "contextLength": 8192,
+            "endpoints": [],
+            "maxTokens": 1024,
+            "ollamaUrl": "http://127.0.0.1:11434",
+            "temperature": 0.4
+          }
+        },
         "onboarding": {
           "$ref": "#/definitions/OnboardingSettings",
           "default": {
@@ -160,6 +170,83 @@
           "default": "system"
         }
       },
+      "type": "object"
+    },
+    "AppleDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "delta": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestId",
+        "delta"
+      ],
+      "type": "object"
+    },
+    "AppleGenerateParams": {
+      "additionalProperties": false,
+      "properties": {
+        "instructions": {
+          "type": "string"
+        },
+        "maxTokens": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "temperature": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "requestId",
+        "instructions",
+        "prompt",
+        "temperature",
+        "maxTokens"
+      ],
+      "type": "object"
+    },
+    "AppleGenerateResult": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "AppleStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "$ref": "#/definitions/ProviderState"
+        }
+      },
+      "required": [
+        "state"
+      ],
       "type": "object"
     },
     "ApplicationInfo": {
@@ -693,6 +780,33 @@
       "description": "Parameters for methods that take none. Accepts `{}` or an absent/`null` params field.",
       "type": "object"
     },
+    "EndpointConfig": {
+      "additionalProperties": false,
+      "description": "A user-configured OpenAI-compatible endpoint (LM Studio, llama.cpp server, or a cloud API).\nIts API key lives in the Keychain under `keychain_account`, never here.",
+      "properties": {
+        "baseUrl": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "keychainAccount": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "baseUrl"
+      ],
+      "type": "object"
+    },
     "ErrorCode": {
       "enum": [
         "invalidRequest",
@@ -1141,6 +1255,46 @@
       ],
       "type": "object"
     },
+    "KeychainAccount": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "account"
+      ],
+      "type": "object"
+    },
+    "KeychainSecret": {
+      "additionalProperties": false,
+      "properties": {
+        "secret": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "KeychainSetParams": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "account",
+        "secret"
+      ],
+      "type": "object"
+    },
     "LatestFocus": {
       "additionalProperties": false,
       "properties": {
@@ -1157,6 +1311,13 @@
       },
       "type": "object"
     },
+    "Locality": {
+      "enum": [
+        "local",
+        "cloud"
+      ],
+      "type": "string"
+    },
     "MicrophoneStatus": {
       "additionalProperties": false,
       "properties": {
@@ -1166,6 +1327,242 @@
       },
       "required": [
         "state"
+      ],
+      "type": "object"
+    },
+    "ModelCapability": {
+      "enum": [
+        "text",
+        "vision",
+        "audioInput",
+        "audioOutput",
+        "toolCalling",
+        "structuredOutput",
+        "streaming",
+        "reasoning"
+      ],
+      "type": "string"
+    },
+    "ModelInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "items": {
+            "$ref": "#/definitions/ModelCapability"
+          },
+          "type": "array"
+        },
+        "contextLength": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "Provider-native identifier, e.g. `qwen3-vl:8b`.",
+          "type": "string"
+        },
+        "locality": {
+          "$ref": "#/definitions/Locality"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parameterSize": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "providerId",
+        "id",
+        "name",
+        "locality",
+        "capabilities"
+      ],
+      "type": "object"
+    },
+    "ModelNameParams": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "ModelRef": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "providerId",
+        "model"
+      ],
+      "type": "object"
+    },
+    "ModelSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "contextLength": {
+          "default": 8192,
+          "description": "1024–131072.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "endpoints": {
+          "default": [],
+          "items": {
+            "$ref": "#/definitions/EndpointConfig"
+          },
+          "type": "array"
+        },
+        "general": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ModelRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Preferred model for text. `None` lets the router choose."
+        },
+        "maxTokens": {
+          "default": 1024,
+          "description": "64–8192.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ollamaUrl": {
+          "default": "http://127.0.0.1:11434",
+          "type": "string"
+        },
+        "temperature": {
+          "default": 0.4,
+          "description": "0–2.",
+          "format": "double",
+          "type": "number"
+        },
+        "vision": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ModelRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Preferred model when an image (focus region) is included."
+        }
+      },
+      "type": "object"
+    },
+    "ModelTestParams": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ModelRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "prompt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "ModelTestResult": {
+      "additionalProperties": false,
+      "properties": {
+        "firstTokenMs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "locality": {
+          "$ref": "#/definitions/Locality"
+        },
+        "model": {
+          "$ref": "#/definitions/ModelRef"
+        },
+        "text": {
+          "type": "string"
+        },
+        "totalMs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "model",
+        "locality",
+        "text",
+        "firstTokenMs",
+        "totalMs"
+      ],
+      "type": "object"
+    },
+    "ModelsList": {
+      "additionalProperties": false,
+      "properties": {
+        "models": {
+          "items": {
+            "$ref": "#/definitions/ModelInfo"
+          },
+          "type": "array"
+        },
+        "providers": {
+          "items": {
+            "$ref": "#/definitions/ProviderInfo"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "providers",
+        "models"
       ],
       "type": "object"
     },
@@ -1274,6 +1671,122 @@
       },
       "type": "object"
     },
+    "ProviderInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "description": "User-facing explanation when not available.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/definitions/ProviderKind"
+        },
+        "locality": {
+          "$ref": "#/definitions/Locality"
+        },
+        "name": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/definitions/ProviderState"
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "locality",
+        "state"
+      ],
+      "type": "object"
+    },
+    "ProviderKind": {
+      "enum": [
+        "apple",
+        "ollama",
+        "openaiCompatible"
+      ],
+      "type": "string"
+    },
+    "ProviderState": {
+      "description": "Provider health as observed right now (spec §111). Never assumed.",
+      "oneOf": [
+        {
+          "const": "available",
+          "description": "Ready to answer.",
+          "type": "string"
+        },
+        {
+          "const": "notRunning",
+          "description": "Installed but its server isn't running.",
+          "type": "string"
+        },
+        {
+          "const": "notInstalled",
+          "description": "Not installed on this Mac.",
+          "type": "string"
+        },
+        {
+          "const": "unavailable",
+          "description": "Present but unusable (e.g. Apple Intelligence off, unreachable endpoint).",
+          "type": "string"
+        }
+      ]
+    },
+    "PullProgress": {
+      "additionalProperties": false,
+      "properties": {
+        "completed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "total": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "status",
+        "done"
+      ],
+      "type": "object"
+    },
     "Rect": {
       "properties": {
         "height": {
@@ -1298,6 +1811,64 @@
         "y",
         "width",
         "height"
+      ],
+      "type": "object"
+    },
+    "RequestIdParams": {
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestId"
+      ],
+      "type": "object"
+    },
+    "RouteInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "locality": {
+          "$ref": "#/definitions/Locality"
+        },
+        "model": {
+          "$ref": "#/definitions/ModelRef"
+        },
+        "modelName": {
+          "type": "string"
+        },
+        "providerName": {
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why this model was chosen, in plain words.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "modelName",
+        "providerName",
+        "locality",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "RouteParams": {
+      "additionalProperties": false,
+      "properties": {
+        "allowCloud": {
+          "default": false,
+          "description": "The user approved cloud use for this one request (Local Preferred).",
+          "type": "boolean"
+        },
+        "needsVision": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "needsVision"
       ],
       "type": "object"
     },
@@ -1433,6 +2004,22 @@
             },
             "value": {
               "$ref": "#/definitions/FocusSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "models",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/ModelSettings"
             }
           },
           "required": [
@@ -1662,6 +2249,18 @@
       "payload": {
         "$ref": "#/definitions/Empty"
       }
+    },
+    {
+      "name": "models.pullProgress",
+      "payload": {
+        "$ref": "#/definitions/PullProgress"
+      }
+    },
+    {
+      "name": "apple.delta",
+      "payload": {
+        "$ref": "#/definitions/AppleDelta"
+      }
     }
   ],
   "methods": [
@@ -1864,6 +2463,136 @@
         "$ref": "#/definitions/MicrophoneStatus"
       },
       "target": "host"
+    },
+    {
+      "name": "host.apple.status",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/AppleStatus"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.apple.generate",
+      "params": {
+        "$ref": "#/definitions/AppleGenerateParams"
+      },
+      "result": {
+        "$ref": "#/definitions/AppleGenerateResult"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.apple.cancel",
+      "params": {
+        "$ref": "#/definitions/RequestIdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.keychain.set",
+      "params": {
+        "$ref": "#/definitions/KeychainSetParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.keychain.delete",
+      "params": {
+        "$ref": "#/definitions/KeychainAccount"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.keychain.get",
+      "params": {
+        "$ref": "#/definitions/KeychainAccount"
+      },
+      "result": {
+        "$ref": "#/definitions/KeychainSecret"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.ollama.start",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "models.list",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/ModelsList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "models.pull",
+      "params": {
+        "$ref": "#/definitions/ModelNameParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "models.cancelPull",
+      "params": {
+        "$ref": "#/definitions/ModelNameParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "models.delete",
+      "params": {
+        "$ref": "#/definitions/ModelNameParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "models.test",
+      "params": {
+        "$ref": "#/definitions/ModelTestParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ModelTestResult"
+      },
+      "target": "core"
+    },
+    {
+      "name": "ai.route",
+      "params": {
+        "$ref": "#/definitions/RouteParams"
+      },
+      "result": {
+        "$ref": "#/definitions/RouteInfo"
+      },
+      "target": "core"
     },
     {
       "name": "accessibility.rank",

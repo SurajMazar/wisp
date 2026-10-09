@@ -8,10 +8,11 @@ use wisp_database::Database;
 use wisp_ipc::{
     IpcError, Method,
     methods::{
-        AccessibilityRank, AppInfoMethod, FocusLatest, SettingsChanged, SettingsGet, SettingsUpdate,
+        AccessibilityRank, AiRoute, AppInfoMethod, FocusLatest, ModelsCancelPull, ModelsDelete,
+        ModelsListMethod, ModelsPull, ModelsTest, SettingsChanged, SettingsGet, SettingsUpdate,
     },
     types::{
-        app::AppInfo,
+        app::{AppInfo, Empty},
         focus::{FocusRegion, LatestFocus},
     },
 };
@@ -26,6 +27,7 @@ pub struct Core {
 
 struct Inner {
     db: Database,
+    ai: Arc<crate::ai::AiServices>,
     events: EventBus,
     info: AppInfo,
     /// The region the user last focused. In memory only: pixels never reach the database.
@@ -47,6 +49,7 @@ impl Core {
         Ok(Self {
             inner: Arc::new(Inner {
                 db,
+                ai: Arc::new(crate::ai::AiServices::default()),
                 events,
                 info,
                 latest_focus: Mutex::new(None),
@@ -105,6 +108,67 @@ impl Core {
                 })
                 .await
             }
+            ModelsListMethod::NAME => {
+                self.call::<ModelsListMethod, _, _>(params, |c, _| async move {
+                    let s = c.settings().await?;
+                    Ok(c.inner.ai.list(&s.models).await)
+                })
+                .await
+            }
+            ModelsPull::NAME => {
+                self.call::<ModelsPull, _, _>(params, |c, p| async move {
+                    let s = c.settings().await?;
+                    c.inner
+                        .ai
+                        .start_pull(&s.models, p.name, c.inner.events.clone())?;
+                    Ok(Empty {})
+                })
+                .await
+            }
+            ModelsCancelPull::NAME => {
+                self.call::<ModelsCancelPull, _, _>(params, |c, p| async move {
+                    c.inner.ai.cancel_pull(&p.name);
+                    Ok(Empty {})
+                })
+                .await
+            }
+            ModelsDelete::NAME => {
+                self.call::<ModelsDelete, _, _>(params, |c, p| async move {
+                    let s = c.settings().await?;
+                    c.inner.ai.ollama(&s.models).delete(&p.name).await?;
+                    Ok(Empty {})
+                })
+                .await
+            }
+            ModelsTest::NAME => {
+                self.call::<ModelsTest, _, _>(params, |c, p| async move {
+                    let s = c.settings().await?;
+                    c.inner
+                        .ai
+                        .test(&s.models, s.privacy.mode, p.model, p.prompt)
+                        .await
+                })
+                .await
+            }
+            AiRoute::NAME => {
+                self.call::<AiRoute, _, _>(params, |c, p| async move {
+                    let s = c.settings().await?;
+                    let (route, _) = c
+                        .inner
+                        .ai
+                        .route(
+                            &s.models,
+                            s.privacy.mode,
+                            p.needs_vision,
+                            p.allow_cloud,
+                            0,
+                            None,
+                        )
+                        .await?;
+                    Ok(route)
+                })
+                .await
+            }
             FocusLatest::NAME => {
                 self.call::<FocusLatest, _, _>(params, |c, _| async move {
                     Ok(LatestFocus {
@@ -115,6 +179,22 @@ impl Core {
             }
             other => Err(IpcError::method_not_found(other)),
         }
+    }
+
+    pub fn ai(&self) -> &Arc<crate::ai::AiServices> {
+        &self.inner.ai
+    }
+
+    pub fn attach_host(&self, host: Arc<dyn wisp_providers::HostBridge>) {
+        self.inner.ai.attach_host(host);
+    }
+
+    pub fn detach_host(&self) {
+        self.inner.ai.detach_host();
+    }
+
+    async fn settings(&self) -> Result<wisp_ipc::types::settings::AppSettings, IpcError> {
+        self.blocking(|db| db.load_settings()).await
     }
 
     pub fn latest_focus(&self) -> Option<FocusRegion> {
@@ -133,6 +213,12 @@ impl Core {
         };
         fn parse<E: EventKind>(v: &Value) -> Option<E::Payload> {
             serde_json::from_value::<E::Payload>(v.clone()).ok()
+        }
+        if name == "apple.delta" {
+            if let Ok(d) = serde_json::from_value::<wisp_ipc::types::models::AppleDelta>(payload) {
+                self.inner.ai.apple_streams.deliver(&d.request_id, d.delta);
+            }
+            return;
         }
         let record: Option<Value> = match name {
             InvocationStartedEvent::NAME => {

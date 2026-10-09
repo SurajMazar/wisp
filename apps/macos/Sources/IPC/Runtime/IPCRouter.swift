@@ -133,6 +133,12 @@ public final class IPCRouter {
         Task { await core.sendEvent(name: event.name, payload: value) }
     }
 
+    /// Send a host event only to the core (high-frequency internal streams such as model deltas).
+    public func sendToCore<P>(_ event: IPCEvent<P>, _ payload: P) {
+        guard let value = try? JSONValue.from(payload) else { return }
+        Task { await core.sendEvent(name: event.name, payload: value) }
+    }
+
     /// Publish an event to all surfaces and native subscribers (used for core and host events).
     public func broadcast(event name: String, payload: JSONValue?) {
         for s in subscribers[name] ?? [] { s(payload) }

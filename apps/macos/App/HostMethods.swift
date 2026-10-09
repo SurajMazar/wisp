@@ -106,6 +106,41 @@ enum HostMethods {
             return MicrophoneStatus(state: state)
         }
 
+        router.register(IPCMethods.hostAppleStatus) { _ in
+            deps.apple.status
+        }
+
+        router.register(IPCMethods.hostAppleGenerate) { params in
+            let text = try await deps.apple.generate(params) { delta in
+                router.sendToCore(IPCEvents.appleDelta, AppleDelta(delta: delta, requestId: params.requestId))
+            }
+            return AppleGenerateResult(text: text)
+        }
+
+        router.register(IPCMethods.hostAppleCancel) { params in
+            deps.apple.cancel(params.requestId)
+            return Empty()
+        }
+
+        router.register(IPCMethods.hostKeychainSet) { params in
+            try Keychain.set(params.secret, account: params.account)
+            return Empty()
+        }
+
+        router.register(IPCMethods.hostKeychainDelete) { params in
+            try Keychain.delete(account: params.account)
+            return Empty()
+        }
+
+        router.register(IPCMethods.hostKeychainGet) { params in
+            KeychainSecret(secret: try Keychain.get(account: params.account))
+        }
+
+        router.register(IPCMethods.hostOllamaStart) { _ in
+            try OllamaLauncher.start()
+            return Empty()
+        }
+
         router.register(IPCMethods.hostCursorPreview) { params in
             guard (300...5_000).contains(params.stepMs), (1...12).contains(params.states.count) else {
                 throw IpcError.invalidRequest("stepMs must be 300–5000 and 1–12 states")

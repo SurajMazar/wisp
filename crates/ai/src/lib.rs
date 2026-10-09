@@ -1,3 +1,12 @@
-//! AI orchestration: provider trait, model router, context builder, streaming.
+//! AI orchestration primitives: the provider interface, generation types and the model router.
 //!
-//! Scaffolded in Phase 0. Implementation lands in the phase listed in IMPLEMENTATION_PLAN.md.
+//! Provider implementations live in `wisp-providers`; this crate knows nothing about any specific
+//! provider (architectural rule: no provider logic in the agent runtime or UI).
+
+pub mod provider;
+pub mod router;
+
+pub use provider::{
+    AiError, AiProvider, ChatMessage, Chunk, ChunkStream, GenerateRequest, ImagePart, Role, Usage,
+};
+pub use router::{RouteInput, route};

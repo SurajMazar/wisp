@@ -309,7 +309,13 @@ function swiftInner(s: Obj): string {
 }
 
 function swiftDef(name: string, def: Obj): string {
-  const doc_ = typeof def.description === "string" ? `/// ${def.description}\n` : "";
+  const doc_ =
+    typeof def.description === "string"
+      ? def.description
+          .split("\n")
+          .map((l) => `/// ${l}`.trimEnd())
+          .join("\n") + "\n"
+      : "";
   const en = stringEnum(def);
   if (en) {
     const cases = en.map((v) => `    case ${swiftIdent(camel(v))} = ${JSON.stringify(v)}`);

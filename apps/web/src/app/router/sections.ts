@@ -64,7 +64,6 @@ export const sections: Section[] = [
     path: "/models",
     label: "Models",
     icon: ModelsIcon,
-    unavailableNote: "Model management isn't available in this build yet.",
   },
   {
     path: "/voice",

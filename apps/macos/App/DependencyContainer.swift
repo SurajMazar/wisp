@@ -12,6 +12,7 @@ final class DependencyContainer {
     let state: AppState
     let invocation: InvocationController
     let recorder: ShortcutRecorder
+    let apple = AppleModelService()
 
     init() {
         core = CoreProcess(executable: AppPaths.coreExecutable, dataDirectory: AppPaths.dataDirectory)
