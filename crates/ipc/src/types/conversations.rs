@@ -59,7 +59,36 @@ pub struct Message {
     pub error_details: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub latency_ms: Option<u32>,
+    /// The model's streamed reasoning, shown collapsed above the answer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning: Option<String>,
+    /// How long the model reasoned before answering.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_ms: Option<u32>,
+    /// What's happening right now while `status` is `streaming` (live progress for the UI).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage: Option<MessageStage>,
     pub created_at_ms: i64,
+}
+
+/// Live progress of an answer, so the UI can say what Wisp is doing instead of a bare spinner.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum MessageStage {
+    /// Gathering the conversation and attachments.
+    Preparing,
+    /// Reading the attached screen region (image + UI elements).
+    ReadingScreen,
+    /// Picking the model to use.
+    ChoosingModel,
+    /// The chosen model isn't in memory yet and is loading.
+    LoadingModel,
+    /// The model is working on it (no output yet).
+    Waiting,
+    /// The model is streaming its reasoning.
+    Reasoning,
+    /// The answer is streaming.
+    Writing,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

@@ -4,6 +4,7 @@ import {
   type ConversationSummary,
   type Message,
   type MessageDelta,
+  type MessageStage,
   type ModelRef,
 } from "@wisp/contracts";
 import { create } from "zustand";
@@ -15,6 +16,9 @@ interface ConversationState {
   /** Conversation shown in the floating panel. */
   panelId: string | null;
   error: string | null;
+  /** Stages each streaming answer went through, with when they started (for the progress UI). */
+  progress: Record<string, StageStep[]>;
+  receiveReasoning(d: MessageDelta): void;
   /** Model chosen in the composer; null = automatic routing. */
   model: ModelRef | null;
   setModel(m: ModelRef | null): void;
@@ -36,17 +40,37 @@ interface ConversationState {
   receiveSummary(s: ConversationSummary): void;
 }
 
+export interface StageStep {
+  stage: MessageStage;
+  at: number;
+}
+
 const upsert = (messages: Message[], m: Message) => {
   const i = messages.findIndex((x) => x.id === m.id);
   const prev = messages[i];
   if (i === -1 || !prev) return [...messages, m].sort((a, b) => a.createdAtMs - b.createdAtMs);
   const next = messages.slice();
   // Keep streamed text if a status-only update arrives before the text was persisted.
+  const streaming = m.status === "streaming";
+  const longer = (a?: string | null, b?: string | null) => ((a?.length ?? 0) < (b?.length ?? 0) ? b : a);
   next[i] = {
     ...m,
-    content: m.status === "streaming" && m.content.length < prev.content.length ? prev.content : m.content,
+    content: streaming ? (longer(m.content, prev.content) ?? "") : m.content,
+    ...(streaming ? { reasoning: longer(m.reasoning, prev.reasoning) ?? null } : {}),
   };
   return next;
+};
+
+/** Updates that raced ahead of the `conversation.send` response (the conversation isn't in the
+ *  store yet). Applied when the response lands so no progress is lost. */
+const early = new Map<string, Message>();
+
+/** Append the message's stage to its history when it changes. */
+const track = (progress: Record<string, StageStep[]>, m: Message) => {
+  if (!m.stage) return progress;
+  const steps = progress[m.id] ?? [];
+  if (steps.at(-1)?.stage === m.stage) return progress;
+  return { ...progress, [m.id]: [...steps, { stage: m.stage, at: Date.now() }] };
 };
 
 export const useConversationStore = create<ConversationState>()((set, get) => ({
@@ -54,6 +78,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
   conversations: {},
   panelId: null,
   error: null,
+  progress: {},
   model: null,
   setModel: (model) => set({ model }),
 
@@ -87,7 +112,14 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
   async open(id) {
     const c = await ipc().call("conversation.get", { id });
-    set((s) => ({ conversations: { ...s.conversations, [id]: c } }));
+    set((s) => {
+      // Keep live state (stage, streamed text) of answers still streaming; the stored copy lags.
+      const live = s.conversations[id]?.messages ?? [];
+      const messages = c.messages.map((m) =>
+        m.status === "streaming" ? (live.find((x) => x.id === m.id) ?? m) : m,
+      );
+      return { conversations: { ...s.conversations, [id]: { ...c, messages } } };
+    });
   },
 
   async send(text, { conversationId, includeFocus }) {
@@ -111,12 +143,17 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
           createdAtMs: now,
           updatedAtMs: now,
         };
+        const raced = early.get(r.assistantMessage.id);
+        early.delete(r.assistantMessage.id);
+        const known = base.messages.find((x) => x.id === r.assistantMessage.id);
+        const latest = known ?? raced ?? r.assistantMessage;
         return {
+          progress: s.progress[r.assistantMessage.id] ? s.progress : track(s.progress, r.assistantMessage),
           conversations: {
             ...s.conversations,
             [r.conversationId]: {
               ...base,
-              messages: upsert(upsert(base.messages, r.userMessage), r.assistantMessage),
+              messages: upsert(upsert(base.messages, r.userMessage), latest),
             },
           },
         };
@@ -154,6 +191,17 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
   setPanel: (id) => set({ panelId: id }),
 
+  receiveReasoning(d) {
+    set((s) => {
+      const c = s.conversations[d.conversationId];
+      if (!c) return s;
+      const messages = c.messages.map((m) =>
+        m.id === d.messageId ? { ...m, reasoning: (m.reasoning ?? "") + d.delta } : m,
+      );
+      return { conversations: { ...s.conversations, [c.id]: { ...c, messages } } };
+    });
+  },
+
   receiveDelta(d) {
     set((s) => {
       const c = s.conversations[d.conversationId];
@@ -168,8 +216,15 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
   receiveMessage(m) {
     set((s) => {
       const c = s.conversations[m.conversationId];
-      if (!c) return s;
-      return { conversations: { ...s.conversations, [c.id]: { ...c, messages: upsert(c.messages, m) } } };
+      if (!c) {
+        if (m.status === "streaming") early.set(m.id, m);
+        else early.delete(m.id);
+        return { progress: track(s.progress, m) };
+      }
+      return {
+        progress: track(s.progress, m),
+        conversations: { ...s.conversations, [c.id]: { ...c, messages: upsert(c.messages, m) } },
+      };
     });
   },
 

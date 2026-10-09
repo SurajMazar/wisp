@@ -72,6 +72,15 @@ fn message_from_row(r: &Row<'_>) -> rusqlite::Result<Message> {
             .get("errorDetails")
             .and_then(|v| v.as_str())
             .map(str::to_owned),
+        reasoning: ctx
+            .get("reasoning")
+            .and_then(|v| v.as_str())
+            .map(str::to_owned),
+        reasoning_ms: ctx
+            .get("reasoningMs")
+            .and_then(|v| v.as_u64())
+            .map(|n| n.min(u32::MAX as u64) as u32),
+        stage: None,
         latency_ms: r
             .get::<_, Option<i64>>("latency_ms")?
             .map(|v| v.clamp(0, u32::MAX as i64) as u32),
@@ -249,6 +258,12 @@ impl Database {
         if let Some(d) = &m.error_details {
             ctx.insert("errorDetails".into(), d.clone().into());
         }
+        if let Some(r) = &m.reasoning {
+            ctx.insert("reasoning".into(), r.clone().into());
+        }
+        if let Some(ms) = m.reasoning_ms {
+            ctx.insert("reasoningMs".into(), ms.into());
+        }
         let n = self.lock()?.execute(
             "UPDATE messages SET content = ?2, status = ?3, provider_id = ?4, model_key = ?5, locality = ?6, context = ?7,
                  error = ?8, latency_ms = ?9, tokens_in = ?10, tokens_out = ?11, updated_at = ?12 WHERE id = ?1",
@@ -339,6 +354,9 @@ mod tests {
             error: None,
             error_details: None,
             latency_ms: None,
+            reasoning: None,
+            reasoning_ms: None,
+            stage: None,
             created_at_ms: at,
         }
     }

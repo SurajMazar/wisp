@@ -652,6 +652,17 @@ public enum MessageRole: String, Codable, Sendable, Equatable, CaseIterable {
     case assistant = "assistant"
 }
 
+/// Live progress of an answer, so the UI can say what Wisp is doing instead of a bare spinner.
+public enum MessageStage: String, Codable, Sendable, Equatable, CaseIterable {
+    case preparing = "preparing"
+    case readingScreen = "readingScreen"
+    case choosingModel = "choosingModel"
+    case loadingModel = "loadingModel"
+    case waiting = "waiting"
+    case reasoning = "reasoning"
+    case writing = "writing"
+}
+
 public enum MessageStatus: String, Codable, Sendable, Equatable, CaseIterable {
     case streaming = "streaming"
     case complete = "complete"
@@ -671,10 +682,13 @@ public struct Message: Codable, Sendable, Equatable {
     public var locality: Locality?
     public var model: ModelRef?
     public var modelName: String?
+    public var reasoning: String?
+    public var reasoningMs: UInt32?
     public var role: MessageRole
+    public var stage: MessageStage?
     public var status: MessageStatus
 
-    public init(content: String, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, role: MessageRole, status: MessageStatus) {
+    public init(content: String, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, reasoning: String? = nil, reasoningMs: UInt32? = nil, role: MessageRole, stage: MessageStage? = nil, status: MessageStatus) {
         self.content = content
         self.conversationId = conversationId
         self.createdAtMs = createdAtMs
@@ -686,7 +700,10 @@ public struct Message: Codable, Sendable, Equatable {
         self.locality = locality
         self.model = model
         self.modelName = modelName
+        self.reasoning = reasoning
+        self.reasoningMs = reasoningMs
         self.role = role
+        self.stage = stage
         self.status = status
     }
 }
@@ -1651,6 +1668,7 @@ public enum IPCEvents {
     public static let modelsPullProgress = IPCEvent<PullProgress>(name: "models.pullProgress")
     public static let appleDelta = IPCEvent<AppleDelta>(name: "apple.delta")
     public static let conversationDelta = IPCEvent<MessageDelta>(name: "conversation.delta")
+    public static let conversationReasoningDelta = IPCEvent<MessageDelta>(name: "conversation.reasoningDelta")
     public static let conversationMessageUpdated = IPCEvent<Message>(name: "conversation.messageUpdated")
     public static let conversationUpdated = IPCEvent<ConversationSummary>(name: "conversation.updated")
     public static let conversationMessageRemoved = IPCEvent<Message>(name: "conversation.messageRemoved")

@@ -38,6 +38,8 @@ impl HostClient {
     fn timeout_for(method: &str) -> std::time::Duration {
         match method {
             "host.apple.generate" => std::time::Duration::from_secs(600),
+            // Probed on every model choice; an unresponsive host must not stall answers.
+            "host.apple.status" => std::time::Duration::from_millis(1500),
             _ => std::time::Duration::from_secs(5),
         }
     }

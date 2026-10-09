@@ -271,6 +271,13 @@ pub(crate) fn parse_chat_line(line: &str) -> Result<Vec<Chunk>, AiError> {
     }
     let mut out = vec![];
     if let Some(t) = v
+        .pointer("/message/thinking")
+        .and_then(Value::as_str)
+        .filter(|t| !t.is_empty())
+    {
+        out.push(Chunk::Reasoning(t.to_owned()));
+    }
+    if let Some(t) = v
         .pointer("/message/content")
         .and_then(Value::as_str)
         .filter(|t| !t.is_empty())
@@ -340,6 +347,24 @@ impl AiProvider for OllamaProvider {
             detail,
             version,
         }
+    }
+
+    async fn is_loaded(&self, model: &str) -> Option<bool> {
+        let v: Value = self
+            .client
+            .get(format!("{}/api/ps", self.base))
+            .timeout(std::time::Duration::from_millis(400))
+            .send()
+            .await
+            .ok()?
+            .json()
+            .await
+            .ok()?;
+        let loaded = v.get("models")?.as_array()?.iter().any(|m| {
+            m.get("name").and_then(Value::as_str) == Some(model)
+                || m.get("model").and_then(Value::as_str) == Some(model)
+        });
+        Some(loaded)
     }
 
     async fn models(&self) -> Result<Vec<ModelInfo>, AiError> {
@@ -490,6 +515,11 @@ mod tests {
             })]
         );
         assert!(parse_chat_line(r#"{"error":"model not found"}"#).is_err());
+        assert_eq!(
+            parse_chat_line(r#"{"message":{"content":"","thinking":"Hmm"},"done":false}"#)
+                .expect("ok"),
+            vec![Chunk::Reasoning("Hmm".into())]
+        );
     }
 
     #[test]

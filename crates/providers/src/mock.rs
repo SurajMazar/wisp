@@ -58,38 +58,41 @@ impl AiProvider for MockProvider {
         req: GenerateRequest,
         cancel: CancellationToken,
     ) -> Result<ChunkStream, AiError> {
-        let words: Vec<String> = self.reply.split_inclusive(' ').map(str::to_owned).collect();
+        // `<think>…</think>` at the start of the reply is streamed as reasoning.
+        let (reasoning, reply) = match self
+            .reply
+            .strip_prefix("<think>")
+            .and_then(|r| r.split_once("</think>"))
+        {
+            Some((r, rest)) => (Some(r.to_owned()), rest.trim_start().to_owned()),
+            None => (None, self.reply.clone()),
+        };
         let saw_image = req.messages.iter().any(|m| !m.images.is_empty());
+        let mut items: Vec<Chunk> = reasoning.into_iter().map(Chunk::Reasoning).collect();
+        for (i, w) in reply.split_inclusive(' ').enumerate() {
+            items.push(Chunk::Text(if i == 0 && saw_image {
+                format!("[saw image] {w}")
+            } else {
+                w.to_owned()
+            }));
+        }
+        let words = items.iter().filter(|c| matches!(c, Chunk::Text(_))).count() as u32;
+        items.push(Chunk::Done(Usage {
+            prompt_tokens: Some(1),
+            completion_tokens: Some(words),
+        }));
         Ok(Box::pin(futures::stream::unfold(
-            (words, 0usize, cancel, saw_image),
-            |(words, i, cancel, saw)| async move {
-                if cancel.is_cancelled() {
-                    return if i == usize::MAX {
-                        None
-                    } else {
-                        Some((Err(AiError::Cancelled), (words, usize::MAX, cancel, saw)))
-                    };
-                }
-                if i == usize::MAX {
+            (items.into_iter(), cancel, false),
+            |(mut items, cancel, stopped)| async move {
+                if stopped {
                     return None;
                 }
-                tokio::time::sleep(std::time::Duration::from_millis(5)).await;
-                if i < words.len() {
-                    let w = if i == 0 && saw {
-                        format!("[saw image] {}", words[i])
-                    } else {
-                        words[i].clone()
-                    };
-                    Some((Ok(Chunk::Text(w)), (words, i + 1, cancel, saw)))
-                } else {
-                    Some((
-                        Ok(Chunk::Done(Usage {
-                            prompt_tokens: Some(1),
-                            completion_tokens: Some(words.len() as u32),
-                        })),
-                        (words, usize::MAX, cancel, saw),
-                    ))
+                if cancel.is_cancelled() {
+                    return Some((Err(AiError::Cancelled), (items, cancel, true)));
                 }
+                tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+                let c = items.next()?;
+                Some((Ok(c), (items, cancel, false)))
             },
         )))
     }

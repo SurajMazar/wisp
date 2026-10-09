@@ -222,3 +222,25 @@
     }
   }
 }
+
+/* Caret at the end of a streaming answer. */
+@layer utilities {
+  .wisp-streaming > p:last-child::after,
+  .wisp-streaming > ul:last-child > li:last-child::after,
+  .wisp-streaming > ol:last-child > li:last-child::after {
+    content: "";
+    display: inline-block;
+    width: 0.5em;
+    height: 1.05em;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    border-radius: 2px;
+    background: var(--color-text-muted);
+    animation: wisp-caret 1s steps(2, start) infinite;
+  }
+  @keyframes wisp-caret {
+    to {
+      visibility: hidden;
+    }
+  }
+}

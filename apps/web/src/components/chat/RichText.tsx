@@ -1,4 +1,5 @@
 import { CheckIcon, CopyIcon } from "@wisp/icons";
+import { cn } from "@wisp/ui";
 import { Fragment, useState, type ReactNode } from "react";
 import { copyText } from "../../lib/clipboard";
 
@@ -30,7 +31,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
 
 /** Safe Markdown subset for answers: headings, code fences, inline code, bold, italics, links, lists.
  *  Renders React nodes only — never HTML strings. */
-export function RichText({ text }: { text: string }) {
+export function RichText({ text, streaming = false }: { text: string; streaming?: boolean }) {
   const blocks: ReactNode[] = [];
   text.split(/```/).forEach((part, i) => {
     if (i % 2 === 1) {
@@ -83,7 +84,7 @@ export function RichText({ text }: { text: string }) {
         }
       });
   });
-  return <div className="selectable leading-relaxed">{blocks}</div>;
+  return <div className={cn("selectable leading-relaxed", streaming && "wisp-streaming")}>{blocks}</div>;
 }
 
 function inline(s: string): ReactNode {

@@ -4,16 +4,10 @@ import { Button, cn } from "@wisp/ui";
 import { useState } from "react";
 import { Link } from "react-router";
 import { copyText } from "../../lib/clipboard";
+import { useConversationStore } from "../../stores/conversationStore";
 import { useVoiceStore } from "../../stores/voiceStore";
+import { ReasoningBlock, StepTrail } from "./AnswerProgress";
 import { RichText } from "./RichText";
-
-function Thinking({ seeing }: { seeing: boolean }) {
-  return (
-    <p className="wisp-shimmer text-base" role="status">
-      {seeing ? "Looking at your screen…" : "Thinking…"}
-    </p>
-  );
-}
 
 function Meta({ m }: { m: Message }) {
   if (!m.modelName || m.status === "streaming") return null;
@@ -130,6 +124,7 @@ export function MessageList({
   compact?: boolean;
 }) {
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  const progress = useConversationStore((s) => s.progress);
   return (
     <div className={cn(compact ? "space-y-4 text-base" : "space-y-7 text-md")}>
       {messages.map((m, i) => {
@@ -167,17 +162,9 @@ export function MessageList({
               </span>
             )}
             <div className="min-w-0 flex-1">
-              {m.content ? (
-                <RichText text={m.content} />
-              ) : m.status === "streaming" ? (
-                <Thinking seeing={!!previousUser?.focus} />
-              ) : null}
-              {m.status === "streaming" && m.content && (
-                <span
-                  aria-hidden
-                  className="ml-0.5 inline-block h-4 w-2 animate-pulse rounded-[2px] bg-text-muted align-text-bottom"
-                />
-              )}
+              <StepTrail m={m} steps={progress[m.id] ?? []} />
+              <ReasoningBlock m={m} steps={progress[m.id] ?? []} />
+              {m.content && <RichText text={m.content} streaming={m.status === "streaming"} />}
               {m.status === "cancelled" && <p className="mt-1 text-xs text-text-faint">Stopped</p>}
               {m.status === "error" && (
                 <ErrorBlock

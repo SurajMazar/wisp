@@ -225,6 +225,8 @@ define_events! {
     AppleDeltaEvent = "apple.delta", AppleDelta;
     /// Streaming text of an assistant message.
     ConversationDeltaEvent = "conversation.delta", MessageDelta;
+    /// Streamed reasoning text for an assistant message.
+    ReasoningDelta = "conversation.reasoningDelta", MessageDelta;
     /// A message was created or changed status (complete, cancelled, error).
     MessageUpdated = "conversation.messageUpdated", Message;
     /// A conversation's title, pin or recency changed.

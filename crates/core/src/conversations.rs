@@ -12,11 +12,11 @@ use tokio_util::sync::CancellationToken;
 use wisp_ai::{ChatMessage, Chunk, ImagePart, Role};
 use wisp_ipc::{
     IpcError,
-    methods::{ConversationDeltaEvent, ConversationUpdated, MessageUpdated},
+    methods::{ConversationDeltaEvent, ConversationUpdated, MessageUpdated, ReasoningDelta},
     types::{
         conversations::{
-            FocusAttachment, Message, MessageDelta, MessageRole, MessageStatus, SendParams,
-            SendResult,
+            FocusAttachment, Message, MessageDelta, MessageRole, MessageStage, MessageStatus,
+            SendParams, SendResult,
         },
         focus::{FocusKind, FocusRegion},
     },
@@ -128,6 +128,9 @@ fn new_message(
         error: None,
         error_details: None,
         latency_ms: None,
+        reasoning: None,
+        reasoning_ms: None,
+        stage: None,
         created_at_ms: wisp_common::time::now_ms(),
     }
 }
@@ -307,6 +310,22 @@ impl Core {
         cancel: CancellationToken,
     ) {
         let started = Instant::now();
+        let stage = |msg: &mut Message, s: MessageStage, core: &Core| {
+            if msg.stage != Some(s) {
+                msg.stage = Some(s);
+                core.events().publish::<MessageUpdated>(msg);
+            }
+        };
+        stage(
+            &mut msg,
+            if focus.is_some() {
+                MessageStage::ReadingScreen
+            } else {
+                MessageStage::Preparing
+            },
+            self,
+        );
+        let snapshot = msg.clone();
         let result = async {
             let settings = self.blocking(|db| db.load_settings()).await?;
             let conv = msg.conversation_id.clone();
@@ -364,6 +383,23 @@ impl Core {
                 images,
             });
 
+            let events = self.events().clone();
+            let mut announced = snapshot.clone();
+            announced.stage = Some(MessageStage::ChoosingModel);
+            events.publish::<MessageUpdated>(&announced);
+            let on_route = move |route: &wisp_ipc::types::models::RouteInfo,
+                                 loaded: Option<bool>| {
+                let mut m = announced.clone();
+                m.model = Some(route.model.clone());
+                m.model_name = Some(route.model_name.clone());
+                m.locality = Some(route.locality);
+                m.stage = Some(if loaded == Some(false) {
+                    MessageStage::LoadingModel
+                } else {
+                    MessageStage::Waiting
+                });
+                events.publish::<MessageUpdated>(&m);
+            };
             self.ai()
                 .generate(
                     &settings.models,
@@ -373,6 +409,7 @@ impl Core {
                     Some(SYSTEM_PROMPT.into()),
                     messages,
                     cancel.clone(),
+                    &on_route,
                 )
                 .await
         }
@@ -396,9 +433,11 @@ impl Core {
         msg.model = Some(prepared.route.model.clone());
         msg.model_name = Some(prepared.route.model_name.clone());
         msg.locality = Some(prepared.route.locality);
+        msg.stage = Some(MessageStage::Waiting);
         self.events().publish::<MessageUpdated>(&msg);
+        let mut reasoning_started: Option<Instant> = None;
 
-        let mut stream = prepared.stream;
+        let mut stream = wisp_ai::think::separate_reasoning(prepared.stream);
         let mut last_save = Instant::now();
         let mut usage = (None, None);
         let mut first_token: Option<Duration> = None;
@@ -408,8 +447,25 @@ impl Core {
                 n = stream.next() => n,
             };
             match next {
+                Some(Ok(Chunk::Reasoning(t))) => {
+                    reasoning_started.get_or_insert_with(Instant::now);
+                    stage(&mut msg, MessageStage::Reasoning, self);
+                    msg.reasoning.get_or_insert_with(String::new).push_str(&t);
+                    self.events().publish::<ReasoningDelta>(&MessageDelta {
+                        conversation_id: msg.conversation_id.clone(),
+                        message_id: msg.id.clone(),
+                        delta: t,
+                    });
+                }
                 Some(Ok(Chunk::Text(t))) => {
                     first_token.get_or_insert(started.elapsed());
+                    if msg.stage != Some(MessageStage::Writing) {
+                        if let Some(r) = reasoning_started {
+                            msg.reasoning_ms
+                                .get_or_insert(r.elapsed().as_millis() as u32);
+                        }
+                        stage(&mut msg, MessageStage::Writing, self);
+                    }
                     msg.content.push_str(&t);
                     self.events()
                         .publish::<ConversationDeltaEvent>(&MessageDelta {
@@ -447,6 +503,14 @@ impl Core {
                 }
             }
         }
+        if let (Some(r), None) = (reasoning_started, msg.reasoning_ms) {
+            msg.reasoning_ms = Some(r.elapsed().as_millis() as u32);
+        }
+        msg.reasoning = msg
+            .reasoning
+            .map(|r| r.trim().to_owned())
+            .filter(|r| !r.is_empty());
+        msg.stage = None;
         msg.content = msg.content.trim().to_owned();
         if msg.status == MessageStatus::Complete && msg.content.is_empty() {
             msg.status = MessageStatus::Error;
@@ -474,7 +538,8 @@ impl Core {
         self.finish(msg, usage).await;
     }
 
-    async fn finish(&self, msg: Message, usage: (Option<u32>, Option<u32>)) {
+    async fn finish(&self, mut msg: Message, usage: (Option<u32>, Option<u32>)) {
+        msg.stage = None;
         self.inner_streams().remove(&msg.id);
         let m = msg.clone();
         if let Err(e) = self.blocking(move |db| db.update_message(&m, usage)).await {

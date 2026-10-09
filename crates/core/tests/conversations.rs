@@ -308,3 +308,79 @@ async fn regenerate_replaces_the_answer() {
     assert_eq!(msgs.len(), 2, "old answer replaced, question kept");
     assert_eq!(msgs[1]["id"], second);
 }
+
+#[tokio::test]
+async fn reports_progress_stages_and_streams_reasoning() {
+    let dir = tempfile::tempdir().expect("tmp");
+    let core = core(
+        dir.path(),
+        vec![local("<think>The user wants a sum.</think>It is four.")],
+    );
+    let mut rx = core.events().subscribe();
+    let r = core
+        .dispatch("conversation.send", json!({ "text": "2 + 2?" }))
+        .await
+        .expect("send");
+    let aid = r["assistantMessage"]["id"]
+        .as_str()
+        .expect("aid")
+        .to_owned();
+
+    let mut stages = vec![];
+    let mut reasoning = String::new();
+    let done = loop {
+        let env = tokio::time::timeout(Duration::from_secs(10), rx.recv())
+            .await
+            .expect("timely")
+            .expect("event");
+        let Envelope::Event { event, payload, .. } = env else {
+            continue;
+        };
+        if payload["id"] != aid.as_str() && payload["messageId"] != aid.as_str() {
+            continue;
+        }
+        match event.as_str() {
+            "conversation.reasoningDelta" => {
+                reasoning.push_str(payload["delta"].as_str().expect("delta"))
+            }
+            "conversation.messageUpdated" if payload["status"] == "streaming" => {
+                if let Some(s) = payload["stage"].as_str()
+                    && stages.last().map(String::as_str) != Some(s)
+                {
+                    stages.push(s.to_owned());
+                }
+                if payload["stage"] == "waiting" {
+                    // The model is announced before any output arrives.
+                    assert_eq!(payload["modelName"], "mock");
+                }
+            }
+            "conversation.messageUpdated" => break payload,
+            _ => {}
+        }
+    };
+    assert_eq!(
+        stages,
+        [
+            "preparing",
+            "choosingModel",
+            "waiting",
+            "reasoning",
+            "writing"
+        ]
+    );
+    assert_eq!(reasoning, "The user wants a sum.");
+    assert_eq!(done["content"], "It is four.");
+    assert_eq!(done["reasoning"], "The user wants a sum.");
+    assert!(done["reasoningMs"].is_u64());
+    assert!(done.get("stage").is_none());
+
+    // Reasoning survives a reload.
+    let conv = core
+        .dispatch(
+            "conversation.get",
+            json!({ "id": r["conversationId"].clone() }),
+        )
+        .await
+        .expect("get");
+    assert_eq!(conv["messages"][1]["reasoning"], "The user wants a sum.");
+}

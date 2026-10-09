@@ -19,6 +19,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const PORT = 4181;
 const shotsArg = process.argv.indexOf("--shots");
 const shots = shotsArg > -1 ? process.argv[shotsArg + 1] : undefined;
+const modelArg = process.argv.indexOf("--model");
+const model = modelArg > -1 ? process.argv[modelArg + 1] : undefined;
+const trace = process.argv.includes("--trace");
+const t0 = Date.now();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const bridge = `(() => {
@@ -67,6 +71,12 @@ async function main() {
     createInterface({ input: core.stdout }).on("line", (line) => {
       const env = JSON.parse(line) as { kind: string; event?: string };
       if (env.kind === "event" && env.event === "core.ready") resolve();
+      if (trace && env.kind === "event" && /conversation|apple/.test(env.event ?? ""))
+        console.log(
+          `${String(Date.now() - t0).padStart(6)}ms ${env.event} ${JSON.stringify((env as { payload?: { stage?: string; status?: string } }).payload?.stage ?? (env as { payload?: { status?: string } }).payload?.status ?? "")}`,
+        );
+      if (trace && env.kind === "request")
+        console.log(`${String(Date.now() - t0).padStart(6)}ms → host ${(env as { method?: string }).method}`);
       deliver(env);
     }),
   );
@@ -96,10 +106,24 @@ async function main() {
     await page.getByText("Engine running").waitFor();
     if (shots) mkdirSync(shots, { recursive: true });
     if (shots) await page.screenshot({ path: join(shots, "1-home.png") });
+    if (model) {
+      await page.getByRole("button", { name: /^Model:/ }).click();
+      await page
+        .getByRole("menuitem")
+        .filter({ has: page.getByText(model, { exact: true }) })
+        .click();
+    }
     await page.getByRole("textbox", { name: "Message" }).fill("What is 2 + 2?");
     await page.keyboard.press("Enter");
     await page.waitForURL(/#\/conversations\/[0-9a-f-]+$/, { timeout: 10_000 });
     await page.getByText("What is 2 + 2?").first().waitFor({ state: "visible" });
+    // Progress must be visible before the answer arrives (step trail / thinking).
+    await page.getByRole("status").first().waitFor({ state: "visible", timeout: 5_000 });
+    if (shots) await page.screenshot({ path: join(shots, "2a-progress.png") });
+    for (const [i, wait] of [2500, 6000, 10000].entries()) {
+      await sleep(wait);
+      if (shots) await page.screenshot({ path: join(shots, `2b-progress-${i}.png`) });
+    }
     // Wait for the answer to finish streaming (the Copy action appears).
     await page.getByRole("button", { name: "Copy" }).first().waitFor({ state: "attached", timeout: 120_000 });
     const box = await page.getByText("What is 2 + 2?").first().boundingBox();

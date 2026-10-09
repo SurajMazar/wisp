@@ -202,6 +202,7 @@ impl AiServices {
         system: Option<String>,
         messages: Vec<ChatMessage>,
         cancel: CancellationToken,
+        on_route: &(dyn Fn(&RouteInfo, Option<bool>) + Send + Sync),
     ) -> Result<Prepared, IpcError> {
         let needs_vision = messages.iter().any(|m| !m.images.is_empty());
         let tokens = estimate_tokens(system.as_deref(), &messages);
@@ -223,6 +224,8 @@ impl AiServices {
                 Ok(r) => r,
                 Err(e) => return Err(last_err.unwrap_or(e)),
             };
+            // Report the choice before the (possibly long) model load so the UI can explain the wait.
+            on_route(&route, provider.is_loaded(&route.model.model).await);
             let req = GenerateRequest {
                 model: route.model.model.clone(),
                 system: system.clone(),
@@ -290,6 +293,7 @@ impl AiServices {
                 Some("You are a concise assistant.".into()),
                 vec![ChatMessage::text(Role::User, prompt)],
                 CancellationToken::new(),
+                &|_, _| {},
             )
             .await?;
         let mut first: Option<Duration> = None;
@@ -301,6 +305,7 @@ impl AiServices {
                     first.get_or_insert(started.elapsed());
                     text.push_str(&t);
                 }
+                Chunk::Reasoning(_) => {}
                 Chunk::Done(_) => break,
             }
         }

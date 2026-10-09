@@ -5,6 +5,7 @@
 
 pub mod provider;
 pub mod router;
+pub mod think;
 
 pub use provider::{
     AiError, AiProvider, ChatMessage, Chunk, ChunkStream, GenerateRequest, ImagePart, Role, Usage,

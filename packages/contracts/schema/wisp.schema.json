@@ -1667,8 +1667,35 @@
             "null"
           ]
         },
+        "reasoning": {
+          "description": "The model's streamed reasoning, shown collapsed above the answer.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reasoningMs": {
+          "description": "How long the model reasoned before answering.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "role": {
           "$ref": "#/definitions/MessageRole"
+        },
+        "stage": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/MessageStage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What's happening right now while `status` is `streaming` (live progress for the UI)."
         },
         "status": {
           "$ref": "#/definitions/MessageStatus"
@@ -1710,6 +1737,46 @@
         "assistant"
       ],
       "type": "string"
+    },
+    "MessageStage": {
+      "description": "Live progress of an answer, so the UI can say what Wisp is doing instead of a bare spinner.",
+      "oneOf": [
+        {
+          "const": "preparing",
+          "description": "Gathering the conversation and attachments.",
+          "type": "string"
+        },
+        {
+          "const": "readingScreen",
+          "description": "Reading the attached screen region (image + UI elements).",
+          "type": "string"
+        },
+        {
+          "const": "choosingModel",
+          "description": "Picking the model to use.",
+          "type": "string"
+        },
+        {
+          "const": "loadingModel",
+          "description": "The chosen model isn't in memory yet and is loading.",
+          "type": "string"
+        },
+        {
+          "const": "waiting",
+          "description": "The model is working on it (no output yet).",
+          "type": "string"
+        },
+        {
+          "const": "reasoning",
+          "description": "The model is streaming its reasoning.",
+          "type": "string"
+        },
+        {
+          "const": "writing",
+          "description": "The answer is streaming.",
+          "type": "string"
+        }
+      ]
     },
     "MessageStatus": {
       "enum": [
@@ -3167,6 +3234,12 @@
     },
     {
       "name": "conversation.delta",
+      "payload": {
+        "$ref": "#/definitions/MessageDelta"
+      }
+    },
+    {
+      "name": "conversation.reasoningDelta",
       "payload": {
         "$ref": "#/definitions/MessageDelta"
       }

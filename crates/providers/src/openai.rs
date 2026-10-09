@@ -88,11 +88,21 @@ pub(crate) fn parse_sse_line(line: &str) -> Result<Vec<Chunk>, AiError> {
             err.to_owned(),
         ));
     }
-    Ok(v.pointer("/choices/0/delta/content")
-        .and_then(Value::as_str)
-        .filter(|t| !t.is_empty())
-        .map(|t| vec![Chunk::Text(t.to_owned())])
-        .unwrap_or_default())
+    let field = |k: &str| {
+        v.pointer(&format!("/choices/0/delta/{k}"))
+            .and_then(Value::as_str)
+            .filter(|t| !t.is_empty())
+            .map(str::to_owned)
+    };
+    let mut out = vec![];
+    // Servers name streamed reasoning differently (llama.cpp/DeepSeek vs. vLLM/OpenRouter).
+    if let Some(r) = field("reasoning_content").or_else(|| field("reasoning")) {
+        out.push(Chunk::Reasoning(r));
+    }
+    if let Some(t) = field("content") {
+        out.push(Chunk::Text(t));
+    }
+    Ok(out)
 }
 
 #[async_trait]

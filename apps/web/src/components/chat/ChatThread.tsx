@@ -23,7 +23,7 @@ export function ChatThread({
   const scroller = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
   const last = messages.at(-1);
-  const contentKey = `${messages.length}:${last?.content.length ?? 0}:${last?.status}`;
+  const contentKey = `${messages.length}:${last?.content.length ?? 0}:${last?.reasoning?.length ?? 0}:${last?.stage}:${last?.status}`;
 
   useLayoutEffect(() => {
     const el = scroller.current;

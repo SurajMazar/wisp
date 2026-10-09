@@ -85,13 +85,39 @@ describe("Chat", () => {
     render(<AssistantPanel />);
     await userEvent.type(screen.getByRole("textbox", { name: "Message" }), "What is 2 + 2?{Enter}");
     expect(await screen.findByText("What is 2 + 2?")).toBeInTheDocument();
-    expect(screen.getByText("Thinking…")).toBeInTheDocument();
+    expect(screen.getByText("Getting ready…")).toBeInTheDocument();
+    // Live progress: the chosen model is shown while it loads.
+    act(() =>
+      useConversationStore.getState().receiveMessage({
+        ...msg("a1", "assistant", "", "streaming"),
+        modelName: "qwen3-vl:8b-instruct",
+        locality: "local",
+        stage: "loadingModel",
+      }),
+    );
+    expect(screen.getByText("Using qwen3-vl:8b-instruct · on this Mac")).toBeInTheDocument();
+    expect(screen.getByText("Loading qwen3-vl:8b-instruct into memory…")).toBeInTheDocument();
+    // Reasoning streams open, then folds once the answer starts.
     act(() => {
       const s = useConversationStore.getState();
       s.receiveMessage({
         ...msg("a1", "assistant", "", "streaming"),
         modelName: "qwen3-vl:8b-instruct",
         locality: "local",
+        stage: "reasoning",
+      });
+      s.receiveReasoning({ conversationId: CID, messageId: "a1", delta: "Simple arithmetic." });
+    });
+    expect(screen.getByText("Thinking…")).toBeInTheDocument();
+    expect(screen.getByText("Simple arithmetic.")).toBeInTheDocument();
+    act(() => {
+      const s = useConversationStore.getState();
+      s.receiveMessage({
+        ...msg("a1", "assistant", "", "streaming"),
+        modelName: "qwen3-vl:8b-instruct",
+        locality: "local",
+        stage: "writing",
+        reasoningMs: 3000,
       });
       s.receiveDelta({ conversationId: CID, messageId: "a1", delta: "It's " });
       s.receiveDelta({ conversationId: CID, messageId: "a1", delta: "**4**." });
@@ -103,9 +129,13 @@ describe("Chat", () => {
         modelName: "qwen3-vl:8b-instruct",
         locality: "local",
         latencyMs: 1800,
+        reasoning: "Simple arithmetic.",
+        reasoningMs: 3000,
       }),
     );
     expect(screen.getByText("4").tagName).toBe("STRONG");
+    expect(screen.getByRole("button", { name: /Thought for 3s/ })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Simple arithmetic.")).not.toBeInTheDocument();
     expect(screen.getByText("qwen3-vl:8b-instruct · on this Mac · 1.8 s")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Stop" })).not.toBeInTheDocument();
   });

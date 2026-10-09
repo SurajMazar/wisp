@@ -360,6 +360,10 @@ export type Locality = z.output<typeof Locality>;
 export const MessageRole = z.enum(["user","assistant"]);
 export type MessageRole = z.output<typeof MessageRole>;
 
+/** Live progress of an answer, so the UI can say what Wisp is doing instead of a bare spinner. */
+export const MessageStage = z.enum(["preparing","readingScreen","choosingModel","loadingModel","waiting","reasoning","writing"]);
+export type MessageStage = z.output<typeof MessageStage>;
+
 export const MessageStatus = z.enum(["streaming","complete","cancelled","error"]);
 export type MessageStatus = z.output<typeof MessageStatus>;
 
@@ -375,7 +379,10 @@ export const Message = z.strictObject({
   "locality": Locality.nullable().optional(),
   "model": ModelRef.nullable().optional(),
   "modelName": z.string().nullable().optional(),
+  "reasoning": z.string().nullable().optional(),
+  "reasoningMs": z.number().int().nonnegative().nullable().optional(),
   "role": MessageRole,
+  "stage": MessageStage.nullable().optional(),
   "status": MessageStatus,
 });
 export type Message = z.output<typeof Message>;
@@ -890,6 +897,7 @@ export const events = {
   "models.pullProgress": PullProgress,
   "apple.delta": AppleDelta,
   "conversation.delta": MessageDelta,
+  "conversation.reasoningDelta": MessageDelta,
   "conversation.messageUpdated": Message,
   "conversation.updated": ConversationSummary,
   "conversation.messageRemoved": Message,

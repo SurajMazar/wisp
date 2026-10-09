@@ -57,6 +57,8 @@ pub struct Usage {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Chunk {
     Text(String),
+    /// The model's visible reasoning ("thinking"), streamed before the answer.
+    Reasoning(String),
     Done(Usage),
 }
 
@@ -117,4 +119,9 @@ pub trait AiProvider: Send + Sync {
         req: GenerateRequest,
         cancel: CancellationToken,
     ) -> Result<ChunkStream, AiError>;
+    /// Whether the model is already in memory (`None` = unknown). Lets the UI say
+    /// "Loading the model…" instead of an unexplained wait.
+    async fn is_loaded(&self, _model: &str) -> Option<bool> {
+        None
+    }
 }

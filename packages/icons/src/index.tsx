@@ -35,6 +35,9 @@ export {
   Monitor as ScreenIcon,
   Sparkles as SparklesIcon,
   Cpu as ChipIcon,
+  ChevronRight as ChevronRightIcon,
+  CircleCheck as StepDoneIcon,
+  Lightbulb as ThinkingIcon,
 } from "lucide-react";
 
 /** Wisp's mark: a small luminous core with a soft trailing halo. */
