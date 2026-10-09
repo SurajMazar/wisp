@@ -19,6 +19,8 @@ pub enum Kind {
     Document,
     /// Images: text recognized on device by the host.
     Image,
+    /// HTML: tags stripped here (never rendered, so nothing is fetched).
+    Html,
 }
 
 const TEXT_EXT: &[&str] = &[
@@ -36,7 +38,9 @@ pub fn kind(name: &str) -> Option<Kind> {
         Some(Kind::Text)
     } else if ext == "pdf" {
         Some(Kind::Pdf)
-    } else if ["docx", "doc", "rtf", "rtfd", "html", "htm", "odt"].contains(&ext) {
+    } else if ["html", "htm", "xhtml"].contains(&ext) {
+        Some(Kind::Html)
+    } else if ["docx", "doc", "rtf", "rtfd", "odt"].contains(&ext) {
         Some(Kind::Document)
     } else if [
         "png", "jpg", "jpeg", "heic", "tiff", "tif", "gif", "bmp", "webp",
@@ -112,6 +116,62 @@ pub fn decode_text(bytes: &[u8]) -> Result<String, String> {
     let text = String::from_utf8_lossy(bytes);
     let text = text.trim_start_matches('\u{feff}');
     Ok(text.chars().take(MAX_TEXT_CHARS).collect())
+}
+
+/// Visible text of an HTML document: scripts, styles and tags removed, common entities decoded.
+/// Nothing is rendered or fetched.
+pub fn html_to_text(html: &str) -> String {
+    let lower = html.to_ascii_lowercase();
+    let mut out = String::with_capacity(html.len() / 2);
+    let mut i = 0;
+    while i < html.len() {
+        if html.as_bytes()[i] == b'<' {
+            // Skip whole <script>/<style>/<noscript>/<template> elements.
+            for t in ["script", "style", "noscript", "template"] {
+                if lower[i + 1..].starts_with(t) {
+                    i = lower[i..]
+                        .find(&format!("</{t}"))
+                        .map_or(html.len(), |e| i + e);
+                    break;
+                }
+            }
+            if i >= html.len() {
+                break;
+            }
+            match html[i..].find('>') {
+                Some(close) => {
+                    let tag = &lower[i..i + close];
+                    if [
+                        "<br", "<p", "</p", "<div", "</div", "<li", "<h", "</h", "<tr", "</tr",
+                    ]
+                    .iter()
+                    .any(|t| tag.starts_with(t))
+                    {
+                        out.push('\n');
+                    }
+                    i += close + 1;
+                }
+                None => break,
+            }
+        } else {
+            let next = html[i..].find('<').map_or(html.len(), |n| i + n);
+            out.push_str(&html[i..next]);
+            i = next;
+        }
+    }
+    let decoded = out
+        .replace("&nbsp;", " ")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&amp;", "&");
+    decoded
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// A piece of a document and where it came from.
@@ -190,7 +250,8 @@ pub fn citation(name: &str, c: &Chunk) -> String {
     }
 }
 
-fn terms(s: &str) -> Vec<String> {
+/// Normalized search terms of `s` (for precomputing a passage's term set).
+pub fn terms(s: &str) -> Vec<String> {
     const STOP: &[&str] = &[
         "the", "and", "for", "with", "that", "this", "are", "was", "what", "when", "where",
         "which", "how", "who", "does", "did", "can", "from", "into", "about", "there", "their",
@@ -203,6 +264,31 @@ fn terms(s: &str) -> Vec<String> {
         .map(|w| w.trim_end_matches('s').to_owned())
         .filter(|w| !w.is_empty())
         .collect()
+}
+
+/// [`lexical`] against a precomputed term set (fast path for searching many passages).
+pub fn lexical_terms(
+    query_terms: &[String],
+    text_terms: &std::collections::HashSet<String>,
+) -> f32 {
+    if query_terms.is_empty() {
+        return 0.0;
+    }
+    let total: f32 = query_terms.iter().map(|w| w.len().min(10) as f32).sum();
+    let hit: f32 = query_terms
+        .iter()
+        .filter(|w| text_terms.contains(*w))
+        .map(|w| w.len().min(10) as f32)
+        .sum();
+    hit / total
+}
+
+/// Distinct query terms, as [`lexical_terms`] expects.
+pub fn query_terms(query: &str) -> Vec<String> {
+    let mut q = terms(query);
+    q.sort();
+    q.dedup();
+    q
 }
 
 /// Fraction of the query's distinct terms found in the text, weighted toward rarer, longer
@@ -251,6 +337,15 @@ mod tests {
         assert_eq!(sanitize_name("a;rm -rf $HOME.md"), "a_rm -rf _HOME.md");
         assert!(sanitize_name(&format!("{}.txt", "x".repeat(300))).ends_with(".txt"));
         assert_eq!(sanitize_name("///"), "file");
+    }
+
+    #[test]
+    fn html_becomes_text_without_scripts() {
+        let t = html_to_text(
+            "<html><head><style>p{}</style><script>alert(1)</script></head><body><h1>Title</h1><p>Hello &amp; <b>welcome</b></p><img src=\"https://tracker.example/p.gif\"></body></html>",
+        );
+        assert_eq!(t, "Title\nHello & welcome");
+        assert_eq!(kind("page.html"), Some(Kind::Html));
     }
 
     #[test]

@@ -142,20 +142,15 @@ impl ModelSettings {
         if !(1024..=131_072).contains(&self.context_length) {
             return Err("contextLength must be 1024–131072".into());
         }
-        let local = |u: &str| {
-            u.strip_prefix("http://")
-                .map(|r| {
-                    r.starts_with("127.0.0.1")
-                        || r.starts_with("localhost")
-                        || r.starts_with("[::1]")
-                })
-                .unwrap_or(false)
-        };
+        let local = |u: &str| u.starts_with("http://") && wisp_common::net::is_loopback_url(u);
         if !local(&self.ollama_url) {
             return Err("ollamaUrl must be a local http:// address".into());
         }
         for e in &self.endpoints {
-            if !(e.base_url.starts_with("https://") || local(&e.base_url)) {
+            if !((e.base_url.starts_with("https://")
+                && wisp_common::net::url_host(&e.base_url).is_some())
+                || local(&e.base_url))
+            {
                 return Err(format!(
                     "endpoint {} must use https or a local http address",
                     e.name

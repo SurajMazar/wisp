@@ -14,9 +14,9 @@ use wisp_ipc::{
         accessibility::{AxSnapshot, AxSnapshotParams},
         app::Empty,
         tools::{
-            ApprovalDecision, ApprovalRequest, ApprovalResolved, ApprovalResponse, ToolCall,
-            ToolCallRecord, ToolCallStatus, ToolExecution, ToolGrants, ToolRunParams,
-            ToolRunResult, Verification, VerificationStatus,
+            ApprovalDecision, ApprovalRequest, ApprovalResolved, ApprovalResponse,
+            InputPerformParams, ToolCall, ToolCallRecord, ToolCallStatus, ToolExecution,
+            ToolGrants, ToolRunParams, ToolRunResult, Verification, VerificationStatus,
         },
     },
 };
@@ -49,8 +49,44 @@ fn unavailable(msg: &str) -> IpcError {
 }
 
 impl Core {
+    /// For pointer actions, look at what's actually under the point: risk is judged on that
+    /// element's label, not on the label the model claimed. Returns (owner pid, app name).
+    async fn inspect_target(&self, call: &mut ToolCall) -> (Option<i32>, Option<String>) {
+        let (ToolCall::Click(p)
+        | ToolCall::DoubleClick(p)
+        | ToolCall::RightClick(p)
+        | ToolCall::MoveMouse(p)) = call
+        else {
+            return (None, None);
+        };
+        let Some(host) = self.ai().host() else {
+            return (None, None);
+        };
+        let params = serde_json::json!({ "point": { "x": p.x, "y": p.y }, "maxNodes": 1 });
+        let Ok(v) = host.call("host.ax.snapshot", params).await else {
+            return (None, None);
+        };
+        let Ok(snap) = serde_json::from_value::<AxSnapshot>(v) else {
+            return (None, None);
+        };
+        if let Some(el) = &snap.under_pointer {
+            let actual = [&el.title, &el.description, &el.value]
+                .into_iter()
+                .flatten()
+                .map(|t| t.trim())
+                .find(|t| !t.is_empty());
+            if let Some(actual) = actual {
+                p.label = Some(actual.chars().take(200).collect());
+            }
+        }
+        let app = snap.application.as_ref();
+        (app.map(|a| a.pid), app.map(|a| a.name.clone()))
+    }
+
     pub(crate) async fn run_tool(&self, p: ToolRunParams) -> Result<ToolRunResult, IpcError> {
         wisp_computer::validate(&p.call).map_err(|e| IpcError::invalid_params(e.to_string()))?;
+        let mut p = p;
+        let (expected_pid, app_name) = self.inspect_target(&mut p.call).await;
         let tool = wisp_computer::name(&p.call);
         let (risk, risk_reason) = wisp_computer::assess(&p.call);
         let settings = self.blocking(|db| db.load_settings()).await?;
@@ -78,6 +114,7 @@ impl Core {
         let args = wisp_computer::redacted_args(&p.call);
         let outcome = wisp_permissions::evaluate(&Context {
             enabled: settings.computer.enabled,
+            always_grantable: wisp_computer::always_grantable(tool),
             confirm_every_action: settings.computer.confirm_every_action,
             tool,
             risk,
@@ -100,7 +137,9 @@ impl Core {
             Outcome::Ask(choices) => {
                 self.save_tool(&record, &args, true).await;
                 inserted = true;
-                let decision = self.ask(&record, risk_reason, &p.call, choices).await;
+                let decision = self
+                    .ask(&record, risk_reason, &p.call, choices, app_name.clone())
+                    .await;
                 record.decision = match decision {
                     ApprovalDecision::AllowOnce => "allowOnce",
                     ApprovalDecision::AllowSession => "allowSession",
@@ -143,7 +182,8 @@ impl Core {
 
         record.status = ToolCallStatus::Running;
         self.save_tool(&record, &args, !inserted).await;
-        match self.execute(&p.call).await {
+        let approval_id = inserted.then(|| record.id.clone());
+        match self.execute(&p.call, approval_id, expected_pid).await {
             Ok(exec) => {
                 let failed = exec.verification.status == VerificationStatus::Failed;
                 let error = failed.then(|| exec.verification.detail.clone());
@@ -179,6 +219,7 @@ impl Core {
         risk_reason: Option<String>,
         call: &ToolCall,
         choices: Vec<ApprovalDecision>,
+        app_name: Option<String>,
     ) -> ApprovalDecision {
         let (tx, rx) = oneshot::channel();
         if let Ok(mut p) = self.tool_service().pending.lock() {
@@ -190,13 +231,15 @@ impl Core {
                 },
             );
         }
-        let detail = match call {
-            ToolCall::TypeText(_) | ToolCall::WriteClipboard(_) => {
-                Some("The full text is shown in the request below.".into())
+        // Show exactly what will be typed or copied; if it's long, say how much isn't shown.
+        let text_detail = |t: &str| {
+            let n = t.chars().count();
+            let shown: String = t.chars().take(2000).collect();
+            if n > 2000 {
+                format!("{shown}\n… (+{} more characters)", n - 2000)
+            } else {
+                shown
             }
-            _ => self
-                .latest_focus()
-                .and_then(|f| f.application.map(|a| format!("In {}", a.name))),
         };
         self.events()
             .publish::<ToolApprovalRequested>(&ApprovalRequest {
@@ -205,9 +248,9 @@ impl Core {
                 title: record.title.clone(),
                 detail: match call {
                     ToolCall::TypeText(t) | ToolCall::WriteClipboard(t) => {
-                        Some(t.text.chars().take(500).collect())
+                        Some(text_detail(&t.text))
                     }
-                    _ => detail,
+                    _ => app_name.map(|a| format!("In {a}")),
                 },
                 risk: record.risk,
                 risk_reason,
@@ -242,7 +285,12 @@ impl Core {
         Ok(Empty {})
     }
 
-    async fn execute(&self, call: &ToolCall) -> Result<ToolExecution, IpcError> {
+    async fn execute(
+        &self,
+        call: &ToolCall,
+        approval_id: Option<String>,
+        expected_pid: Option<i32>,
+    ) -> Result<ToolExecution, IpcError> {
         let host = self
             .ai()
             .host()
@@ -267,7 +315,12 @@ impl Core {
             _ => serde_json::from_value(
                 host.call(
                     "host.input.perform",
-                    serde_json::to_value(call).unwrap_or_default(),
+                    serde_json::to_value(InputPerformParams {
+                        call: call.clone(),
+                        approval_id,
+                        expected_pid,
+                    })
+                    .unwrap_or_default(),
                 )
                 .await?,
             )

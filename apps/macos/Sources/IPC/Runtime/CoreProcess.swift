@@ -220,20 +220,26 @@ public actor CoreProcess {
             if let name = env.event { await eventHandler?(name, env.payload) }
         case .request:
             guard let id = env.id, let method = env.method else { return }
-            let outcome: Result<JSONValue, IpcError>
-            if IPCMethods.targets[method] != .host {
-                outcome = .failure(.methodNotFound(method))
-            } else if let hostHandler {
-                outcome = await hostHandler(method, env.params)
-            } else {
-                outcome = .failure(.unavailable("host handlers not installed"))
-            }
-            let reply: Envelope
-            switch outcome {
-            case .success(let v): reply = .response(id: id, result: v)
-            case .failure(let e): reply = .response(id: id, error: e)
-            }
-            if let data = try? reply.encodedLine() { try? stdin?.write(contentsOf: data) }
+            // Handle each core request concurrently: a handler may itself call the core (e.g.
+            // screen observation ranks UI elements), and its reply must not wait on that handler.
+            Task { await self.answerHostRequest(id: id, method: method, params: env.params) }
         }
+    }
+
+    private func answerHostRequest(id: String, method: String, params: JSONValue?) async {
+        let outcome: Result<JSONValue, IpcError>
+        if IPCMethods.targets[method] != .host {
+            outcome = .failure(.methodNotFound(method))
+        } else if let hostHandler {
+            outcome = await hostHandler(method, params)
+        } else {
+            outcome = .failure(.unavailable("host handlers not installed"))
+        }
+        let reply: Envelope
+        switch outcome {
+        case .success(let v): reply = .response(id: id, result: v)
+        case .failure(let e): reply = .response(id: id, error: e)
+        }
+        if let data = try? reply.encodedLine() { try? stdin?.write(contentsOf: data) }
     }
 }

@@ -29,6 +29,8 @@ pub struct Grants<'a> {
 
 pub struct Context<'a> {
     pub enabled: bool,
+    /// Whether "Always allow" may be offered/used for this tool.
+    pub always_grantable: bool,
     pub confirm_every_action: bool,
     pub tool: &'a str,
     pub risk: RiskLevel,
@@ -55,19 +57,19 @@ pub fn evaluate(c: &Context<'_>) -> Outcome {
         }
         _ => {
             if !c.confirm_every_action {
-                if has(c.grants.always) {
+                if c.always_grantable && has(c.grants.always) {
                     return Outcome::Allow("granted");
                 }
                 if has(c.grants.session) {
                     return Outcome::Allow("allowSession");
                 }
             }
-            Outcome::Ask(vec![
-                ApprovalDecision::AllowOnce,
-                ApprovalDecision::AllowSession,
-                ApprovalDecision::AlwaysAllow,
-                ApprovalDecision::Deny,
-            ])
+            let mut choices = vec![ApprovalDecision::AllowOnce, ApprovalDecision::AllowSession];
+            if c.always_grantable {
+                choices.push(ApprovalDecision::AlwaysAllow);
+            }
+            choices.push(ApprovalDecision::Deny);
+            Outcome::Ask(choices)
         }
     }
 }
@@ -89,6 +91,7 @@ mod tests {
     fn ctx<'a>(tool: &'a str, risk: RiskLevel, grants: Grants<'a>) -> Context<'a> {
         Context {
             enabled: true,
+            always_grantable: true,
             confirm_every_action: false,
             tool,
             risk,
@@ -162,6 +165,24 @@ mod tests {
             )),
             Outcome::Deny(_)
         ));
+    }
+
+    #[test]
+    fn content_driven_tools_are_never_always_allowed() {
+        let always = vec!["typeText".to_string()];
+        let mut c = ctx(
+            "typeText",
+            RiskLevel::Medium,
+            Grants {
+                always: &always,
+                ..Default::default()
+            },
+        );
+        c.always_grantable = false;
+        assert_eq!(
+            evaluate(&c),
+            Outcome::Ask(vec![AllowOnce, AllowSession, Deny])
+        );
     }
 
     #[test]

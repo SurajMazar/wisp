@@ -61,6 +61,14 @@ public final class IPCRouter {
             Log.ipc.error("UI may only send requests")
             return
         }
+        // The UI may call core methods (the core enforces policy) and only the host methods it
+        // needs. Everything powerful — input, Keychain reads, screen observation, file reading,
+        // generation, embeddings — is reachable only from the core, behind its pipeline.
+        if IPCMethods.targets[method] == .host, !Self.uiHostMethods.contains(method) {
+            Log.ipc.error("UI tried a host method it may not call: \(method, privacy: .public)")
+            sink.deliver(.response(id: id, error: .methodNotFound(method)))
+            return
+        }
         Task { @MainActor in
             let reply: Envelope
             switch await self.dispatch(method: method, params: env.params) {
@@ -70,6 +78,16 @@ public final class IPCRouter {
             sink.deliver(reply)
         }
     }
+
+    /// Host methods the UI may call directly (keep in sync with the web app; the rest are core-only).
+    static let uiHostMethods: Set<String> = [
+        "host.assistant.setVisible", "host.assistant.state", "host.ax.requestPermission", "host.ax.snapshot",
+        "host.ax.status", "host.clipboard.writeText", "host.cursor.preview", "host.focus.cancel", "host.focus.clear", "host.focus.start",
+        "host.invocation.status", "host.keychain.delete", "host.keychain.set", "host.mic.permission",
+        "host.mic.requestPermission", "host.ollama.start", "host.screen.permission", "host.screen.requestPermission",
+        "host.shortcut.check", "host.shortcut.record", "host.system.openSettingsPane", "host.voice.start",
+        "host.voice.stop", "host.voice.stopSpeaking", "host.app.info",
+    ]
 
     /// Dispatch a request by target. Unknown methods are rejected here, never forwarded.
     public func dispatch(method: String, params: JSONValue?) async -> Result<JSONValue, IpcError> {

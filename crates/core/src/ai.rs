@@ -42,6 +42,8 @@ pub struct AiServices {
     overrides: Mutex<Option<Vec<Arc<dyn AiProvider>>>>,
     /// Providers that just failed are skipped for a while (spec §99 fallback).
     cooldown: Mutex<HashMap<String, Instant>>,
+    /// Whether the privacy mode allows cloud at all; until known, assume Local Only (the default).
+    cloud_permitted: std::sync::atomic::AtomicBool,
 }
 
 const COOLDOWN: Duration = Duration::from_secs(120);
@@ -52,6 +54,14 @@ pub struct Prepared {
 }
 
 impl AiServices {
+    /// Remember the privacy mode so Local Only never contacts cloud endpoints.
+    pub fn set_privacy(&self, privacy: PrivacyMode) {
+        self.cloud_permitted.store(
+            privacy != PrivacyMode::LocalOnly,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+    }
+
     pub fn host(&self) -> Option<Arc<dyn HostBridge>> {
         self.host.lock().ok().and_then(|h| h.clone())
     }
@@ -102,6 +112,15 @@ impl AiServices {
         out.push(self.ollama(settings));
         if let Some(h) = host {
             for e in &settings.endpoints {
+                // In Local Only, cloud endpoints aren't even contacted (not even to list models).
+                if !self
+                    .cloud_permitted
+                    .load(std::sync::atomic::Ordering::Relaxed)
+                    && wisp_providers::openai::locality_of(&e.base_url)
+                        == wisp_ipc::types::models::Locality::Cloud
+                {
+                    continue;
+                }
                 out.push(Arc::new(OpenAiCompatibleProvider::new(
                     e.clone(),
                     h.clone(),
@@ -157,6 +176,7 @@ impl AiServices {
         estimated_prompt_tokens: u32,
         override_model: Option<&ModelRef>,
     ) -> Result<(RouteInfo, Arc<dyn AiProvider>), IpcError> {
+        self.set_privacy(privacy);
         let catalog = self.catalog(settings).await;
         let preference = override_model.or(if needs_vision {
             settings.vision.as_ref()

@@ -272,3 +272,12 @@ an attached agent (same limits and approvals — unattended runs simply time out
 (`routine_runs`, linked to its conversation or agent run — migration 0008); interrupted runs are marked failed at
 startup. Routines don't wake a sleeping Mac or run while Wisp is quit (documented in the UI).
 
+## D-035 — Security boundaries after the Phase 18 audit
+**Status** accepted (2026-10-09)
+The web UI is treated as less trusted than the core: it may call only an explicit allow-list of host methods; every
+powerful capability is core-only behind the tool pipeline. Development overrides are compiled out of release builds.
+Computer-control risk is judged on the real element under the point, content-driven tools are never "always"
+allowed, and approvals are bound to the frontmost app / target process they were shown for. Untrusted content in
+prompts is fenced with neutralized fence tokens. "Local" means an exact loopback host, and Local Only never contacts
+cloud endpoints. Details: docs/security/hardening-2026-10.md.
+

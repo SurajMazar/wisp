@@ -147,10 +147,13 @@ async fn plans_acts_through_the_pipeline_and_finishes() {
     assert_eq!(done["steps"][2]["detail"], "the window changed");
     assert_eq!(done["toolCallsUsed"], 1);
     let performed = host.performed.lock().expect("lock").clone();
+    assert_eq!(performed.len(), 1);
     assert_eq!(
-        performed,
-        vec![json!({"tool": "click", "args": {"x": 600.0, "y": 454.0, "label": "Save"}})]
+        performed[0]["call"],
+        json!({"tool": "click", "args": {"x": 600.0, "y": 454.0, "label": "Save"}})
     );
+    // Bound to the approval the user gave.
+    assert!(performed[0]["approvalId"].is_string());
 
     // History persists.
     let runs = core
@@ -164,7 +167,8 @@ async fn plans_acts_through_the_pipeline_and_finishes() {
 #[tokio::test]
 async fn repeated_actions_pause_as_stuck_and_a_denial_ends_the_run() {
     let (_d, core, host) = setup("1. Tab around|||ACTION: press tab").await;
-    approve_all(&core, "alwaysAllow");
+    // Keys can't be "always" allowed; "for this session" is the most.
+    approve_all(&core, "allowSession");
     let mut rx = core.events().subscribe();
     let r = core
         .dispatch("agent.run", json!({"goal": "Find the field"}))

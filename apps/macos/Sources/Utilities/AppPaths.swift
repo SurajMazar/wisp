@@ -4,9 +4,13 @@ import Foundation
 public enum AppPaths {
     /// `~/Library/Application Support/Wisp` (or `WISP_DATA_DIR`).
     public static var dataDirectory: URL {
+        // Development overrides are compiled out of release builds: another process must not be
+        // able to relaunch Wisp (with its permissions) against other data, binaries or pages.
+        #if DEBUG
         if let override = ProcessInfo.processInfo.environment["WISP_DATA_DIR"], !override.isEmpty {
             return URL(fileURLWithPath: override, isDirectory: true)
         }
+        #endif
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("Wisp", isDirectory: true)
     }
@@ -18,9 +22,11 @@ public enum AppPaths {
 
     /// The `wisp-core` executable: `WISP_CORE_BIN`, else next to the host executable.
     public static var coreExecutable: URL {
+        #if DEBUG
         if let override = ProcessInfo.processInfo.environment["WISP_CORE_BIN"], !override.isEmpty {
             return URL(fileURLWithPath: override)
         }
+        #endif
         return Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/wisp-core")
     }
 
@@ -31,8 +37,12 @@ public enum AppPaths {
 
     /// When set, the UI loads from the Vite dev server instead of bundled assets.
     public static var devServerURL: URL? {
+        #if DEBUG
         guard let s = ProcessInfo.processInfo.environment["WISP_DEV_URL"], let url = URL(string: s),
               let host = url.host, ["127.0.0.1", "localhost"].contains(host) else { return nil }
         return url
+        #else
+        return nil
+        #endif
     }
 }

@@ -104,9 +104,11 @@ async fn computer_control_is_off_until_enabled_but_reading_is_allowed() {
             .expect("out")
             .contains("Button “save” at x=50 y=22")
     );
-    assert_eq!(
-        *host.calls.lock().expect("lock"),
-        vec!["host.ax.snapshot ".to_string()]
+    // Only looks: the click's target was inspected, nothing was performed.
+    let calls = host.calls.lock().expect("lock").clone();
+    assert!(
+        calls.iter().all(|c| c.starts_with("host.ax.snapshot")),
+        "{calls:?}"
     );
 }
 
@@ -203,4 +205,39 @@ async fn invalid_calls_never_reach_the_policy() {
         "{err:?}"
     );
     assert!(host.calls.lock().expect("lock").is_empty());
+}
+
+/// What's under the point decides the risk, not the label the model claims.
+#[tokio::test]
+async fn risk_is_judged_on_the_element_actually_under_the_click() {
+    struct DeleteHost;
+    #[async_trait]
+    impl wisp_providers::HostBridge for DeleteHost {
+        async fn call(&self, method: &str, _params: Value) -> Result<Value, IpcError> {
+            Ok(match method {
+                "host.ax.snapshot" => json!({
+                    "application": {"name": "Settings", "pid": 42},
+                    "underPointer": {"role": "AXButton", "title": "Delete Account", "frame": {"x": 0, "y": 0, "width": 9, "height": 9},
+                                     "enabled": true, "focused": false, "selected": false, "actions": ["AXPress"], "depth": 1},
+                    "nodes": [], "truncated": false, "elapsedMs": 1
+                }),
+                _ => json!({"verification": {"status": "verified", "detail": "ok"}}),
+            })
+        }
+    }
+    let (_d, core, _) = setup();
+    core.attach_host(Arc::new(DeleteHost));
+    core.dispatch(
+        "settings.update",
+        json!({"update": {"section": "computer", "value": {"enabled": true}}}),
+    )
+    .await
+    .expect("enable");
+    // The model says "Account"; the button there is "Delete Account" → critical, asks, shows the real label.
+    let (r, req) = run_answering(&core, click("Account"), Some("allowOnce")).await;
+    let req = req.expect("asked");
+    assert_eq!(req["title"], "Click “Delete Account”");
+    assert_eq!(req["risk"], "critical");
+    assert_eq!(req["detail"], "In Settings");
+    assert_eq!(r["record"]["status"], "succeeded");
 }

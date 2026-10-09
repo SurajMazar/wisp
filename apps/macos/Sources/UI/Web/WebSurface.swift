@@ -79,7 +79,8 @@ public final class WebSurface: NSObject, EnvelopeSink {
             return
         }
         guard JSONSerialization.isValidJSONObject(message.body),
-              let data = try? JSONSerialization.data(withJSONObject: message.body) else {
+              let data = try? JSONSerialization.data(withJSONObject: message.body),
+              data.count <= 16 * 1024 * 1024 else {
             Log.ipc.error("rejected non-JSON message body")
             return
         }

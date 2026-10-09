@@ -559,3 +559,37 @@ run history.
 ## Stop Gate 17
 PASS on automated evidence (scheduler triggers, run recorded).
 
+---
+
+# Phase 18 — Security Hardening (2026-10-09)
+
+## Summary
+Full read-only audit (17 findings: 3 high, 7 medium, 7 low); all high/medium fixed with tests, lows fixed except
+core-binary signature checking (Phase 21). Write-up: docs/security/hardening-2026-10.md.
+
+## Fixed
+- HIGH: UI could call any host method (input, Keychain, screen, files) → explicit UI allow-list in the router
+- HIGH: release builds honored env overrides for core binary / dev URL / data dir → debug-only
+- HIGH: click risk judged on model-supplied label → judged on the real Accessibility element at the point;
+  unknown targets Medium
+- MEDIUM: newline escalation bypass (Return/paste) → High; content-driven tools never "always" grantable
+- MEDIUM: approvals not bound to target → frontmost-app / target-pid binding; per-chunk secure-input checks
+- MEDIUM: approval text truncated silently → full text or explicit "+N more characters"
+- MEDIUM: loopback look-alikes classed Local → strict host parsing (`wisp_common::net`)
+- MEDIUM: cloud endpoints probed in Local Only → not contacted
+- MEDIUM: fence breakout in screen/documents → `defang`; memories fenced
+- MEDIUM: agent `remember` persisted injected text as user memory → one-off runs temporary, labeled as agent notes
+- LOW: HTML import via WebKit (network) → text extraction in Rust; ⌥⌘⌫ Critical; bounded frame reads, UI cap, drop
+  cap; dev CSP stripped in production; link destinations shown; download size cap; skill symlinks refused
+- Functional: host handled core requests serially → concurrent (fixed screen-observation deadlock); host timeouts
+  per action (file picker no longer times out)
+
+## Tests Added
+- Rust: strict loopback parsing (13 cases), never-always tools, Return/paste/⌥⌘⌫ risk, unknown-target clicks,
+  real-element risk end to end ("Account" over "Delete Account" → Critical, true label shown, app named), approval
+  binding passed to the host, fence neutralization, HTML to text without scripts
+- Swift: UI cannot call `host.input.perform` / `host.keychain.get`; allowed host methods still work
+
+## Stop Gate 18
+PASS on automated evidence; manual checks listed (Phase 18).
+

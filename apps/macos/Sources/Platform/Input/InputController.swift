@@ -22,7 +22,41 @@ public enum InputController {
 
     // MARK: Entry point
 
-    public static func perform(_ call: ToolCall) async throws -> ToolExecution {
+    /// Frontmost app when each approval was shown (bounded).
+    private static var approvalFronts: [String: pid_t] = [:]
+
+    public static func noteApprovalShown(id: String) {
+        if approvalFronts.count > 64 { approvalFronts.removeAll() }
+        approvalFronts[id] = NSWorkspace.shared.frontmostApplication?.processIdentifier
+    }
+
+    public static func perform(_ call: ToolCall, approvalId: String? = nil, expectedPid: Int32? = nil) async throws -> ToolExecution {
+        // The approved action must land where the user approved it.
+        if let id = approvalId, let front = approvalFronts.removeValue(forKey: id),
+           NSWorkspace.shared.frontmostApplication?.processIdentifier != front, isKeyboard(call) {
+            throw Failure.refused("The app in front changed since you approved this, so Wisp didn't do it.")
+        }
+        if let expected = expectedPid, let pt = pointOf(call), let e = element(at: pt), pid(of: e) != expected {
+            throw Failure.refused("Something else is under that spot now, so Wisp didn't click it.")
+        }
+        return try await performChecked(call)
+    }
+
+    private static func isKeyboard(_ call: ToolCall) -> Bool {
+        switch call {
+        case .typeText, .keypress, .hotkey, .paste, .copy: true
+        default: false
+        }
+    }
+
+    private static func pointOf(_ call: ToolCall) -> CGPoint? {
+        switch call {
+        case .click(let p), .doubleClick(let p), .rightClick(let p), .moveMouse(let p): CGPoint(x: p.x, y: p.y)
+        default: nil
+        }
+    }
+
+    private static func performChecked(_ call: ToolCall) async throws -> ToolExecution {
         switch call {
         case .readClipboard:
             let text = NSPasteboard.general.string(forType: .string)
@@ -205,7 +239,8 @@ public enum InputController {
         move(to: pt)
         let before = observe(at: pt)
         // CoreGraphics: positive wheel values scroll content up.
-        CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 2, wheel1: Int32(-s.dy), wheel2: Int32(-s.dx), wheel3: 0)?.post(tap: .cghidEventTap)
+        let dy = Int32(clamping: max(-50, min(50, -s.dy))), dx = Int32(clamping: max(-50, min(50, -s.dx)))
+        CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 2, wheel1: dy, wheel2: dx, wheel3: 0)?.post(tap: .cghidEventTap)
         return await verifyChange(from: before, at: pt, action: "scrolled")
     }
 
@@ -271,6 +306,11 @@ public enum InputController {
             let utf16 = Array(String(line.element).utf16)
             var i = 0
             while i < utf16.count {
+                // Re-check before every chunk: focus can move into a password field mid-typing.
+                if IsSecureEventInputEnabled() { throw Failure.refused("A password field took focus, so Wisp stopped typing.") }
+                if let f = focusedElement(), string(f, kAXSubroleAttribute) == kAXSecureTextFieldSubrole as String {
+                    throw Failure.refused("A password field took focus, so Wisp stopped typing.")
+                }
                 let chunk = Array(utf16[i..<min(i + 16, utf16.count)])
                 for down in [true, false] {
                     guard let ev = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: down) else { continue }

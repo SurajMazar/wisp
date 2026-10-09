@@ -45,6 +45,8 @@ struct Inner {
     teacher: crate::teacher::Teacher,
     agents: crate::agents::AgentRuntime,
     routine_clock: crate::routines::RoutineClock,
+    search_index: crate::files::SearchIndex,
+    embed_cache: crate::memory::EmbedCache,
 }
 
 impl Core {
@@ -85,9 +87,14 @@ impl Core {
                 teacher: Default::default(),
                 agents: Default::default(),
                 routine_clock: Default::default(),
+                search_index: Default::default(),
+                embed_cache: Default::default(),
             }),
         };
         core.startup_skills();
+        if let Ok(s) = core.inner.db.load_settings() {
+            core.inner.ai.set_privacy(s.privacy.mode);
+        }
         Ok(core)
     }
 
@@ -121,6 +128,7 @@ impl Core {
                     let settings = c
                         .blocking(move |db| db.save_settings_section(&p.update))
                         .await?;
+                    c.inner.ai.set_privacy(settings.privacy.mode);
                     c.inner.events.publish::<SettingsChanged>(&settings);
                     Ok(settings)
                 })
@@ -646,6 +654,14 @@ impl Core {
             .events
             .publish::<wisp_ipc::methods::ConversationUpdated>(&s);
         Ok(s)
+    }
+
+    pub(crate) fn search_index_state(&self) -> &crate::files::SearchIndex {
+        &self.inner.search_index
+    }
+
+    pub(crate) fn embed_cache(&self) -> &crate::memory::EmbedCache {
+        &self.inner.embed_cache
     }
 
     pub(crate) fn routine_clock(&self) -> &crate::routines::RoutineClock {

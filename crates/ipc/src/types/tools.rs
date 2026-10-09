@@ -225,6 +225,21 @@ pub struct Verification {
     pub detail: String,
 }
 
+/// An approved action for the host, bound to what the user approved.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct InputPerformParams {
+    pub call: ToolCall,
+    /// The approval this action was allowed by: the host refuses keyboard actions if the
+    /// frontmost app changed since the request was shown.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approval_id: Option<String>,
+    /// For pointer actions: the process that owned the element under the point when risk was
+    /// judged; the host refuses if something else is there now.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expected_pid: Option<i32>,
+}
+
 /// What the host reports after performing an action.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

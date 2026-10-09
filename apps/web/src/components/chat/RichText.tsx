@@ -110,9 +110,22 @@ function inline(s: string): ReactNode {
             href={link[2]}
             target="_blank"
             rel="noreferrer"
+            title={link[2]}
             className="text-accent underline-offset-2 hover:underline"
           >
             {link[1]}
+            {/* Always show where a link goes: its text can say anything. */}
+            <span className="ml-1 text-xs text-text-faint">
+              (
+              {(() => {
+                try {
+                  return new URL(link[2] ?? "").host;
+                } catch {
+                  return "";
+                }
+              })()}
+              )
+            </span>
           </a>
         );
       if (t.startsWith("*") && t.endsWith("*") && t.length > 2) return <em key={i}>{t.slice(1, -1)}</em>;

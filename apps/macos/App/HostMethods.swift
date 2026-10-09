@@ -206,7 +206,7 @@ enum HostMethods {
 
         router.register(IPCMethods.hostInputPerform) { params in
             do {
-                return try await InputController.perform(params)
+                return try await InputController.perform(params.call, approvalId: params.approvalId, expectedPid: params.expectedPid.map { Int32(clamping: $0) })
             } catch InputController.Failure.notTrusted {
                 throw IpcError(code: .permissionDenied, details: nil, message: InputController.Failure.notTrusted.localizedDescription)
             } catch let f as InputController.Failure {
@@ -223,7 +223,10 @@ enum HostMethods {
         }
 
         // An action needs approval: make sure the user sees the request.
-        router.subscribe(IPCEvents.toolApprovalRequested) { _ in
+        router.subscribe(IPCEvents.toolApprovalRequested) { request in
+            // Remember which app was in front when the user was asked, so the approved action
+            // can't land in a different one.
+            InputController.noteApprovalShown(id: request.id)
             assistant.expand()
         }
     }

@@ -23,9 +23,7 @@ pub struct OpenAiCompatibleProvider {
 }
 
 pub fn locality_of(base_url: &str) -> Locality {
-    let rest = base_url.split("://").nth(1).unwrap_or("");
-    let host = rest.split(['/', ':']).next().unwrap_or("");
-    if matches!(host, "127.0.0.1" | "localhost") || rest.starts_with("[::1]") {
+    if wisp_common::net::is_loopback_url(base_url) {
         Locality::Local
     } else {
         Locality::Cloud

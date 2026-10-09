@@ -43,8 +43,8 @@ export const useFileStore = create<FileState>()((set, get) => ({
   async drop(files) {
     set({ error: null });
     for (const f of files) {
-      if (f.size > 20 * 1024 * 1024) {
-        set({ error: `“${f.name}” is larger than 20 MB — use Import… for big files.` });
+      if (f.size > 10 * 1024 * 1024) {
+        set({ error: `“${f.name}” is larger than 10 MB — use Import… for big files.` });
         continue;
       }
       try {

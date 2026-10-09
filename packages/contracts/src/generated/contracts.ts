@@ -886,6 +886,48 @@ export const IdParams = z.strictObject({
 });
 export type IdParams = z.output<typeof IdParams>;
 
+export const PointerArgs = z.strictObject({
+  "label": z.string().nullable().optional(),
+  "x": z.number(),
+  "y": z.number(),
+});
+export type PointerArgs = z.output<typeof PointerArgs>;
+
+export const ScrollArgs = z.strictObject({
+  "dx": z.number().int().default(0),
+  "dy": z.number().int(),
+  "x": z.number(),
+  "y": z.number(),
+});
+export type ScrollArgs = z.output<typeof ScrollArgs>;
+
+export const TextArgs = z.strictObject({
+  "text": z.string(),
+});
+export type TextArgs = z.output<typeof TextArgs>;
+
+export const KeyArgs = z.strictObject({
+  "key": z.string(),
+});
+export type KeyArgs = z.output<typeof KeyArgs>;
+
+export const UrlArgs = z.strictObject({
+  "url": z.string(),
+});
+export type UrlArgs = z.output<typeof UrlArgs>;
+
+/** Every action Wisp can take on the computer. */
+export const ToolCall = z.discriminatedUnion("tool", [z.strictObject({ "tool": z.literal("readScreen"), "args": Empty }), z.strictObject({ "tool": z.literal("findElement"), "args": FindArgs }), z.strictObject({ "tool": z.literal("click"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("doubleClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("rightClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("moveMouse"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("drag"), "args": DragArgs }), z.strictObject({ "tool": z.literal("scroll"), "args": ScrollArgs }), z.strictObject({ "tool": z.literal("typeText"), "args": TextArgs }), z.strictObject({ "tool": z.literal("keypress"), "args": KeyArgs }), z.strictObject({ "tool": z.literal("hotkey"), "args": HotkeyArgs }), z.strictObject({ "tool": z.literal("copy"), "args": Empty }), z.strictObject({ "tool": z.literal("paste"), "args": Empty }), z.strictObject({ "tool": z.literal("openApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("switchApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("closeApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("openUrl"), "args": UrlArgs }), z.strictObject({ "tool": z.literal("readClipboard"), "args": Empty }), z.strictObject({ "tool": z.literal("writeClipboard"), "args": TextArgs })]);
+export type ToolCall = z.output<typeof ToolCall>;
+
+/** An approved action for the host, bound to what the user approved. */
+export const InputPerformParams = z.strictObject({
+  "approvalId": z.string().nullable().optional(),
+  "call": ToolCall,
+  "expectedPid": z.number().int().nullable().optional(),
+});
+export type InputPerformParams = z.output<typeof InputPerformParams>;
+
 export const InvocationEndReason = z.enum(["released","toggled","dismissed","cancelled","tapped"]);
 export type InvocationEndReason = z.output<typeof InvocationEndReason>;
 
@@ -919,11 +961,6 @@ export const IpcError = z.strictObject({
   "message": z.string(),
 });
 export type IpcError = z.output<typeof IpcError>;
-
-export const KeyArgs = z.strictObject({
-  "key": z.string(),
-});
-export type KeyArgs = z.output<typeof KeyArgs>;
 
 export const KeychainAccount = z.strictObject({
   "account": z.string(),
@@ -1109,13 +1146,6 @@ export const PinParams = z.strictObject({
 });
 export type PinParams = z.output<typeof PinParams>;
 
-export const PointerArgs = z.strictObject({
-  "label": z.string().nullable().optional(),
-  "x": z.number(),
-  "y": z.number(),
-});
-export type PointerArgs = z.output<typeof PointerArgs>;
-
 export const PullProgress = z.strictObject({
   "completed": z.number().int().nonnegative().nullable().optional(),
   "done": z.boolean(),
@@ -1243,14 +1273,6 @@ export const ScreenPermissionStatus = z.strictObject({
   "screenRecording": PermissionState,
 });
 export type ScreenPermissionStatus = z.output<typeof ScreenPermissionStatus>;
-
-export const ScrollArgs = z.strictObject({
-  "dx": z.number().int().default(0),
-  "dy": z.number().int(),
-  "x": z.number(),
-  "y": z.number(),
-});
-export type ScrollArgs = z.output<typeof ScrollArgs>;
 
 export const SendParams = z.strictObject({
   "act": z.boolean().default(false),
@@ -1430,11 +1452,6 @@ export const StagedFiles = z.strictObject({
 });
 export type StagedFiles = z.output<typeof StagedFiles>;
 
-export const TextArgs = z.strictObject({
-  "text": z.string(),
-});
-export type TextArgs = z.output<typeof TextArgs>;
-
 export const ToolCallStatus = z.enum(["waitingForApproval","running","succeeded","failed","denied"]);
 export type ToolCallStatus = z.output<typeof ToolCallStatus>;
 
@@ -1472,15 +1489,6 @@ export const ToolActivityParams = z.strictObject({
   "limit": z.number().int().nonnegative(),
 });
 export type ToolActivityParams = z.output<typeof ToolActivityParams>;
-
-export const UrlArgs = z.strictObject({
-  "url": z.string(),
-});
-export type UrlArgs = z.output<typeof UrlArgs>;
-
-/** Every action Wisp can take on the computer. */
-export const ToolCall = z.discriminatedUnion("tool", [z.strictObject({ "tool": z.literal("readScreen"), "args": Empty }), z.strictObject({ "tool": z.literal("findElement"), "args": FindArgs }), z.strictObject({ "tool": z.literal("click"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("doubleClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("rightClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("moveMouse"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("drag"), "args": DragArgs }), z.strictObject({ "tool": z.literal("scroll"), "args": ScrollArgs }), z.strictObject({ "tool": z.literal("typeText"), "args": TextArgs }), z.strictObject({ "tool": z.literal("keypress"), "args": KeyArgs }), z.strictObject({ "tool": z.literal("hotkey"), "args": HotkeyArgs }), z.strictObject({ "tool": z.literal("copy"), "args": Empty }), z.strictObject({ "tool": z.literal("paste"), "args": Empty }), z.strictObject({ "tool": z.literal("openApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("switchApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("closeApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("openUrl"), "args": UrlArgs }), z.strictObject({ "tool": z.literal("readClipboard"), "args": Empty }), z.strictObject({ "tool": z.literal("writeClipboard"), "args": TextArgs })]);
-export type ToolCall = z.output<typeof ToolCall>;
 
 /** What a tool is and how risky it is by default (for UIs and agents). */
 export const ToolDefinition = z.strictObject({
@@ -1661,7 +1669,7 @@ export const methods = {
   "host.files.open": { target: "host", params: FilePathParams, result: Empty },
   "host.embed": { target: "host", params: EmbedParams, result: Embeddings },
   "host.screen.observe": { target: "host", params: Empty, result: FocusRegion },
-  "host.input.perform": { target: "host", params: ToolCall, result: ToolExecution },
+  "host.input.perform": { target: "host", params: InputPerformParams, result: ToolExecution },
   "host.voice.start": { target: "host", params: HostVoiceStartParams, result: Empty },
   "host.voice.stop": { target: "host", params: Empty, result: VoiceFinishResult },
   "host.voice.stopSpeaking": { target: "host", params: Empty, result: Empty },

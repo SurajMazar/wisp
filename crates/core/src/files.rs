@@ -23,10 +23,35 @@ use wisp_ipc::{
 use crate::Core;
 
 /// Largest dropped file (sent through IPC as base64).
-const MAX_DROP_BYTES: usize = 20 * 1024 * 1024;
+const MAX_DROP_BYTES: usize = 10 * 1024 * 1024;
 /// Minimum relevance for a passage to join an answer.
 const GROUNDING_THRESHOLD: f32 = 0.35;
 const GROUNDING_PASSAGES: usize = 3;
+
+/// Searchable passages kept in memory (decoded vectors, precomputed terms); rebuilt only when
+/// files change, so a search is pure arithmetic.
+pub(crate) struct IndexedChunk {
+    file_id: String,
+    name: String,
+    citation: String,
+    content: String,
+    terms: std::collections::HashSet<String>,
+    vector: Option<Vec<f32>>,
+    model: Option<String>,
+}
+
+#[derive(Default)]
+pub struct SearchIndex {
+    chunks: std::sync::Mutex<Option<std::sync::Arc<Vec<IndexedChunk>>>>,
+}
+
+impl SearchIndex {
+    pub(crate) fn invalidate(&self) {
+        if let Ok(mut c) = self.chunks.lock() {
+            *c = None;
+        }
+    }
+}
 
 pub(crate) struct Passage {
     pub n: u32,
@@ -147,7 +172,7 @@ impl Core {
         if p.data_base64.len() > MAX_DROP_BYTES * 4 / 3 + 8 {
             return Err(IpcError::new(
                 ErrorCode::InvalidParams,
-                "Dropped files can be at most 20 MB. Use Import… for larger ones.",
+                "Dropped files can be at most 10 MB. Use Import… for larger ones.",
             ));
         }
         let name = wisp_files::sanitize_name(&p.name);
@@ -180,6 +205,7 @@ impl Core {
             let _ = std::fs::remove_file(path);
         }
         self.blocking(move |db| db.delete_file(&id)).await?;
+        self.search_index_state().invalidate();
         Ok(Empty {})
     }
 
@@ -277,6 +303,7 @@ impl Core {
             return set(FileStatus::Failed, Some(e.message)).await;
         }
         tracing::info!(chunks = chunks.len(), "file indexed");
+        self.search_index_state().invalidate();
         set(FileStatus::Indexed, None).await;
     }
 
@@ -291,6 +318,14 @@ impl Core {
                 let path = self.file_path(relative).map_err(|e| e.message)?;
                 let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
                 Ok(vec![(None, wisp_files::decode_text(&bytes)?)])
+            }
+            Some(Kind::Html) => {
+                let path = self.file_path(relative).map_err(|e| e.message)?;
+                let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+                Ok(vec![(
+                    None,
+                    wisp_files::html_to_text(&wisp_files::decode_text(&bytes)?),
+                )])
             }
             Some(_) => {
                 let host = self.ai().host().ok_or("The app isn't connected.")?;
@@ -321,16 +356,47 @@ impl Core {
         }
     }
 
-    /// Rank every indexed chunk for `query`. Returns (score, chunk) best first.
+    async fn search_index(&self) -> std::sync::Arc<Vec<IndexedChunk>> {
+        if let Some(i) = self
+            .search_index_state()
+            .chunks
+            .lock()
+            .ok()
+            .and_then(|c| c.clone())
+        {
+            return i;
+        }
+        let rows = self
+            .blocking(|db| db.searchable_chunks())
+            .await
+            .unwrap_or_default();
+        let built: Vec<IndexedChunk> = rows
+            .into_iter()
+            .map(|c| IndexedChunk {
+                terms: wisp_files::terms(&c.content).into_iter().collect(),
+                vector: c.vector.as_deref().map(wisp_memory::decode),
+                file_id: c.file_id,
+                name: c.file_name,
+                citation: c.citation,
+                content: c.content,
+                model: c.model,
+            })
+            .collect();
+        let built = std::sync::Arc::new(built);
+        if let Ok(mut c) = self.search_index_state().chunks.lock() {
+            *c = Some(built.clone());
+        }
+        built
+    }
+
+    /// Rank every indexed chunk for `query`. Returns (score, index) best first.
     async fn rank_chunks(
         &self,
         query: &str,
-    ) -> Vec<(f32, wisp_database::repos::files::StoredChunk)> {
-        let Ok(chunks) = self.blocking(|db| db.searchable_chunks()).await else {
-            return vec![];
-        };
-        if chunks.is_empty() {
-            return vec![];
+    ) -> (std::sync::Arc<Vec<IndexedChunk>>, Vec<(f32, usize)>) {
+        let index = self.search_index().await;
+        if index.is_empty() {
+            return (index, vec![]);
         }
         let q = self.embed(vec![query.chars().take(2000).collect()]).await;
         let (model, qv) = match &q {
@@ -340,21 +406,23 @@ impl Core {
             ),
             None => (None, None),
         };
-        let mut scored: Vec<_> = chunks
-            .into_iter()
-            .map(|c| {
-                let lex = wisp_files::lexical(query, &c.content);
+        let qt = wisp_files::query_terms(query);
+        let mut scored: Vec<(f32, usize)> = index
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                let lex = wisp_files::lexical_terms(&qt, &c.terms);
                 let score = match (qv, &c.vector, &c.model) {
                     (Some(qv), Some(v), Some(m)) if Some(m.as_str()) == model => {
-                        semantic(wisp_memory::cosine(qv, &wisp_memory::decode(v))) * 0.5 + lex * 0.5
+                        semantic(wisp_memory::cosine(qv, v)) * 0.5 + lex * 0.5
                     }
                     _ => lex,
                 };
-                (score, c)
+                (score, i)
             })
             .collect();
         scored.sort_by(|a, b| b.0.total_cmp(&a.0));
-        scored
+        (index, scored)
     }
 
     pub(crate) async fn file_search(
@@ -367,25 +435,27 @@ impl Core {
                 "query must be non-empty and limit 1–20",
             ));
         }
-        let hits = self
-            .rank_chunks(&query)
-            .await
+        let (index, ranked) = self.rank_chunks(&query).await;
+        let hits = ranked
             .into_iter()
             .filter(|(s, _)| *s > 0.05)
             .take(limit as usize)
-            .map(|(score, c)| FileHit {
-                file_id: c.file_id,
-                name: c.file_name,
-                citation: c.citation,
-                snippet: c
-                    .content
-                    .split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ")
-                    .chars()
-                    .take(280)
-                    .collect(),
-                score,
+            .map(|(score, i)| {
+                let c = &index[i];
+                FileHit {
+                    file_id: c.file_id.clone(),
+                    name: c.name.clone(),
+                    citation: c.citation.clone(),
+                    snippet: c
+                        .content
+                        .split_whitespace()
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                        .chars()
+                        .take(280)
+                        .collect(),
+                    score,
+                }
             })
             .collect();
         Ok(FileSearchResults { hits })
@@ -393,17 +463,20 @@ impl Core {
 
     /// Passages from the user's files that answer `question`, if any are relevant enough.
     pub(crate) async fn ground(&self, question: &str) -> Vec<Passage> {
-        self.rank_chunks(question)
-            .await
+        let (index, ranked) = self.rank_chunks(question).await;
+        ranked
             .into_iter()
             .filter(|(s, _)| *s >= GROUNDING_THRESHOLD)
             .take(GROUNDING_PASSAGES)
             .enumerate()
-            .map(|(i, (_, c))| Passage {
-                n: i as u32 + 1,
-                file_id: c.file_id,
-                label: c.citation,
-                content: c.content,
+            .map(|(n, (_, i))| {
+                let c = &index[i];
+                Passage {
+                    n: n as u32 + 1,
+                    file_id: c.file_id.clone(),
+                    label: c.citation.clone(),
+                    content: c.content.clone(),
+                }
             })
             .collect()
     }
@@ -434,8 +507,8 @@ pub(crate) fn documents_section(passages: &[Passage]) -> Option<(String, Vec<Cit
         s.push_str(&format!(
             "\n[{}] {}\n\"\"\"\n{}\n\"\"\"",
             p.n,
-            p.label,
-            p.content.trim()
+            wisp_screen::describe::defang(&p.label),
+            wisp_screen::describe::defang(p.content.trim())
         ));
     }
     s.push_str("\n</documents>");

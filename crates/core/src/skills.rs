@@ -69,6 +69,13 @@ impl Core {
             return;
         }
         let dir = self.skills_dir().join(slug);
+        // Never write through a link planted in the skills folder.
+        for p in [dir.clone(), dir.join("SKILL.md")] {
+            if std::fs::symlink_metadata(&p).is_ok_and(|m| m.file_type().is_symlink()) {
+                tracing::warn!("refusing to write a skill through a symlink");
+                return;
+            }
+        }
         if let Err(e) = std::fs::create_dir_all(&dir)
             .and_then(|_| std::fs::write(dir.join("SKILL.md"), content))
         {

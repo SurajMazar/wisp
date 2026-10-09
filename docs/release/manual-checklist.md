@@ -185,5 +185,11 @@ Prerequisite: Computer control on (Settings), Accessibility, Screen Recording.
 - [ ] A routine run as an agent shows the agent's run (approvals still apply).
 - [ ] Quit Wisp past a scheduled time and reopen: the missed run happens once, not repeatedly.
 
+## Phase 18 — Security
+- [ ] In a release build, launching with `open --env WISP_DEV_URL=… --env WISP_CORE_BIN=…` has no effect.
+- [ ] With "Always allow click" granted, ask Wisp to click a spot over a "Delete" button: it still asks (judged on the real button).
+- [ ] Approve a typing action, then switch apps before it runs: it refuses ("The app in front changed…").
+- [ ] Local Only: add an endpoint like http://localhost.example.com — it's refused as not local.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

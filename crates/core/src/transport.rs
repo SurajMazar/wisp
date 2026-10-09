@@ -16,7 +16,7 @@ use std::{
 
 use serde_json::Value;
 use tokio::{
-    io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader},
+    io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader},
     sync::{Mutex, mpsc, oneshot},
 };
 use wisp_ipc::{Envelope, FrameError, IpcError, methods::CoreReady};
@@ -40,6 +40,11 @@ impl HostClient {
             "host.apple.generate" => std::time::Duration::from_secs(600),
             // Probed on every model choice; an unresponsive host must not stall answers.
             "host.apple.status" => std::time::Duration::from_millis(1500),
+            // The user may take a while in the open panel; reading big files takes time.
+            "host.files.pick" => std::time::Duration::from_secs(600),
+            "host.files.extract" => std::time::Duration::from_secs(120),
+            "host.screen.observe" | "host.embed" => std::time::Duration::from_secs(30),
+            "host.input.perform" => std::time::Duration::from_secs(60),
             _ => std::time::Duration::from_secs(5),
         }
     }
@@ -149,8 +154,38 @@ where
     core.events().publish::<CoreReady>(core.info());
     core.warm_up_voice();
 
-    let mut lines = BufReader::new(input).lines();
-    while let Some(line) = lines.next_line().await? {
+    let mut reader = BufReader::new(input);
+    let mut buf = Vec::with_capacity(64 * 1024);
+    loop {
+        // Bounded read: an oversized frame is dropped without ever being held whole in memory.
+        buf.clear();
+        let n = (&mut reader)
+            .take(wisp_ipc::MAX_FRAME_BYTES as u64 + 1)
+            .read_until(b'\n', &mut buf)
+            .await?;
+        if n == 0 {
+            break;
+        }
+        if !buf.ends_with(b"\n") && buf.len() > wisp_ipc::MAX_FRAME_BYTES {
+            tracing::warn!("dropping an oversized frame");
+            let mut sink = Vec::new();
+            loop {
+                sink.clear();
+                let m = (&mut reader)
+                    .take(64 * 1024)
+                    .read_until(b'\n', &mut sink)
+                    .await?;
+                if m == 0 || sink.ends_with(b"\n") {
+                    break;
+                }
+            }
+            continue;
+        }
+        let Ok(line) = std::str::from_utf8(&buf) else {
+            tracing::warn!("dropping a frame that isn't UTF-8");
+            continue;
+        };
+        let line = line.trim_end_matches(['\n', '\r']).to_owned();
         if line.trim().is_empty() {
             continue;
         }

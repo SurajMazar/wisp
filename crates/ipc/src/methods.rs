@@ -258,7 +258,7 @@ define_methods! {
     /// Capture and read the frontmost window (not Wisp's), for lessons. Needs Screen Recording.
     HostScreenObserve = "host.screen.observe", Host, Empty => FocusRegion;
     /// Perform an approved action and observe whether it worked (needs Accessibility).
-    HostInputPerform = "host.input.perform", Host, ToolCall => ToolExecution;
+    HostInputPerform = "host.input.perform", Host, InputPerformParams => ToolExecution;
 
     /// Start listening (push-to-talk from the panel or a microphone test).
     HostVoiceStart = "host.voice.start", Host, HostVoiceStartParams => Empty;

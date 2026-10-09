@@ -396,15 +396,31 @@ fn label_risk(label: &str) -> Option<(RiskLevel, String)> {
 pub fn assess(call: &ToolCall) -> (RiskLevel, Option<String>) {
     let base = base_risk(call);
     let raised = match call {
-        ToolCall::Click(p) | ToolCall::DoubleClick(p) => p.label.as_deref().and_then(label_risk),
+        ToolCall::Click(p) | ToolCall::DoubleClick(p) | ToolCall::RightClick(p)
+            if p.label.is_some() =>
+        {
+            p.label.as_deref().and_then(label_risk)
+        }
         ToolCall::TypeText(t) if t.text.contains('\n') => Some((
             base.raise(),
             "the text includes a line break, which may submit or send it".into(),
         )),
         ToolCall::Keypress(k) if k.key == "return" => Some((
-            RiskLevel::Medium,
-            "Return may submit a form or send a message".into(),
+            RiskLevel::High,
+            "Return may submit a form, send a message or run a command".into(),
         )),
+        ToolCall::Paste(_) => Some((
+            RiskLevel::High,
+            "the clipboard may contain anything, including line breaks that submit".into(),
+        )),
+        ToolCall::Click(p) | ToolCall::DoubleClick(p) | ToolCall::RightClick(p)
+            if p.label.is_none() =>
+        {
+            Some((
+                RiskLevel::Medium,
+                "Wisp can't tell what's at that spot".into(),
+            ))
+        }
         ToolCall::Hotkey(h) => {
             let cmd = h.modifiers.contains(&KeyModifier::Command);
             let shift = h.modifiers.contains(&KeyModifier::Shift);
@@ -413,6 +429,10 @@ pub fn assess(call: &ToolCall) -> (RiskLevel, Option<String>) {
                 (true, "delete") if shift => {
                     Some((RiskLevel::Critical, "⇧⌘⌫ empties the Trash".into()))
                 }
+                (true, "delete") if opt => Some((
+                    RiskLevel::Critical,
+                    "⌥⌘⌫ deletes immediately, skipping the Trash".into(),
+                )),
                 (true, "delete") => Some((RiskLevel::High, "⌘⌫ moves items to the Trash".into())),
                 (true, "q") => Some((RiskLevel::High, "⌘Q quits the app".into())),
                 (true, "w") => Some((RiskLevel::High, "⌘W closes the window".into())),
@@ -455,6 +475,15 @@ fn keys(h: &wisp_ipc::types::tools::HotkeyArgs) -> String {
     }
     s.push_str(&h.key.to_uppercase());
     s
+}
+
+/// Tools that can never be allowed "always": what they do depends entirely on content the
+/// model chooses (text, shortcuts, links, the clipboard).
+pub fn always_grantable(tool: &str) -> bool {
+    !matches!(
+        tool,
+        "typeText" | "paste" | "hotkey" | "openUrl" | "keypress" | "writeClipboard"
+    )
 }
 
 /// Plain-language title for approvals and the activity log. Never includes typed text in full.
@@ -634,8 +663,25 @@ mod tests {
                 key: "return".into()
             }))
             .0,
+            RiskLevel::High
+        );
+        assert_eq!(assess(&ToolCall::Paste(Empty {})).0, RiskLevel::High);
+        let delete_now = ToolCall::Hotkey(HotkeyArgs {
+            key: "delete".into(),
+            modifiers: vec![KeyModifier::Command, KeyModifier::Option],
+        });
+        assert_eq!(assess(&delete_now).0, RiskLevel::Critical);
+        // A click with no idea what's there isn't Low.
+        assert_eq!(
+            assess(&ToolCall::Click(PointerArgs {
+                x: 1.0,
+                y: 1.0,
+                label: None
+            }))
+            .0,
             RiskLevel::Medium
         );
+        assert!(!always_grantable("typeText") && always_grantable("click"));
         let (r, why) = assess(&ToolCall::TypeText(TextArgs {
             text: "hi\n".into(),
         }));

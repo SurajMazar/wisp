@@ -2470,6 +2470,34 @@
       ],
       "type": "object"
     },
+    "InputPerformParams": {
+      "additionalProperties": false,
+      "description": "An approved action for the host, bound to what the user approved.",
+      "properties": {
+        "approvalId": {
+          "description": "The approval this action was allowed by: the host refuses keyboard actions if the\nfrontmost app changed since the request was shown.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "call": {
+          "$ref": "#/definitions/ToolCall"
+        },
+        "expectedPid": {
+          "description": "For pointer actions: the process that owned the element under the point when risk was\njudged; the host refuses if something else is there now.",
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "call"
+      ],
+      "type": "object"
+    },
     "InvocationAction": {
       "description": "Action bound to a secondary invocation source.",
       "oneOf": [
@@ -7372,7 +7400,7 @@
     {
       "name": "host.input.perform",
       "params": {
-        "$ref": "#/definitions/ToolCall"
+        "$ref": "#/definitions/InputPerformParams"
       },
       "result": {
         "$ref": "#/definitions/ToolExecution"

@@ -780,7 +780,12 @@ impl Core {
                         .add_memory(
                             fact,
                             wisp_ipc::types::memory::MemoryCategory::Agent,
-                            wisp_ipc::types::memory::MemoryLevel::Persistent,
+                            // A one-off run's notes expire; a saved agent's are kept for it.
+                            if run.agent_id.is_some() {
+                                wisp_ipc::types::memory::MemoryLevel::Persistent
+                            } else {
+                                wisp_ipc::types::memory::MemoryLevel::Temporary
+                            },
                             wisp_ipc::types::memory::MemorySource::Agent,
                             run.agent_id.clone(),
                             None,

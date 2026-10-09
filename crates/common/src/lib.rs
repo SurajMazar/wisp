@@ -4,5 +4,6 @@
 
 pub mod geometry;
 pub mod ids;
+pub mod net;
 pub mod paths;
 pub mod time;

@@ -174,6 +174,15 @@ pub async fn download(
             };
             let Some(chunk) = next else { break };
             let chunk = chunk.map_err(|e| DownloadError::Network(e.to_string()))?;
+            // Never write more than the manifest says the file is.
+            if got + chunk.len() as u64 > f.size_bytes {
+                drop(file);
+                let _ = tokio::fs::remove_file(&partial).await;
+                return Err(DownloadError::Network(format!(
+                    "{} is larger than expected",
+                    f.path
+                )));
+            }
             file.write_all(&chunk).await?;
             got += chunk.len() as u64;
             progress(done_bytes + got, total);

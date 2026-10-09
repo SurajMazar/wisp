@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Phase
-Phase 18 — Security Hardening (in progress). Phases 9–17 implemented; **manual stop gates 2–13 pending on the Mac**
+Phase 19 — Performance (in progress). Phases 9–18 implemented; **manual stop gates 2–13 pending on the Mac**
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +18,8 @@ Phase 18 — Security Hardening (in progress). Phases 9–17 implemented; **manu
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- **18 Security:** audit + fixes (UI host allow-list, debug-only overrides, real-element risk, bound approvals,
+  strict loopback, fences, bounded IPC) (gate PASS)
 - **17 Routines:** cron in your timezone (DST-correct), scheduler without backlog, prompt or agent routines,
   retries, notifications, history (gate PASS)
 - **16 Files & search:** import/drop, on-device reading (PDF pages, documents, OCR), hybrid search, cited answers
