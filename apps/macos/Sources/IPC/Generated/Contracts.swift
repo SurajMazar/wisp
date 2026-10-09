@@ -999,6 +999,28 @@ public struct AxSnapshotParams: Codable, Sendable, Equatable {
     }
 }
 
+public struct BackupInfo: Codable, Sendable, Equatable {
+    public var createdAtMs: Int64
+    public var name: String
+    public var sizeBytes: UInt64
+
+    public init(createdAtMs: Int64, name: String, sizeBytes: UInt64) {
+        self.createdAtMs = createdAtMs
+        self.name = name
+        self.sizeBytes = sizeBytes
+    }
+}
+
+public struct BackupList: Codable, Sendable, Equatable {
+    public var backups: [BackupInfo]
+    public var folder: String
+
+    public init(backups: [BackupInfo], folder: String) {
+        self.backups = backups
+        self.folder = folder
+    }
+}
+
 /// Whether each invocation channel is actually live right now — never assumed.
 public enum ChannelState: String, Codable, Sendable, Equatable, CaseIterable {
     case active = "active"
@@ -1381,6 +1403,24 @@ public enum ErrorCode: String, Codable, Sendable, Equatable, CaseIterable {
     case cancelled = "cancelled"
     case timeout = "timeout"
     case notFound = "notFound"
+}
+
+public struct ExportResult: Codable, Sendable, Equatable {
+    public var agents: UInt32
+    public var conversations: UInt32
+    public var memories: UInt32
+    public var path: String
+    public var routines: UInt32
+    public var skills: UInt32
+
+    public init(agents: UInt32, conversations: UInt32, memories: UInt32, path: String, routines: UInt32, skills: UInt32) {
+        self.agents = agents
+        self.conversations = conversations
+        self.memories = memories
+        self.path = path
+        self.routines = routines
+        self.skills = skills
+    }
 }
 
 /// Text the host read from a rich file, one entry per page (PDF) or a single entry.
@@ -2980,6 +3020,20 @@ public struct ToolRunResult: Codable, Sendable, Equatable {
     }
 }
 
+public struct UpdateInfo: Codable, Sendable, Equatable {
+    public var current: String
+    public var latest: String?
+    public var updateAvailable: Bool
+    public var url: String?
+
+    public init(current: String, latest: String? = nil, updateAvailable: Bool, url: String? = nil) {
+        self.current = current
+        self.latest = latest
+        self.updateAvailable = updateAvailable
+        self.url = url
+    }
+}
+
 /// Host → UI: a spoken question was asked in this conversation.
 public struct VoiceAsked: Codable, Sendable, Equatable {
     public var conversationId: String
@@ -3088,6 +3142,10 @@ public enum IPCMethods {
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
     public static let conversationRegenerate = IPCMethod<RegenerateParams, Message>(name: "conversation.regenerate", target: .core)
+    public static let backupList = IPCMethod<Empty, BackupList>(name: "backup.list", target: .core)
+    public static let backupCreate = IPCMethod<Empty, BackupInfo>(name: "backup.create", target: .core)
+    public static let dataExport = IPCMethod<Empty, ExportResult>(name: "data.export", target: .core)
+    public static let updateCheck = IPCMethod<Empty, UpdateInfo>(name: "update.check", target: .core)
     public static let routineList = IPCMethod<Empty, RoutineList>(name: "routine.list", target: .core)
     public static let routineSave = IPCMethod<RoutineSaveParams, Routine>(name: "routine.save", target: .core)
     public static let routineDelete = IPCMethod<IdParams, Empty>(name: "routine.delete", target: .core)
@@ -3194,6 +3252,10 @@ public enum IPCMethods {
         "conversation.pin": .core,
         "conversation.delete": .core,
         "conversation.regenerate": .core,
+        "backup.list": .core,
+        "backup.create": .core,
+        "data.export": .core,
+        "update.check": .core,
         "routine.list": .core,
         "routine.save": .core,
         "routine.delete": .core,

@@ -292,3 +292,11 @@ The router learns first-token latency per model (exponential average, seeded fro
 preferring a model that averages over 4 s — on this Mac Apple's on-device model averaged 8.0 s to the first word
 while warm Ollama instruct answered in ~0.25 s.
 
+## D-037 — Release: opt-in notarization, manual update checks, daily local backups
+**Status** accepted (2026-10-09)
+CI signs with Developer ID and notarizes only when the Apple secrets are configured; otherwise builds stay ad-hoc
+signed (documented). Updates are checked only when the user asks (GitHub Releases API) and are never installed
+automatically — no background network traffic and no self-modifying binary. The database is backed up daily with
+SQLite `VACUUM INTO` (consistent while running), keeping seven; data export writes JSON (conversations, memories,
+skills, agents, routines, settings) to the data folder's `exports/`. Restoring is a documented manual copy.
+

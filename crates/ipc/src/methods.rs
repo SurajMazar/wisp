@@ -10,8 +10,8 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
     accessibility::*, agents::*, app::*, conversations::*, cursor::*, files::*, focus::*,
-    guidance::*, invocation::*, memory::*, models::*, routines::*, settings::*, skills::*,
-    teacher::*, tools::*, voice::*,
+    guidance::*, invocation::*, memory::*, models::*, release::*, routines::*, settings::*,
+    skills::*, teacher::*, tools::*, voice::*,
 };
 
 /// Which side implements a method.
@@ -170,6 +170,14 @@ define_methods! {
     ConversationDelete = "conversation.delete", Core, IdParams => Empty;
     /// Answer the same question again, replacing an assistant message.
     ConversationRegenerate = "conversation.regenerate", Core, RegenerateParams => Message;
+    /// Database backups (automatic daily; the last 7 are kept).
+    BackupListMethod = "backup.list", Core, Empty => BackupList;
+    /// Make a backup now.
+    BackupCreate = "backup.create", Core, Empty => BackupInfo;
+    /// Export conversations, memories, skills, agents, routines and settings as JSON.
+    DataExport = "data.export", Core, Empty => ExportResult;
+    /// Look for a newer release (only when asked; nothing is installed automatically).
+    UpdateCheck = "update.check", Core, Empty => UpdateInfo;
     /// Scheduled routines.
     RoutineListMethod = "routine.list", Core, Empty => RoutineList;
     /// Create or update a routine (schedule and timezone are validated).

@@ -79,3 +79,37 @@ impl Database {
         migrations::applied(&conn)
     }
 }
+
+impl Database {
+    /// A consistent copy of the whole database at `path` (must not exist).
+    pub fn backup_to(&self, path: &std::path::Path) -> DbResult<()> {
+        let p = path.to_string_lossy().into_owned();
+        self.lock()?.execute("VACUUM INTO ?1", [p])?;
+        Ok(())
+    }
+
+    /// Everything the user made, for export (no embeddings, no file contents).
+    pub fn export_all(&self) -> DbResult<serde_json::Value> {
+        let conversations: Vec<serde_json::Value> = self
+            .list_conversations(None, 100_000)?
+            .into_iter()
+            .filter_map(|s| self.get_conversation(&s.id).ok().flatten())
+            .map(|c| serde_json::to_value(c).unwrap_or_default())
+            .collect();
+        let skills: Vec<serde_json::Value> = self
+            .list_skills()?
+            .into_iter()
+            .map(|s| serde_json::json!({ "name": s.name, "enabled": s.enabled, "content": s.content }))
+            .collect();
+        Ok(serde_json::json!({
+            "format": "wisp-export-1",
+            "exportedAtMs": wisp_common::time::now_ms(),
+            "settings": self.load_settings()?,
+            "conversations": conversations,
+            "memories": self.list_memories(None, None)?,
+            "skills": skills,
+            "agents": self.list_agents()?,
+            "routines": self.list_routines()?,
+        }))
+    }
+}

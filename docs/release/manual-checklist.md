@@ -203,5 +203,10 @@ Prerequisite: Computer control on (Settings), Accessibility, Screen Recording.
 - [ ] "Start using Wisp" lands on Home; reopening Wisp doesn't show the flow again.
 - [ ] VoiceOver: every button and field on every page is announced with a name.
 
+## Phase 21 — Release
+- [ ] Settings → Your data: Back up now adds a backup; Export my data writes a JSON file and says how much it saved.
+- [ ] Check for updates reports the current version (or links to a newer release).
+- [ ] Install from the DMG on a clean account: first-run flow appears; permissions persist across relaunches when signed.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

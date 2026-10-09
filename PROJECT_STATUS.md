@@ -1,7 +1,8 @@
 # Project Status
 
 ## Current Phase
-Phase 21 — Release (in progress). Phases 9–20 implemented; **manual stop gates 2–13 pending on the Mac**
+All 22 phases (0–21) implemented. **Manual stop gates 2–21 are waiting for hands-on checks on the Mac**
+(docs/release/manual-checklist.md); publishing waits on GitHub access
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +19,7 @@ Phase 21 — Release (in progress). Phases 9–20 implemented; **manual stop gat
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- **21 Release:** daily backups, export, manual update checks, optional notarization in CI, release guide
 - **20 Polish:** first-run flow (one permission at a time), accessibility sweep of every screen
 - **19 Performance:** search 139 → 9 ms, bundle 664 → 378 KB, idle model release, latency-aware routing
 - **18 Security:** audit + fixes (UI host allow-list, debug-only overrides, real-element risk, bound approvals,

@@ -10,6 +10,7 @@ pub mod events;
 pub mod files;
 pub mod logging;
 pub mod memory;
+pub mod release;
 pub mod routines;
 pub mod skills;
 pub mod teacher;

@@ -522,6 +522,19 @@ export const AxSnapshotParams = z.strictObject({
 });
 export type AxSnapshotParams = z.output<typeof AxSnapshotParams>;
 
+export const BackupInfo = z.strictObject({
+  "createdAtMs": z.number().int(),
+  "name": z.string(),
+  "sizeBytes": z.number().int().nonnegative(),
+});
+export type BackupInfo = z.output<typeof BackupInfo>;
+
+export const BackupList = z.strictObject({
+  "backups": z.array(BackupInfo),
+  "folder": z.string(),
+});
+export type BackupList = z.output<typeof BackupList>;
+
 /** Whether each invocation channel is actually live right now — never assumed. */
 export const ChannelState = z.enum(["active","needsPermission","conflict","disabled","unsupported"]);
 export type ChannelState = z.output<typeof ChannelState>;
@@ -730,6 +743,16 @@ export type Empty = z.output<typeof Empty>;
 
 export const ErrorCode = z.enum(["invalidRequest","methodNotFound","invalidParams","internal","unavailable","permissionDenied","cancelled","timeout","notFound"]);
 export type ErrorCode = z.output<typeof ErrorCode>;
+
+export const ExportResult = z.strictObject({
+  "agents": z.number().int().nonnegative(),
+  "conversations": z.number().int().nonnegative(),
+  "memories": z.number().int().nonnegative(),
+  "path": z.string(),
+  "routines": z.number().int().nonnegative(),
+  "skills": z.number().int().nonnegative(),
+});
+export type ExportResult = z.output<typeof ExportResult>;
 
 /** Text the host read from a rich file, one entry per page (PDF) or a single entry. */
 export const ExtractedText = z.strictObject({
@@ -1540,6 +1563,14 @@ export const ToolRunResult = z.strictObject({
 });
 export type ToolRunResult = z.output<typeof ToolRunResult>;
 
+export const UpdateInfo = z.strictObject({
+  "current": z.string(),
+  "latest": z.string().nullable().optional(),
+  "updateAvailable": z.boolean(),
+  "url": z.string().nullable().optional(),
+});
+export type UpdateInfo = z.output<typeof UpdateInfo>;
+
 /** Host → UI: a spoken question was asked in this conversation. */
 export const VoiceAsked = z.strictObject({
   "conversationId": z.string(),
@@ -1621,6 +1652,10 @@ export const methods = {
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
   "conversation.regenerate": { target: "core", params: RegenerateParams, result: Message },
+  "backup.list": { target: "core", params: Empty, result: BackupList },
+  "backup.create": { target: "core", params: Empty, result: BackupInfo },
+  "data.export": { target: "core", params: Empty, result: ExportResult },
+  "update.check": { target: "core", params: Empty, result: UpdateInfo },
   "routine.list": { target: "core", params: Empty, result: RoutineList },
   "routine.save": { target: "core", params: RoutineSaveParams, result: Routine },
   "routine.delete": { target: "core", params: IdParams, result: Empty },

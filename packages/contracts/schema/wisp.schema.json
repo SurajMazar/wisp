@@ -1275,6 +1275,49 @@
       ],
       "type": "object"
     },
+    "BackupInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "sizeBytes",
+        "createdAtMs"
+      ],
+      "type": "object"
+    },
+    "BackupList": {
+      "additionalProperties": false,
+      "properties": {
+        "backups": {
+          "items": {
+            "$ref": "#/definitions/BackupInfo"
+          },
+          "type": "array"
+        },
+        "folder": {
+          "description": "Where backups are kept.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "backups",
+        "folder"
+      ],
+      "type": "object"
+    },
     "ChannelState": {
       "description": "Whether each invocation channel is actually live right now — never assumed.",
       "enum": [
@@ -1868,6 +1911,49 @@
         "notFound"
       ],
       "type": "string"
+    },
+    "ExportResult": {
+      "additionalProperties": false,
+      "properties": {
+        "agents": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "conversations": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "memories": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "path": {
+          "description": "The export file (JSON).",
+          "type": "string"
+        },
+        "routines": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skills": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "conversations",
+        "memories",
+        "skills",
+        "agents",
+        "routines"
+      ],
+      "type": "object"
     },
     "ExtractedText": {
       "additionalProperties": false,
@@ -6065,6 +6151,35 @@
       ],
       "type": "object"
     },
+    "UpdateInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "current": {
+          "type": "string"
+        },
+        "latest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "updateAvailable": {
+          "type": "boolean"
+        },
+        "url": {
+          "description": "Release page to download from (never installed automatically).",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "current",
+        "updateAvailable"
+      ],
+      "type": "object"
+    },
     "UrlArgs": {
       "additionalProperties": false,
       "properties": {
@@ -6914,6 +7029,46 @@
       },
       "result": {
         "$ref": "#/definitions/Message"
+      },
+      "target": "core"
+    },
+    {
+      "name": "backup.list",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/BackupList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "backup.create",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/BackupInfo"
+      },
+      "target": "core"
+    },
+    {
+      "name": "data.export",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/ExportResult"
+      },
+      "target": "core"
+    },
+    {
+      "name": "update.check",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/UpdateInfo"
       },
       "target": "core"
     },

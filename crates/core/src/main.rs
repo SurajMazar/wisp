@@ -60,6 +60,7 @@ fn main() -> ExitCode {
     {
         let _guard = runtime.enter();
         core.start_scheduler();
+        core.backup_if_due();
     }
     match runtime.block_on(transport::serve(
         core,

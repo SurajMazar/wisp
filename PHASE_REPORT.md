@@ -650,3 +650,23 @@ named for assistive technology.
 ## Stop Gate 20
 Automated portions PASS; manual first-run and VoiceOver checks listed (Phase 20).
 
+---
+
+# Phase 21 — Release (2026-10-09)
+
+## Implemented
+- Backups: daily automatic `VACUUM INTO` snapshot at startup when due, "Back up now", keep 7
+- Data export (JSON) of conversations, memories, skills, agents, routines and settings
+- Manual update check against GitHub Releases (semver incl. pre-releases), link to download
+- Release CI: optional Developer ID signing (hardened runtime, entitlements) and notarization + stapling, gated on
+  secrets; release guide (docs/release/RELEASING.md) and CHANGELOG
+- Settings → Your data group
+
+## Tests Added
+- Rust: version comparison (7 cases); backups keep seven and each is a working database with the data; export
+  contains every kind of data
+
+## Stop Gate 21
+Automated portions PASS. Publishing needs GitHub access (`gh auth refresh -h github.com -s workflow`); notarization
+needs Apple Developer secrets.
+

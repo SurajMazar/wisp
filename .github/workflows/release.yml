@@ -25,6 +25,9 @@ jobs:
     timeout-minutes: 60
     env:
       TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      # Present only when configured; used to decide whether to sign and notarize.
+      MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -59,8 +62,45 @@ jobs:
       - name: Build Wisp.app (release, ad-hoc signed)
         run: scripts/build/build-macos.sh
 
+      # Developer ID signing + notarization run only when the Apple secrets are configured
+      # (MACOS_CERTIFICATE_P12 base64, MACOS_CERTIFICATE_PASSWORD, APPLE_ID, APPLE_TEAM_ID,
+      # APPLE_APP_PASSWORD). Without them the build stays ad-hoc signed.
+      - name: Sign with Developer ID (optional)
+        if: ${{ env.MACOS_CERTIFICATE_P12 != '' }}
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          kc="$RUNNER_TEMP/build.keychain-db"
+          security create-keychain -p ci "$kc"
+          security set-keychain-settings -lut 3600 "$kc"
+          security unlock-keychain -p ci "$kc"
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$kc" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$kc" >/dev/null
+          identity=$(security find-identity -v -p codesigning "$kc" | awk -F'"' '/Developer ID Application/ {print $2; exit}')
+          codesign --force --options runtime --timestamp --entitlements apps/macos/Entitlements/wisp-core.entitlements \
+            --sign "$identity" build/Wisp.app/Contents/MacOS/wisp-core
+          codesign --force --options runtime --timestamp --entitlements apps/macos/Entitlements/Wisp.entitlements \
+            --sign "$identity" build/Wisp.app
+          codesign --verify --deep --strict build/Wisp.app
+
       - name: Package DMG and ZIP
         run: scripts/release/package.sh "${TAG#v}"
+
+      - name: Notarize and staple (optional)
+        if: ${{ env.APPLE_ID != '' }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          for f in build/release/*.dmg; do
+            xcrun notarytool submit "$f" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+              --password "$APPLE_APP_PASSWORD" --wait
+            xcrun stapler staple "$f"
+          done
 
       - name: Write release notes
         run: |

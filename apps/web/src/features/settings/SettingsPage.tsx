@@ -5,6 +5,7 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import { accents } from "./accents";
 import { CursorSettingsGroup } from "./CursorSettingsGroup";
 import { ComputerSettingsGroup } from "./ComputerSettingsGroup";
+import { DataSettingsGroup } from "./DataSettingsGroup";
 import { FocusSettingsGroup } from "./FocusSettingsGroup";
 import { InvocationSettingsGroup } from "./InvocationSettingsGroup";
 
@@ -77,6 +78,8 @@ export function SettingsPage() {
       <FocusSettingsGroup focus={focus} />
 
       <ComputerSettingsGroup computer={computer} />
+
+      <DataSettingsGroup />
 
       <SettingsGroup title="Appearance">
         <SettingsRow

@@ -251,6 +251,30 @@ impl Core {
                 self.call::<ConversationSend, _, _>(params, |c, p| async move { c.send(p).await })
                     .await
             }
+            wisp_ipc::methods::BackupListMethod::NAME => {
+                self.call::<wisp_ipc::methods::BackupListMethod, _, _>(params, |c, _| async move {
+                    Ok(c.backup_list_sync())
+                })
+                .await
+            }
+            wisp_ipc::methods::BackupCreate::NAME => {
+                self.call::<wisp_ipc::methods::BackupCreate, _, _>(params, |c, _| async move {
+                    c.backup_create().await
+                })
+                .await
+            }
+            wisp_ipc::methods::DataExport::NAME => {
+                self.call::<wisp_ipc::methods::DataExport, _, _>(params, |c, _| async move {
+                    c.data_export().await
+                })
+                .await
+            }
+            wisp_ipc::methods::UpdateCheck::NAME => {
+                self.call::<wisp_ipc::methods::UpdateCheck, _, _>(params, |c, _| async move {
+                    c.update_check().await
+                })
+                .await
+            }
             wisp_ipc::methods::RoutineListMethod::NAME => {
                 self.call::<wisp_ipc::methods::RoutineListMethod, _, _>(params, |c, _| async move {
                     c.routine_list().await
