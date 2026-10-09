@@ -246,3 +246,17 @@ overlap — calibrated on measured cosines (related ≈ 0.25–0.40, unrelated �
 boosts for profile facts and standing instructions; up to four above a threshold join the system prompt and are
 listed in Context. Without embeddings ranking falls back to keywords. Agents can `remember "…"` (agent-scoped).
 
+## D-033 — Files: copied in, read on device, chunked with locators, hybrid search, cited answers
+**Status** accepted (2026-10-09)
+Files enter only through user intent — the system open panel (`host.files.pick`) or drag-and-drop (≤ 20 MB through
+IPC) — and are copied into `<data>/files/<id>-<sanitized name>`; the originals are never read in place. An extension
+allow-list (text/Markdown/CSV/JSON/code, PDF, Word/RTF/HTML/ODT, images) gates import; everything else is refused;
+50 MB cap; identical content (SHA-256) is stored once; all paths are confined to `files/` on both sides (core
+`confine`, host prefix + symlink resolution). Text formats are decoded in the core (binary rejected); PDFs are read by
+PDFKit page by page (citations name the page), documents by macOS's own readers, images by on-device Vision. Text is
+chunked (~900 chars, 150 overlap, line/page locators), embedded with the same on-device sentence embeddings as
+memory, and searched with the same calibrated blend of similarity and keywords. Up to three passages above a
+threshold join the prompt in a fenced `<documents>` block (information, never instructions) and the answer carries
+numbered citations that open the file. Generation still follows the privacy router, so Local Only never sends a
+document anywhere. Unfinished indexing resumes when the host connects.
+

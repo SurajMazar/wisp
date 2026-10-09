@@ -169,5 +169,14 @@ Prerequisite: Computer control on (Settings), Accessibility, Screen Recording.
 - [ ] Turn off "Remember what I ask it to": statements are no longer saved. Turn off "Use memories in answers": nothing is recalled.
 - [ ] A memory set to "Until restart" is gone after reopening Wisp.
 
+## Phase 16 — Files & semantic search
+- [ ] Files → Import… a PDF and a Word document; drag a Markdown file onto the page. Each shows "Reading…" then "N passages".
+- [ ] Search for something inside a file: the result names the file and page/lines; clicking it opens the file.
+- [ ] Ask a question answered in one of the files: the answer uses it, cites it as [1], and shows "Sources" chips that open the file; Context says "From your files: …".
+- [ ] Ask something unrelated: no sources.
+- [ ] A scanned (image-only) PDF says it has no selectable text; a photo of text is read.
+- [ ] Remove a file: it disappears from search and answers.
+- [ ] Local Only with Wi-Fi off: import, search and answers all work.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

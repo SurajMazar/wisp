@@ -7,6 +7,7 @@ pub mod context;
 pub mod conversations;
 pub mod dispatch;
 pub mod events;
+pub mod files;
 pub mod logging;
 pub mod memory;
 pub mod skills;

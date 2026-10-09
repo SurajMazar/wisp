@@ -9,8 +9,9 @@ use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
-    accessibility::*, agents::*, app::*, conversations::*, cursor::*, focus::*, guidance::*,
-    invocation::*, memory::*, models::*, settings::*, skills::*, teacher::*, tools::*, voice::*,
+    accessibility::*, agents::*, app::*, conversations::*, cursor::*, files::*, focus::*,
+    guidance::*, invocation::*, memory::*, models::*, settings::*, skills::*, teacher::*, tools::*,
+    voice::*,
 };
 
 /// Which side implements a method.
@@ -169,6 +170,17 @@ define_methods! {
     ConversationDelete = "conversation.delete", Core, IdParams => Empty;
     /// Answer the same question again, replacing an assistant message.
     ConversationRegenerate = "conversation.regenerate", Core, RegenerateParams => Message;
+    /// Imported files, newest first.
+    FileListMethod = "file.list", Core, Empty => FileList;
+    /// Pick files with the system picker and index them.
+    FileImport = "file.import", Core, Empty => FileList;
+    /// Import a dropped file's bytes (≤ 20 MB) and index it.
+    FileImportDataMethod = "file.importData", Core, FileImportData => FileItem;
+    FileDelete = "file.delete", Core, IdParams => Empty;
+    /// Search indexed files.
+    FileSearch = "file.search", Core, FileSearchParams => FileSearchResults;
+    /// Open a file in its default app.
+    FileOpen = "file.open", Core, IdParams => Empty;
     /// Saved memories, newest first.
     MemoryListMethod = "memory.list", Core, MemoryListParams => MemoryList;
     /// Add or edit a memory.
@@ -224,6 +236,12 @@ define_methods! {
     HostGuidanceShow = "host.guidance.show", Host, GuidanceShow => Empty;
     /// Remove any guidance from the screen.
     HostGuidanceClear = "host.guidance.clear", Host, Empty => Empty;
+    /// Let the user pick files; the host copies them under `files/` in the data folder.
+    HostFilesPick = "host.files.pick", Host, Empty => StagedFiles;
+    /// Read text from a PDF, document or image under `files/` (PDFKit, document readers, Vision).
+    HostFilesExtract = "host.files.extract", Host, FilePathParams => ExtractedText;
+    /// Open a file under `files/` with its default app.
+    HostFilesOpen = "host.files.open", Host, FilePathParams => Empty;
     /// On-device sentence embeddings (Apple NaturalLanguage) for semantic search.
     HostEmbed = "host.embed", Host, EmbedParams => Embeddings;
     /// Capture and read the frontmost window (not Wisp's), for lessons. Needs Screen Recording.
@@ -302,6 +320,8 @@ define_events! {
     TeachUpdated = "teach.updated", Lesson;
     /// An agent run changed (plan, step, status).
     AgentRunUpdated = "agent.runUpdated", AgentRun;
+    /// A file's indexing status changed.
+    FileUpdated = "file.updated", FileItem;
     /// Captured microphone audio (host → core only).
     AudioChunkEvent = "audio.chunk", AudioChunk;
     /// Synthesized speech ready to play (core → host).

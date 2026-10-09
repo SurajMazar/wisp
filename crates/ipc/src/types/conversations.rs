@@ -65,6 +65,9 @@ pub struct Message {
     /// How long the model reasoned before answering.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_ms: Option<u32>,
+    /// Your files this answer drew on ([n] in the text).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub citations: Vec<super::files::Citation>,
     /// Memories saved from the question this answers (shown with Undo).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub saved_memories: Vec<super::memory::MemoryRef>,
@@ -105,6 +108,9 @@ pub struct ContextInfo {
     /// Saved memories included.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub memories: Vec<String>,
+    /// Passages from your files included, as citation labels.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub files: Vec<String>,
     /// Why the screenshot wasn't sent even though one was attached.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_only_reason: Option<String>,

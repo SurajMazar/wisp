@@ -5,6 +5,7 @@ pub mod agents;
 pub mod app;
 pub mod conversations;
 pub mod cursor;
+pub mod files;
 pub mod focus;
 pub mod guidance;
 pub mod invocation;

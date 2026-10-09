@@ -55,7 +55,6 @@ export const sections: Section[] = [
     path: "/files",
     label: "Files",
     icon: FilesIcon,
-    unavailableNote: "File search isn't available in this build yet. No files are indexed.",
   },
   {
     path: "/models",

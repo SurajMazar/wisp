@@ -229,6 +229,43 @@ impl Core {
                 self.call::<ConversationSend, _, _>(params, |c, p| async move { c.send(p).await })
                     .await
             }
+            wisp_ipc::methods::FileListMethod::NAME => {
+                self.call::<wisp_ipc::methods::FileListMethod, _, _>(params, |c, _| async move {
+                    c.file_list().await
+                })
+                .await
+            }
+            wisp_ipc::methods::FileImport::NAME => {
+                self.call::<wisp_ipc::methods::FileImport, _, _>(params, |c, _| async move {
+                    c.file_import().await
+                })
+                .await
+            }
+            wisp_ipc::methods::FileImportDataMethod::NAME => {
+                self.call::<wisp_ipc::methods::FileImportDataMethod, _, _>(
+                    params,
+                    |c, p| async move { c.file_import_data(p).await },
+                )
+                .await
+            }
+            wisp_ipc::methods::FileDelete::NAME => {
+                self.call::<wisp_ipc::methods::FileDelete, _, _>(params, |c, p| async move {
+                    c.file_delete(p.id).await
+                })
+                .await
+            }
+            wisp_ipc::methods::FileSearch::NAME => {
+                self.call::<wisp_ipc::methods::FileSearch, _, _>(params, |c, p| async move {
+                    c.file_search(p.query, p.limit).await
+                })
+                .await
+            }
+            wisp_ipc::methods::FileOpen::NAME => {
+                self.call::<wisp_ipc::methods::FileOpen, _, _>(params, |c, p| async move {
+                    c.file_open(p.id).await
+                })
+                .await
+            }
             wisp_ipc::methods::MemoryListMethod::NAME => {
                 self.call::<wisp_ipc::methods::MemoryListMethod, _, _>(params, |c, p| async move {
                     c.memory_list(p.query, p.category).await
@@ -547,6 +584,7 @@ impl Core {
 
     pub fn attach_host(&self, host: Arc<dyn wisp_providers::HostBridge>) {
         self.inner.ai.attach_host(host);
+        self.resume_indexing();
     }
 
     pub fn detach_host(&self) {

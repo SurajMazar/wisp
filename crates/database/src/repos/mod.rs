@@ -3,6 +3,7 @@
 pub mod agents;
 pub mod conversations;
 pub mod events;
+pub mod files;
 pub mod memory;
 pub mod settings;
 pub mod skills;

@@ -526,6 +526,14 @@ export type AxSnapshotParams = z.output<typeof AxSnapshotParams>;
 export const ChannelState = z.enum(["active","needsPermission","conflict","disabled","unsupported"]);
 export type ChannelState = z.output<typeof ChannelState>;
 
+/** A source an answer drew on (shown under the answer). */
+export const Citation = z.strictObject({
+  "fileId": z.string(),
+  "label": z.string(),
+  "n": z.number().int().nonnegative(),
+});
+export type Citation = z.output<typeof Citation>;
+
 export const ClipboardText = z.strictObject({
   "text": z.string(),
 });
@@ -537,6 +545,7 @@ export type ConflictSeverity = z.output<typeof ConflictSeverity>;
 /** What context an answer was given (spec §36, §97) — shown under the answer. */
 export const ContextInfo = z.strictObject({
   "estimatedTokens": z.number().int().nonnegative(),
+  "files": z.array(z.string()).optional(),
   "historyMessages": z.number().int().nonnegative(),
   "imageBytes": z.number().int().nonnegative().nullable().optional(),
   "memories": z.array(z.string()).optional(),
@@ -594,6 +603,7 @@ export const MessageStatus = z.enum(["streaming","complete","cancelled","error"]
 export type MessageStatus = z.output<typeof MessageStatus>;
 
 export const Message = z.strictObject({
+  "citations": z.array(Citation).optional(),
   "content": z.string(),
   "context": ContextInfo.nullable().optional(),
   "conversationId": z.string(),
@@ -720,6 +730,66 @@ export type Empty = z.output<typeof Empty>;
 
 export const ErrorCode = z.enum(["invalidRequest","methodNotFound","invalidParams","internal","unavailable","permissionDenied","cancelled","timeout","notFound"]);
 export type ErrorCode = z.output<typeof ErrorCode>;
+
+/** Text the host read from a rich file, one entry per page (PDF) or a single entry. */
+export const ExtractedText = z.strictObject({
+  "paged": z.boolean(),
+  "pages": z.array(z.string()),
+});
+export type ExtractedText = z.output<typeof ExtractedText>;
+
+export const FileHit = z.strictObject({
+  "citation": z.string(),
+  "fileId": z.string(),
+  "name": z.string(),
+  "score": z.number(),
+  "snippet": z.string(),
+});
+export type FileHit = z.output<typeof FileHit>;
+
+/** A dropped file's bytes (drag and drop), base64. */
+export const FileImportData = z.strictObject({
+  "dataBase64": z.string(),
+  "name": z.string(),
+});
+export type FileImportData = z.output<typeof FileImportData>;
+
+export const FileStatus = z.enum(["pending","indexing","indexed","failed"]);
+export type FileStatus = z.output<typeof FileStatus>;
+
+export const FileItem = z.strictObject({
+  "chunks": z.number().int().nonnegative(),
+  "createdAtMs": z.number().int(),
+  "error": z.string().nullable().optional(),
+  "id": z.string(),
+  "indexedAtMs": z.number().int().nullable().optional(),
+  "mime": z.string(),
+  "name": z.string(),
+  "sizeBytes": z.number().int().nonnegative(),
+  "status": FileStatus,
+});
+export type FileItem = z.output<typeof FileItem>;
+
+export const FileList = z.strictObject({
+  "items": z.array(FileItem),
+});
+export type FileList = z.output<typeof FileList>;
+
+export const FilePathParams = z.strictObject({
+  "path": z.string(),
+});
+export type FilePathParams = z.output<typeof FilePathParams>;
+
+export const FileSearchParams = z.strictObject({
+  "limit": z.number().int().nonnegative(),
+  "query": z.string(),
+});
+export type FileSearchParams = z.output<typeof FileSearchParams>;
+
+export const FileSearchResults = z.strictObject({
+  "hits": z.array(FileHit),
+});
+export type FileSearchResults = z.output<typeof FileSearchResults>;
 
 export const FindArgs = z.strictObject({
   "label": z.string(),
@@ -1264,6 +1334,19 @@ export const SpeechModelProgress = z.strictObject({
 });
 export type SpeechModelProgress = z.output<typeof SpeechModelProgress>;
 
+/** Files the host copied into Wisp's data folder after the user picked them. */
+export const StagedFile = z.strictObject({
+  "name": z.string(),
+  "path": z.string(),
+  "sizeBytes": z.number().int().nonnegative(),
+});
+export type StagedFile = z.output<typeof StagedFile>;
+
+export const StagedFiles = z.strictObject({
+  "files": z.array(StagedFile),
+});
+export type StagedFiles = z.output<typeof StagedFiles>;
+
 export const TextArgs = z.strictObject({
   "text": z.string(),
 });
@@ -1447,6 +1530,12 @@ export const methods = {
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
   "conversation.regenerate": { target: "core", params: RegenerateParams, result: Message },
+  "file.list": { target: "core", params: Empty, result: FileList },
+  "file.import": { target: "core", params: Empty, result: FileList },
+  "file.importData": { target: "core", params: FileImportData, result: FileItem },
+  "file.delete": { target: "core", params: IdParams, result: Empty },
+  "file.search": { target: "core", params: FileSearchParams, result: FileSearchResults },
+  "file.open": { target: "core", params: IdParams, result: Empty },
   "memory.list": { target: "core", params: MemoryListParams, result: MemoryList },
   "memory.save": { target: "core", params: MemorySaveParams, result: MemoryItem },
   "memory.delete": { target: "core", params: IdParams, result: Empty },
@@ -1478,6 +1567,9 @@ export const methods = {
   "host.clipboard.writeText": { target: "host", params: ClipboardText, result: Empty },
   "host.guidance.show": { target: "host", params: GuidanceShow, result: Empty },
   "host.guidance.clear": { target: "host", params: Empty, result: Empty },
+  "host.files.pick": { target: "host", params: Empty, result: StagedFiles },
+  "host.files.extract": { target: "host", params: FilePathParams, result: ExtractedText },
+  "host.files.open": { target: "host", params: FilePathParams, result: Empty },
   "host.embed": { target: "host", params: EmbedParams, result: Embeddings },
   "host.screen.observe": { target: "host", params: Empty, result: FocusRegion },
   "host.input.perform": { target: "host", params: ToolCall, result: ToolExecution },
@@ -1519,6 +1611,7 @@ export const events = {
   "tool.callUpdated": ToolCallRecord,
   "teach.updated": Lesson,
   "agent.runUpdated": AgentRun,
+  "file.updated": FileItem,
   "audio.chunk": AudioChunk,
   "voice.speechChunk": SpeechChunk,
   "voice.modelProgress": SpeechModelProgress,

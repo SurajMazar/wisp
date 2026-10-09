@@ -1008,6 +1008,19 @@ public enum ChannelState: String, Codable, Sendable, Equatable, CaseIterable {
     case unsupported = "unsupported"
 }
 
+/// A source an answer drew on (shown under the answer).
+public struct Citation: Codable, Sendable, Equatable {
+    public var fileId: String
+    public var label: String
+    public var n: UInt32
+
+    public init(fileId: String, label: String, n: UInt32) {
+        self.fileId = fileId
+        self.label = label
+        self.n = n
+    }
+}
+
 public struct ClipboardText: Codable, Sendable, Equatable {
     public var text: String
 
@@ -1024,6 +1037,7 @@ public enum ConflictSeverity: String, Codable, Sendable, Equatable, CaseIterable
 /// What context an answer was given (spec §36, §97) — shown under the answer.
 public struct ContextInfo: Codable, Sendable, Equatable {
     public var estimatedTokens: UInt32
+    public var files: [String]?
     public var historyMessages: UInt32
     public var imageBytes: UInt32?
     public var memories: [String]?
@@ -1035,8 +1049,9 @@ public struct ContextInfo: Codable, Sendable, Equatable {
     public var textOnlyReason: String?
     public var uiElements: UInt32
 
-    public init(estimatedTokens: UInt32, historyMessages: UInt32, imageBytes: UInt32? = nil, memories: [String]? = nil, reusedScreen: Bool, screenTextLines: UInt32, selectedText: Bool, skills: [String]? = nil, summarizedMessages: UInt32, textOnlyReason: String? = nil, uiElements: UInt32) {
+    public init(estimatedTokens: UInt32, files: [String]? = nil, historyMessages: UInt32, imageBytes: UInt32? = nil, memories: [String]? = nil, reusedScreen: Bool, screenTextLines: UInt32, selectedText: Bool, skills: [String]? = nil, summarizedMessages: UInt32, textOnlyReason: String? = nil, uiElements: UInt32) {
         self.estimatedTokens = estimatedTokens
+        self.files = files
         self.historyMessages = historyMessages
         self.imageBytes = imageBytes
         self.memories = memories
@@ -1133,6 +1148,7 @@ public enum MessageStatus: String, Codable, Sendable, Equatable, CaseIterable {
 }
 
 public struct Message: Codable, Sendable, Equatable {
+    public var citations: [Citation]?
     public var content: String
     public var context: ContextInfo?
     public var conversationId: String
@@ -1153,7 +1169,8 @@ public struct Message: Codable, Sendable, Equatable {
     public var stage: MessageStage?
     public var status: MessageStatus
 
-    public init(content: String, context: ContextInfo? = nil, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, guidance: [GuidanceTarget]? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, reasoning: String? = nil, reasoningMs: UInt32? = nil, role: MessageRole, savedMemories: [MemoryRef]? = nil, stage: MessageStage? = nil, status: MessageStatus) {
+    public init(citations: [Citation]? = nil, content: String, context: ContextInfo? = nil, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, guidance: [GuidanceTarget]? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, reasoning: String? = nil, reasoningMs: UInt32? = nil, role: MessageRole, savedMemories: [MemoryRef]? = nil, stage: MessageStage? = nil, status: MessageStatus) {
+        self.citations = citations
         self.content = content
         self.context = context
         self.conversationId = conversationId
@@ -1364,6 +1381,109 @@ public enum ErrorCode: String, Codable, Sendable, Equatable, CaseIterable {
     case cancelled = "cancelled"
     case timeout = "timeout"
     case notFound = "notFound"
+}
+
+/// Text the host read from a rich file, one entry per page (PDF) or a single entry.
+public struct ExtractedText: Codable, Sendable, Equatable {
+    public var paged: Bool
+    public var pages: [String]
+
+    public init(paged: Bool, pages: [String]) {
+        self.paged = paged
+        self.pages = pages
+    }
+}
+
+public struct FileHit: Codable, Sendable, Equatable {
+    public var citation: String
+    public var fileId: String
+    public var name: String
+    public var score: Double
+    public var snippet: String
+
+    public init(citation: String, fileId: String, name: String, score: Double, snippet: String) {
+        self.citation = citation
+        self.fileId = fileId
+        self.name = name
+        self.score = score
+        self.snippet = snippet
+    }
+}
+
+/// A dropped file's bytes (drag and drop), base64.
+public struct FileImportData: Codable, Sendable, Equatable {
+    public var dataBase64: String
+    public var name: String
+
+    public init(dataBase64: String, name: String) {
+        self.dataBase64 = dataBase64
+        self.name = name
+    }
+}
+
+public enum FileStatus: String, Codable, Sendable, Equatable, CaseIterable {
+    case pending = "pending"
+    case indexing = "indexing"
+    case indexed = "indexed"
+    case failed = "failed"
+}
+
+public struct FileItem: Codable, Sendable, Equatable {
+    public var chunks: UInt32
+    public var createdAtMs: Int64
+    public var error: String?
+    public var id: String
+    public var indexedAtMs: Int64?
+    public var mime: String
+    public var name: String
+    public var sizeBytes: UInt64
+    public var status: FileStatus
+
+    public init(chunks: UInt32, createdAtMs: Int64, error: String? = nil, id: String, indexedAtMs: Int64? = nil, mime: String, name: String, sizeBytes: UInt64, status: FileStatus) {
+        self.chunks = chunks
+        self.createdAtMs = createdAtMs
+        self.error = error
+        self.id = id
+        self.indexedAtMs = indexedAtMs
+        self.mime = mime
+        self.name = name
+        self.sizeBytes = sizeBytes
+        self.status = status
+    }
+}
+
+public struct FileList: Codable, Sendable, Equatable {
+    public var items: [FileItem]
+
+    public init(items: [FileItem]) {
+        self.items = items
+    }
+}
+
+public struct FilePathParams: Codable, Sendable, Equatable {
+    public var path: String
+
+    public init(path: String) {
+        self.path = path
+    }
+}
+
+public struct FileSearchParams: Codable, Sendable, Equatable {
+    public var limit: UInt32
+    public var query: String
+
+    public init(limit: UInt32, query: String) {
+        self.limit = limit
+        self.query = query
+    }
+}
+
+public struct FileSearchResults: Codable, Sendable, Equatable {
+    public var hits: [FileHit]
+
+    public init(hits: [FileHit]) {
+        self.hits = hits
+    }
 }
 
 public struct FindArgs: Codable, Sendable, Equatable {
@@ -2392,6 +2512,27 @@ public struct SpeechModelProgress: Codable, Sendable, Equatable {
     }
 }
 
+/// Files the host copied into Wisp's data folder after the user picked them.
+public struct StagedFile: Codable, Sendable, Equatable {
+    public var name: String
+    public var path: String
+    public var sizeBytes: UInt64
+
+    public init(name: String, path: String, sizeBytes: UInt64) {
+        self.name = name
+        self.path = path
+        self.sizeBytes = sizeBytes
+    }
+}
+
+public struct StagedFiles: Codable, Sendable, Equatable {
+    public var files: [StagedFile]
+
+    public init(files: [StagedFile]) {
+        self.files = files
+    }
+}
+
 public struct TextArgs: Codable, Sendable, Equatable {
     public var text: String
 
@@ -2786,6 +2927,12 @@ public enum IPCMethods {
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
     public static let conversationRegenerate = IPCMethod<RegenerateParams, Message>(name: "conversation.regenerate", target: .core)
+    public static let fileList = IPCMethod<Empty, FileList>(name: "file.list", target: .core)
+    public static let fileImport = IPCMethod<Empty, FileList>(name: "file.import", target: .core)
+    public static let fileImportData = IPCMethod<FileImportData, FileItem>(name: "file.importData", target: .core)
+    public static let fileDelete = IPCMethod<IdParams, Empty>(name: "file.delete", target: .core)
+    public static let fileSearch = IPCMethod<FileSearchParams, FileSearchResults>(name: "file.search", target: .core)
+    public static let fileOpen = IPCMethod<IdParams, Empty>(name: "file.open", target: .core)
     public static let memoryList = IPCMethod<MemoryListParams, MemoryList>(name: "memory.list", target: .core)
     public static let memorySave = IPCMethod<MemorySaveParams, MemoryItem>(name: "memory.save", target: .core)
     public static let memoryDelete = IPCMethod<IdParams, Empty>(name: "memory.delete", target: .core)
@@ -2817,6 +2964,9 @@ public enum IPCMethods {
     public static let hostClipboardWriteText = IPCMethod<ClipboardText, Empty>(name: "host.clipboard.writeText", target: .host)
     public static let hostGuidanceShow = IPCMethod<GuidanceShow, Empty>(name: "host.guidance.show", target: .host)
     public static let hostGuidanceClear = IPCMethod<Empty, Empty>(name: "host.guidance.clear", target: .host)
+    public static let hostFilesPick = IPCMethod<Empty, StagedFiles>(name: "host.files.pick", target: .host)
+    public static let hostFilesExtract = IPCMethod<FilePathParams, ExtractedText>(name: "host.files.extract", target: .host)
+    public static let hostFilesOpen = IPCMethod<FilePathParams, Empty>(name: "host.files.open", target: .host)
     public static let hostEmbed = IPCMethod<EmbedParams, Embeddings>(name: "host.embed", target: .host)
     public static let hostScreenObserve = IPCMethod<Empty, FocusRegion>(name: "host.screen.observe", target: .host)
     public static let hostInputPerform = IPCMethod<ToolCall, ToolExecution>(name: "host.input.perform", target: .host)
@@ -2877,6 +3027,12 @@ public enum IPCMethods {
         "conversation.pin": .core,
         "conversation.delete": .core,
         "conversation.regenerate": .core,
+        "file.list": .core,
+        "file.import": .core,
+        "file.importData": .core,
+        "file.delete": .core,
+        "file.search": .core,
+        "file.open": .core,
         "memory.list": .core,
         "memory.save": .core,
         "memory.delete": .core,
@@ -2908,6 +3064,9 @@ public enum IPCMethods {
         "host.clipboard.writeText": .host,
         "host.guidance.show": .host,
         "host.guidance.clear": .host,
+        "host.files.pick": .host,
+        "host.files.extract": .host,
+        "host.files.open": .host,
         "host.embed": .host,
         "host.screen.observe": .host,
         "host.input.perform": .host,
@@ -2950,6 +3109,7 @@ public enum IPCEvents {
     public static let toolCallUpdated = IPCEvent<ToolCallRecord>(name: "tool.callUpdated")
     public static let teachUpdated = IPCEvent<Lesson>(name: "teach.updated")
     public static let agentRunUpdated = IPCEvent<AgentRun>(name: "agent.runUpdated")
+    public static let fileUpdated = IPCEvent<FileItem>(name: "file.updated")
     public static let audioChunk = IPCEvent<AudioChunk>(name: "audio.chunk")
     public static let voiceSpeechChunk = IPCEvent<SpeechChunk>(name: "voice.speechChunk")
     public static let voiceModelProgress = IPCEvent<SpeechModelProgress>(name: "voice.modelProgress")

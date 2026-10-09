@@ -49,6 +49,8 @@ struct Built {
     info: ContextInfo,
     /// The screen this question is about, for resolving what the answer points at.
     screen: Option<FocusRegion>,
+    /// Passages from the user's files given to the model.
+    citations: Vec<wisp_ipc::types::files::Citation>,
 }
 
 /// System prompt for one lesson step (spec §53). The user does every step themselves.
@@ -166,6 +168,7 @@ pub(crate) fn new_message(
         context: None,
         guidance: vec![],
         saved_memories: vec![],
+        citations: vec![],
         stage: None,
         created_at_ms: wisp_common::time::now_ms(),
     }
@@ -453,6 +456,7 @@ impl Core {
         let h = context::fit_history(&history, budget.history);
         info.history_messages = h.included;
         info.summarized_messages = h.summarized;
+        let mut citations_out: Vec<wisp_ipc::types::files::Citation> = vec![];
         let mut system = if lesson {
             TEACHER_PROMPT
         } else {
@@ -466,6 +470,13 @@ impl Core {
         if let Some(s) = h.summary {
             system.push_str("\n\n");
             system.push_str(&s);
+        }
+        let passages = self.ground(question).await;
+        if let Some((section, citations)) = crate::files::documents_section(&passages) {
+            system.push_str("\n\n");
+            system.push_str(&section);
+            info.files = citations.iter().map(|c| c.label.clone()).collect();
+            citations_out = citations;
         }
         let recalled = self.recall(question, None).await;
         if let Some(section) = crate::memory::memory_section(&recalled) {
@@ -492,6 +503,7 @@ impl Core {
             messages,
             info,
             screen,
+            citations: citations_out,
         })
     }
 
@@ -620,6 +632,7 @@ impl Core {
             }
         };
         msg.context = Some(built.info.clone());
+        msg.citations = built.citations.clone();
         let screen = built.screen.clone();
         let built_parts = built;
         let mut guided = 0usize;

@@ -276,6 +276,26 @@ export function MessageList({
               )}
               {m.guidance && m.guidance.length > 0 && m.status !== "streaming" && <GuidanceChips m={m} />}
               {m.savedMemories && m.savedMemories.length > 0 && <SavedMemories m={m} />}
+              {m.citations && m.citations.length > 0 && m.status !== "streaming" && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5" aria-label="Sources">
+                  <span className="text-xs text-text-faint">Sources</span>
+                  {m.citations.map((c) => (
+                    <button
+                      key={c.n}
+                      type="button"
+                      title="Open the file"
+                      onClick={() =>
+                        void ipc()
+                          .call("file.open", { id: c.fileId })
+                          .catch(() => {})
+                      }
+                      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-text-muted hover:bg-surface-hover hover:text-text"
+                    >
+                      <span className="font-semibold text-accent">[{c.n}]</span> {c.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               {m.status === "cancelled" && <p className="mt-1 text-xs text-text-faint">Stopped</p>}
               {m.status === "error" && (
                 <ErrorBlock

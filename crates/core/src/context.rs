@@ -149,6 +149,7 @@ mod tests {
             context: None,
             guidance: vec![],
             saved_memories: vec![],
+            citations: vec![],
             stage: None,
             created_at_ms: 0,
         }

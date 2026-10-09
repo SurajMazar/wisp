@@ -16,6 +16,7 @@ export function contextLines(c: Info): string[] {
     lines.push(`${c.historyMessages} earlier message${c.historyMessages === 1 ? "" : "s"}`);
   if (c.summarizedMessages)
     lines.push(`${c.summarizedMessages} older message${c.summarizedMessages === 1 ? "" : "s"}, condensed`);
+  if (c.files && c.files.length > 0) lines.push(`From your files: ${c.files.join("; ")}`);
   if (c.memories && c.memories.length > 0)
     lines.push(`${c.memories.length} saved memor${c.memories.length === 1 ? "y" : "ies"} about you`);
   if (c.skills && c.skills.length > 0)

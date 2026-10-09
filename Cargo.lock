@@ -2361,8 +2361,10 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "futures",
+ "hex",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror",
  "tokio",
@@ -2377,6 +2379,7 @@ dependencies = [
  "wisp-common",
  "wisp-computer",
  "wisp-database",
+ "wisp-files",
  "wisp-ipc",
  "wisp-memory",
  "wisp-permissions",
@@ -2405,10 +2408,9 @@ dependencies = [
 name = "wisp-files"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "wisp-common",
- "wisp-database",
  "wisp-ipc",
- "wisp-security",
 ]
 
 [[package]]

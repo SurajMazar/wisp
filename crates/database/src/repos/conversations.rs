@@ -80,6 +80,10 @@ fn message_from_row(r: &Row<'_>) -> rusqlite::Result<Message> {
             .get("reasoningMs")
             .and_then(|v| v.as_u64())
             .map(|n| n.min(u32::MAX as u64) as u32),
+        citations: ctx
+            .get("citations")
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default(),
         saved_memories: ctx
             .get("savedMemories")
             .and_then(|v| serde_json::from_value(v.clone()).ok())
@@ -281,6 +285,9 @@ impl Database {
         if !m.guidance.is_empty() {
             ctx.insert("guidance".into(), serde_json::to_value(&m.guidance)?);
         }
+        if !m.citations.is_empty() {
+            ctx.insert("citations".into(), serde_json::to_value(&m.citations)?);
+        }
         if !m.saved_memories.is_empty() {
             ctx.insert(
                 "savedMemories".into(),
@@ -382,6 +389,7 @@ mod tests {
             context: None,
             guidance: vec![],
             saved_memories: vec![],
+            citations: vec![],
             stage: None,
             created_at_ms: at,
         }

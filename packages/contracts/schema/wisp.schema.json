@@ -1309,6 +1309,30 @@
       ],
       "type": "object"
     },
+    "Citation": {
+      "additionalProperties": false,
+      "description": "A source an answer drew on (shown under the answer).",
+      "properties": {
+        "fileId": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "n": {
+          "description": "The [n] used in the answer.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "n",
+        "fileId",
+        "label"
+      ],
+      "type": "object"
+    },
     "ClipboardText": {
       "additionalProperties": false,
       "properties": {
@@ -1360,6 +1384,13 @@
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
+        },
+        "files": {
+          "description": "Passages from your files included, as citation labels.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "historyMessages": {
           "description": "Earlier messages included verbatim.",
@@ -1835,6 +1866,199 @@
         "cancelled",
         "timeout",
         "notFound"
+      ],
+      "type": "string"
+    },
+    "ExtractedText": {
+      "additionalProperties": false,
+      "description": "Text the host read from a rich file, one entry per page (PDF) or a single entry.",
+      "properties": {
+        "paged": {
+          "description": "True when pages are real PDF pages (for \"page N\" citations).",
+          "type": "boolean"
+        },
+        "pages": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "pages",
+        "paged"
+      ],
+      "type": "object"
+    },
+    "FileHit": {
+      "additionalProperties": false,
+      "properties": {
+        "citation": {
+          "description": "e.g. \"report.pdf, page 3\".",
+          "type": "string"
+        },
+        "fileId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "score": {
+          "format": "float",
+          "type": "number"
+        },
+        "snippet": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fileId",
+        "name",
+        "citation",
+        "snippet",
+        "score"
+      ],
+      "type": "object"
+    },
+    "FileImportData": {
+      "additionalProperties": false,
+      "description": "A dropped file's bytes (drag and drop), base64.",
+      "properties": {
+        "dataBase64": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "dataBase64"
+      ],
+      "type": "object"
+    },
+    "FileItem": {
+      "additionalProperties": false,
+      "properties": {
+        "chunks": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "createdAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "indexedAtMs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "mime": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/definitions/FileStatus"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "mime",
+        "sizeBytes",
+        "status",
+        "chunks",
+        "createdAtMs"
+      ],
+      "type": "object"
+    },
+    "FileList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/FileItem"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "FilePathParams": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Relative to the data folder (under `files/`).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "FileSearchParams": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "1–20.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "query",
+        "limit"
+      ],
+      "type": "object"
+    },
+    "FileSearchResults": {
+      "additionalProperties": false,
+      "properties": {
+        "hits": {
+          "items": {
+            "$ref": "#/definitions/FileHit"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "hits"
+      ],
+      "type": "object"
+    },
+    "FileStatus": {
+      "enum": [
+        "pending",
+        "indexing",
+        "indexed",
+        "failed"
       ],
       "type": "string"
     },
@@ -2949,6 +3173,13 @@
     "Message": {
       "additionalProperties": false,
       "properties": {
+        "citations": {
+          "description": "Your files this answer drew on ([n] in the text).",
+          "items": {
+            "$ref": "#/definitions/Citation"
+          },
+          "type": "array"
+        },
         "content": {
           "type": "string"
         },
@@ -4806,6 +5037,45 @@
       ],
       "type": "object"
     },
+    "StagedFile": {
+      "additionalProperties": false,
+      "description": "Files the host copied into Wisp's data folder after the user picked them.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "description": "Relative to the data folder (always under `files/`).",
+          "type": "string"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "name",
+        "sizeBytes"
+      ],
+      "type": "object"
+    },
+    "StagedFiles": {
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "items": {
+            "$ref": "#/definitions/StagedFile"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "files"
+      ],
+      "type": "object"
+    },
     "StepKind": {
       "enum": [
         "observe",
@@ -5854,6 +6124,12 @@
       }
     },
     {
+      "name": "file.updated",
+      "payload": {
+        "$ref": "#/definitions/FileItem"
+      }
+    },
+    {
       "name": "audio.chunk",
       "payload": {
         "$ref": "#/definitions/AudioChunk"
@@ -6296,6 +6572,66 @@
       "target": "core"
     },
     {
+      "name": "file.list",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/FileList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "file.import",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/FileList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "file.importData",
+      "params": {
+        "$ref": "#/definitions/FileImportData"
+      },
+      "result": {
+        "$ref": "#/definitions/FileItem"
+      },
+      "target": "core"
+    },
+    {
+      "name": "file.delete",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "file.search",
+      "params": {
+        "$ref": "#/definitions/FileSearchParams"
+      },
+      "result": {
+        "$ref": "#/definitions/FileSearchResults"
+      },
+      "target": "core"
+    },
+    {
+      "name": "file.open",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
       "name": "memory.list",
       "params": {
         "$ref": "#/definitions/MemoryListParams"
@@ -6599,6 +6935,36 @@
       "name": "host.guidance.clear",
       "params": {
         "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.files.pick",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/StagedFiles"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.files.extract",
+      "params": {
+        "$ref": "#/definitions/FilePathParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ExtractedText"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.files.open",
+      "params": {
+        "$ref": "#/definitions/FilePathParams"
       },
       "result": {
         "$ref": "#/definitions/Empty"

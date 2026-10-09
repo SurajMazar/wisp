@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Phase
-Phase 16 — Files & Semantic Search (in progress). Phases 9–15 implemented; **manual stop gates 2–13 pending on the Mac**
+Phase 17 — Routines (in progress). Phases 9–16 implemented; **manual stop gates 2–13 pending on the Mac**
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +18,8 @@ Phase 16 — Files & Semantic Search (in progress). Phases 9–15 implemented; *
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- **16 Files & search:** import/drop, on-device reading (PDF pages, documents, OCR), hybrid search, cited answers
+  (gate PASS)
 - **15 Memory:** explicit and visible (Undo), on-device embeddings, calibrated hybrid recall, Memory page (gate PASS)
 - **14 Skills:** versioned SKILL.md, used when relevant (never executed), import off by default, disk mirror,
   attachable to agents (gate PASS)

@@ -498,3 +498,34 @@ dentist ↔ coffee 0.290; editor preference ↔ "Book a flight" 0.017 — used t
 ## Stop Gate 15
 PASS on automated evidence (stated preference → memory → later conversation retrieves it; inspect; delete).
 
+---
+
+# Phase 16 — Files & Semantic Search (2026-10-09)
+
+## Summary
+Local knowledge: import documents (picker or drop), read them on this Mac, search them semantically, and get answers
+grounded in them with citations — never uploaded in Local Only.
+
+## Implemented
+- `wisp-files`: supported kinds, name sanitizing, text decoding, chunking with locators, citations, lexical score
+- Contracts: `FileItem`, search hits, `Citation`, staged files, extracted text; `file.list|import|importData|delete|
+  search|open`, `host.files.pick|extract|open`, `file.updated`; `Message.citations`, `ContextInfo.files`
+- Database: files + chunks (vectors), search rows, resume list, cascade delete
+- Core: import (dedupe, confinement, caps), indexing (text here, rich formats via host, embeddings in batches),
+  hybrid ranking, grounding into answers with citations, open/delete, resume on host attach
+- Host: `FileReader` (NSOpenPanel copy-in, PDFKit pages, document readers, Vision OCR for images, open; strict path
+  resolution)
+- UI: Files page (import, drop zone, status, search with citations, open, remove), Sources chips under answers,
+  Context lines
+
+## Tests Added
+- Rust: kinds, sanitizing (traversal, hidden, shell characters, length), decoding/binary, chunking (overlap,
+  coverage, page locators, long lines), lexical (5); repository (1); stop gate end to end — correct document,
+  relevant passage, grounded prompt with citation, unrelated questions ungrounded, dedupe, refusal, delete from disk
+  and search; Local Only with a cloud-only model never calls it (2)
+- Swift: real PDF pages and RTF read; paths outside files/ refused; names sanitized (2)
+- React: list/search/open, picker and drop import, Sources chips (3)
+
+## Stop Gate 16
+PASS on automated evidence (correct document, relevant chunk, grounded answer, Local Only stays local).
+

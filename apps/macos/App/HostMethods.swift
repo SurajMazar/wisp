@@ -173,6 +173,23 @@ enum HostMethods {
             return Empty()
         }
 
+        router.register(IPCMethods.hostFilesPick) { _ in
+            FileReader.pick()
+        }
+
+        router.register(IPCMethods.hostFilesExtract) { params in
+            do { return try await FileReader.extract(params.path) } catch {
+                throw IpcError(code: .unavailable, details: nil, message: error.localizedDescription)
+            }
+        }
+
+        router.register(IPCMethods.hostFilesOpen) { params in
+            do { try FileReader.open(params.path) } catch {
+                throw IpcError(code: .invalidParams, details: nil, message: error.localizedDescription)
+            }
+            return Empty()
+        }
+
         router.register(IPCMethods.hostEmbed) { params in
             guard (1...64).contains(params.texts.count) else { throw IpcError.invalidRequest("1–64 texts") }
             return await SentenceEmbedder.shared.embed(params.texts)
