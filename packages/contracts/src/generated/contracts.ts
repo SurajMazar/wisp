@@ -19,6 +19,50 @@ export type AccessibilityStatus = z.output<typeof AccessibilityStatus>;
 export const AnimationLevel = z.enum(["minimal","normal","expressive"]);
 export type AnimationLevel = z.output<typeof AnimationLevel>;
 
+export const Point = z.object({
+  "x": z.number(),
+  "y": z.number(),
+});
+export type Point = z.output<typeof Point>;
+
+export const ArrowAnnotation = z.strictObject({
+  "from": Point,
+  "label": z.string().nullable().optional(),
+  "to": Point,
+});
+export type ArrowAnnotation = z.output<typeof ArrowAnnotation>;
+
+export const CircleAnnotation = z.strictObject({
+  "center": Point,
+  "label": z.string().nullable().optional(),
+  "radius": z.number(),
+});
+export type CircleAnnotation = z.output<typeof CircleAnnotation>;
+
+export const Rect = z.object({
+  "height": z.number(),
+  "width": z.number(),
+  "x": z.number(),
+  "y": z.number(),
+});
+export type Rect = z.output<typeof Rect>;
+
+export const RectAnnotation = z.strictObject({
+  "label": z.string().nullable().optional(),
+  "rect": Rect,
+});
+export type RectAnnotation = z.output<typeof RectAnnotation>;
+
+export const LabelAnnotation = z.strictObject({
+  "at": Point,
+  "text": z.string(),
+});
+export type LabelAnnotation = z.output<typeof LabelAnnotation>;
+
+/** One drawing on the guidance overlay. */
+export const Annotation = z.discriminatedUnion("type", [z.strictObject({ "type": z.literal("arrow"), "data": ArrowAnnotation }), z.strictObject({ "type": z.literal("circle"), "data": CircleAnnotation }), z.strictObject({ "type": z.literal("rectangle"), "data": RectAnnotation }), z.strictObject({ "type": z.literal("highlight"), "data": RectAnnotation }), z.strictObject({ "type": z.literal("spotlight"), "data": RectAnnotation }), z.strictObject({ "type": z.literal("label"), "data": LabelAnnotation }), z.strictObject({ "type": z.literal("pointer"), "data": LabelAnnotation })]);
+export type Annotation = z.output<typeof Annotation>;
+
 export const AppInfo = z.strictObject({
   "coreVersion": z.string(),
   "dataDir": z.string(),
@@ -255,14 +299,6 @@ export const AudioChunk = z.strictObject({
 });
 export type AudioChunk = z.output<typeof AudioChunk>;
 
-export const Rect = z.object({
-  "height": z.number(),
-  "width": z.number(),
-  "x": z.number(),
-  "y": z.number(),
-});
-export type Rect = z.output<typeof Rect>;
-
 /** One normalized accessibility element. Secure text field values are never populated. */
 export const AxNode = z.strictObject({
   "actions": z.array(z.string()).optional(),
@@ -288,12 +324,6 @@ export const AxContext = z.strictObject({
   "underPointer": AxNode.nullable().optional(),
 });
 export type AxContext = z.output<typeof AxContext>;
-
-export const Point = z.object({
-  "x": z.number(),
-  "y": z.number(),
-});
-export type Point = z.output<typeof Point>;
 
 export const WindowInfo = z.strictObject({
   "frame": Rect,
@@ -368,6 +398,17 @@ export const FocusAttachment = z.strictObject({
 });
 export type FocusAttachment = z.output<typeof FocusAttachment>;
 
+export const TargetSource = z.enum(["element","text","coordinates"]);
+export type TargetSource = z.output<typeof TargetSource>;
+
+/** Something on screen an answer pointed at, resolved to where it is. */
+export const GuidanceTarget = z.strictObject({
+  "label": z.string(),
+  "rect": Rect,
+  "source": TargetSource,
+});
+export type GuidanceTarget = z.output<typeof GuidanceTarget>;
+
 export const Locality = z.enum(["local","cloud"]);
 export type Locality = z.output<typeof Locality>;
 
@@ -389,6 +430,7 @@ export const Message = z.strictObject({
   "error": z.string().nullable().optional(),
   "errorDetails": z.string().nullable().optional(),
   "focus": FocusAttachment.nullable().optional(),
+  "guidance": z.array(GuidanceTarget).optional(),
   "id": z.string(),
   "latencyMs": z.number().int().nonnegative().nullable().optional(),
   "locality": Locality.nullable().optional(),
@@ -516,6 +558,14 @@ export const FocusStarted = z.strictObject({
   "kind": FocusKind,
 });
 export type FocusStarted = z.output<typeof FocusStarted>;
+
+export const GuidanceShow = z.strictObject({
+  "annotations": z.array(Annotation),
+  "buddyTarget": Point.nullable().optional(),
+  "durationMs": z.number().int().nonnegative(),
+  "id": z.string(),
+});
+export type GuidanceShow = z.output<typeof GuidanceShow>;
 
 export const VoicePurpose = z.enum(["ask","test"]);
 export type VoicePurpose = z.output<typeof VoicePurpose>;
@@ -898,7 +948,10 @@ export const methods = {
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
   "conversation.regenerate": { target: "core", params: RegenerateParams, result: Message },
+  "conversation.showGuidance": { target: "core", params: IdParams, result: Empty },
   "host.clipboard.writeText": { target: "host", params: ClipboardText, result: Empty },
+  "host.guidance.show": { target: "host", params: GuidanceShow, result: Empty },
+  "host.guidance.clear": { target: "host", params: Empty, result: Empty },
   "host.voice.start": { target: "host", params: HostVoiceStartParams, result: Empty },
   "host.voice.stop": { target: "host", params: Empty, result: VoiceFinishResult },
   "host.voice.stopSpeaking": { target: "host", params: Empty, result: Empty },

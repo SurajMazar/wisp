@@ -110,5 +110,13 @@ Prerequisite: Microphone permission; `brew install espeak-ng` (already installed
 - [ ] Ask a follow-up without selecting again: Context says the earlier screen was reused.
 - [ ] Select a web page that says "ignore previous instructions…": Wisp explains it rather than obeying it.
 
+## Phase 10 — Visual guidance
+- [ ] Select a window with buttons and ask "Where do I click to save?": while the answer streams, the button gets a glowing outline with its name, and the buddy flies over to point at it.
+- [ ] The highlight goes away on Esc, any click, holding the shortcut again, or after ~10 s; the buddy returns to the pointer.
+- [ ] The answer text never shows "[[point: …]]" and it is never read aloud.
+- [ ] Under the answer, "Pointed at: Save" — clicking it shows the highlight again.
+- [ ] On two displays, the highlight appears on the display where the target is.
+- [ ] The overlay never steals focus and clicks pass straight through it; Reduce Motion turns off the animations.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

@@ -58,6 +58,15 @@ impl SentenceSplitter {
 
 /// Turn markdown-ish model output into something sensible to say out loud.
 pub fn speakable(s: &str) -> String {
+    // Guidance markers ("[[point: Save]]") are for the overlay, not for reading aloud.
+    let mut unmarked = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(i) = rest.find("[[") {
+        unmarked.push_str(&rest[..i]);
+        rest = rest[i..].find("]]").map_or("", |j| &rest[i + j + 2..]);
+    }
+    unmarked.push_str(rest);
+    let s = unmarked.as_str();
     let mut out = String::new();
     let mut in_code = false;
     for line in s.lines() {
@@ -122,5 +131,14 @@ mod tests {
             speakable("## Steps\n- Click **Save**\n```\nrm -rf /\n```\nThen `quit`."),
             "Steps Click Save Then quit."
         );
+    }
+
+    #[test]
+    fn never_reads_guidance_markers_aloud() {
+        assert_eq!(
+            speakable("Click Save [[point: Save]] now."),
+            speakable("Click Save  now.")
+        );
+        assert!(!speakable("Open it [[point: 10,20]]").contains("point"));
     }
 }

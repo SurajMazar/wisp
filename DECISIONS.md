@@ -172,3 +172,14 @@ about the screen). Follow-ups within six messages reuse the cached description i
 content is untrusted: it is fenced in `<screen>` / `"""` with control characters stripped, and the system prompt
 says it is information, never instructions. Each answer records a `ContextInfo` shown in a "Context" disclosure.
 
+## D-027 — Guidance targets are named, then resolved locally
+**Status** accepted (2026-10-09)
+Small local models are poor at predicting pixel coordinates but good at naming what's on screen. When a question
+is about the screen, the system prompt asks the model to mark targets as `[[point: label]]` (the label as it appears)
+— or `[[point: x,y]]` in 0–1000 image coordinates, which Qwen-VL produces natively. `wisp-screen::guide` resolves
+labels against Accessibility elements (exact frames, actionable elements preferred, smallest container wins) and
+recognized text (narrowed to the matched words), and maps image coordinates into the capture. Targets are shown as
+soon as their marker streams in; markers are stripped from stored text, the UI and speech. The host draws on a
+click-through, non-activating, capture-excluded overlay per display and the buddy flies to the last target.
+Guidance is persisted on the message so it can be replayed.
+

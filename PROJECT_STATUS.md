@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Phase
-Phase 10 — Visual Guidance (in progress). Phase 9 implemented; **manual stop gates 2–9 pending on the Mac**
+Phase 11 — Computer Control (in progress). Phases 9–10 implemented; **manual stop gates 2–10 pending on the Mac**
 
 ## Completed
 - **Phase 0 — Repository audit & architecture** (gate PASS, 2026-10-08)
@@ -18,6 +18,8 @@ Phase 10 — Visual Guidance (in progress). Phase 9 implemented; **manual stop g
   - Redacting logger; path confinement; secret scanning; architecture rule checks
 
 ## In Progress
+- **10 Visual guidance:** answers mark targets, resolved to exact frames; on-screen highlight + label overlay; the
+  buddy flies to point; replay from the chat
 - **9 Screen understanding:** on-device OCR, budgeted context builder with condensed history, text-only fallback,
   screen reuse for follow-ups, quick actions, "Context" disclosure; screen text fenced as untrusted
 - Phases 5–8 implemented and automatically verified (see PHASE_REPORT.md):

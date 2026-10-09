@@ -464,3 +464,56 @@ async fn reads_the_screen_as_text_without_a_vision_model_and_reuses_it_for_follo
     assert_eq!(done["context"]["reusedScreen"], true);
     assert_eq!(done["context"]["historyMessages"], 2);
 }
+
+#[tokio::test]
+async fn answers_point_at_resolved_targets_and_hide_the_markers() {
+    let dir = tempfile::tempdir().expect("tmp");
+    let core = core(
+        dir.path(),
+        vec![local("Click Save [[point: Save]] to keep your changes.")],
+    );
+    let mut rx = core.events().subscribe();
+    let id = "0199c2a8-0000-7000-8000-0000000000f2";
+    core.record_host_event(
+        "focus.completed",
+        json!({
+            "id": id, "kind": "window",
+            "display": {"id": 1, "name": "Built-in", "frame": {"x":0,"y":0,"width":1512,"height":982}, "scale": 2.0},
+            "selection": {"x":100,"y":100,"width":600,"height":400},
+            "crop": {"x":100,"y":100,"width":600,"height":400},
+            "cursor": {"x":300,"y":200},
+            "image": {"url": format!("wisp://focus/{id}.png"), "widthPx": 1200, "heightPx": 800},
+            "accessibility": {"nodes": [
+                {"role": "AXButton", "title": "Save", "frame": {"x":560,"y":440,"width":80,"height":28},
+                 "enabled": true, "focused": false, "selected": false, "actions": ["AXPress"], "depth": 3}
+            ], "summary": "elements:\n- button \"Save\"\n"},
+            "createdAtMs": 1
+        }),
+    )
+    .await;
+    let r = core
+        .dispatch(
+            "conversation.send",
+            json!({ "text": "How do I keep this?", "includeFocus": true }),
+        )
+        .await
+        .expect("send");
+    let aid = r["assistantMessage"]["id"]
+        .as_str()
+        .expect("aid")
+        .to_owned();
+    let (done, _) = wait_done(&mut rx, &aid).await;
+    assert_eq!(done["content"], "Click Save to keep your changes.");
+    assert_eq!(done["guidance"][0]["label"], "Save");
+    assert_eq!(done["guidance"][0]["source"], "element");
+    assert_eq!(done["guidance"][0]["rect"]["x"], 560.0);
+    // Persisted with the message.
+    let conv = core
+        .dispatch(
+            "conversation.get",
+            json!({ "id": r["conversationId"].clone() }),
+        )
+        .await
+        .expect("get");
+    assert_eq!(conv["messages"][1]["guidance"][0]["label"], "Save");
+}

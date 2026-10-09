@@ -65,6 +65,9 @@ pub struct Message {
     /// How long the model reasoned before answering.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_ms: Option<u32>,
+    /// Things on screen this answer pointed at (shown with the guidance overlay).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub guidance: Vec<super::guidance::GuidanceTarget>,
     /// What was sent to the model with this answer's question (privacy transparency).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context: Option<ContextInfo>,

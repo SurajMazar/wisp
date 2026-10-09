@@ -52,6 +52,10 @@ pub struct Prepared {
 }
 
 impl AiServices {
+    pub fn host(&self) -> Option<Arc<dyn HostBridge>> {
+        self.host.lock().ok().and_then(|h| h.clone())
+    }
+
     pub fn attach_host(&self, host: Arc<dyn HostBridge>) {
         if let Ok(mut h) = self.host.lock() {
             *h = Some(host);

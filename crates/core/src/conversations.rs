@@ -37,6 +37,8 @@ If you can't see or don't know something, say so plainly.";
 
 /// Messages loaded for building context (older ones are condensed, see `context::fit_history`).
 const HISTORY_MESSAGES: u32 = 40;
+/// How long guidance stays on screen unless dismissed.
+const GUIDANCE_MS: u32 = 10_000;
 /// A follow-up within this many messages keeps talking about the same screen.
 const REUSE_SCREEN_WITHIN: usize = 6;
 
@@ -45,7 +47,16 @@ struct Built {
     system: String,
     messages: Vec<ChatMessage>,
     info: ContextInfo,
+    /// The screen this question is about, for resolving what the answer points at.
+    screen: Option<FocusRegion>,
 }
+
+/// Added to the system prompt when the question is about the screen (spec §54).
+const POINTING_PROMPT: &str = "To show the user where something is on their screen, write [[point: label]] \
+right after you mention it, using the control's label exactly as it appears in the screen context \
+(for example: Click Save [[point: Save]] to keep your changes.). If an image is attached you may instead give \
+its position as [[point: x,y]] with x and y from 0 to 1000 across the image. Point at most three things, \
+and only at things that are actually there.";
 const MAX_TEXT: usize = 8000;
 
 #[derive(Default)]
@@ -143,6 +154,7 @@ fn new_message(
         reasoning: None,
         reasoning_ms: None,
         context: None,
+        guidance: vec![],
         stage: None,
         created_at_ms: wisp_common::time::now_ms(),
     }
@@ -379,7 +391,7 @@ impl Core {
                 });
             }
             let d = wisp_screen::describe::describe(f, budget.screen_chars, with_image);
-            self.cache_screen(&f.id, &d.text);
+            self.cache_screen(f);
             info.screen_text_lines = d.text_lines;
             info.ui_elements = d.ui_elements;
             info.selected_text = d.selected_text;
@@ -388,18 +400,28 @@ impl Core {
                 info.image_bytes = Some(img.data.len().min(u32::MAX as usize) as u32);
                 images.push(img);
             }
-        } else if let Some(text) = reused {
+        } else if let Some(f) = &reused {
             info.reused_screen = true;
-            content = format!("{question}\n\n(Still about what they showed you earlier.)\n{text}");
+            let d = wisp_screen::describe::describe(f, budget.screen_chars, false);
+            content = format!(
+                "{question}\n\n(Still about what they showed you earlier.)\n{}",
+                d.text
+            );
         }
+        let screen = focus.cloned().or(reused);
 
         let h = context::fit_history(&history, budget.history);
         info.history_messages = h.included;
         info.summarized_messages = h.summarized;
-        let system = match h.summary {
-            Some(s) => format!("{SYSTEM_PROMPT}\n\n{s}"),
-            None => SYSTEM_PROMPT.to_owned(),
-        };
+        let mut system = SYSTEM_PROMPT.to_owned();
+        if screen.is_some() {
+            system.push_str("\n\n");
+            system.push_str(POINTING_PROMPT);
+        }
+        if let Some(s) = h.summary {
+            system.push_str("\n\n");
+            system.push_str(&s);
+        }
         let mut messages = h.messages;
         messages.push(ChatMessage {
             role: Role::User,
@@ -412,6 +434,7 @@ impl Core {
             system,
             messages,
             info,
+            screen,
         })
     }
 
@@ -419,23 +442,87 @@ impl Core {
         wisp_common::ids::is_valid_id(focus_id).then(|| {
             self.data_dir()
                 .join("cache/focus")
-                .join(format!("{focus_id}.context.txt"))
+                .join(format!("{focus_id}.region.json"))
         })
     }
 
-    fn cache_screen(&self, focus_id: &str, text: &str) {
-        if let Some(path) = self.screen_cache_path(focus_id) {
+    /// Keep the region (no pixels) so follow-ups can describe it and point into it again.
+    fn cache_screen(&self, region: &FocusRegion) {
+        if let Some(path) = self.screen_cache_path(&region.id) {
             if let Some(dir) = path.parent() {
                 let _ = std::fs::create_dir_all(dir);
             }
-            if let Err(e) = std::fs::write(&path, text) {
+            let json = serde_json::to_vec(region).unwrap_or_default();
+            if let Err(e) = std::fs::write(&path, json) {
                 tracing::warn!(error = %e, "couldn't cache screen context");
             }
         }
     }
 
-    fn cached_screen(&self, focus_id: &str) -> Option<String> {
-        std::fs::read_to_string(self.screen_cache_path(focus_id)?).ok()
+    fn cached_screen(&self, focus_id: &str) -> Option<FocusRegion> {
+        let bytes = std::fs::read(self.screen_cache_path(focus_id)?).ok()?;
+        serde_json::from_slice(&bytes).ok()
+    }
+
+    /// Replay a finished answer's guidance (the targets were resolved when it was written).
+    pub(crate) async fn show_guidance(
+        &self,
+        id: &str,
+    ) -> Result<wisp_ipc::types::app::Empty, IpcError> {
+        if !wisp_common::ids::is_valid_id(id) {
+            return Err(IpcError::invalid_params("invalid message id"));
+        }
+        let id = id.to_owned();
+        let m = self
+            .blocking(move |db| db.get_message(&id))
+            .await?
+            .ok_or_else(|| {
+                IpcError::new(
+                    wisp_ipc::ErrorCode::NotFound,
+                    "That message no longer exists.",
+                )
+            })?;
+        let show = wisp_screen::guide::show(&m.id, &m.guidance, GUIDANCE_MS)
+            .ok_or_else(|| IpcError::invalid_params("this answer didn't point at anything"))?;
+        let host = self.ai().host().ok_or_else(|| {
+            IpcError::new(wisp_ipc::ErrorCode::Unavailable, "The app isn't connected.")
+        })?;
+        host.call(
+            "host.guidance.show",
+            serde_json::to_value(&show).unwrap_or_default(),
+        )
+        .await?;
+        Ok(wisp_ipc::types::app::Empty {})
+    }
+
+    /// Show newly completed `[[point: …]]` targets on screen as soon as they stream in.
+    fn guide(&self, msg: &mut Message, region: &FocusRegion, shown: &mut usize) {
+        use wisp_screen::guide;
+        let refs = guide::parse_targets(&msg.content);
+        if refs.len() <= *shown {
+            return;
+        }
+        *shown = refs.len();
+        let targets: Vec<_> = refs
+            .iter()
+            .filter_map(|r| guide::resolve(r, region))
+            .collect();
+        if targets.is_empty() || targets == msg.guidance {
+            return;
+        }
+        msg.guidance = targets;
+        let Some(show) = guide::show(&msg.id, &msg.guidance, GUIDANCE_MS) else {
+            return;
+        };
+        if let Some(host) = self.ai().host() {
+            tokio::spawn(async move {
+                let params = serde_json::to_value(&show).unwrap_or_default();
+                if let Err(e) = host.call("host.guidance.show", params).await {
+                    tracing::debug!(error = %e.message, "guidance not shown");
+                }
+            });
+        }
+        self.events().publish::<MessageUpdated>(msg);
     }
 
     async fn answer(
@@ -476,6 +563,9 @@ impl Core {
             }
         };
         msg.context = Some(built.info.clone());
+        let screen = built.screen.clone();
+        let built_parts = built;
+        let mut guided = 0usize;
         let snapshot = msg.clone();
         let result = async {
             let Built {
@@ -483,7 +573,7 @@ impl Core {
                 system,
                 messages,
                 ..
-            } = built;
+            } = built_parts;
             let events = self.events().clone();
             let mut announced = snapshot.clone();
             announced.stage = Some(MessageStage::ChoosingModel);
@@ -574,6 +664,9 @@ impl Core {
                             message_id: msg.id.clone(),
                             delta: t,
                         });
+                    if let Some(region) = &screen {
+                        self.guide(&mut msg, region, &mut guided);
+                    }
                     if last_save.elapsed() > Duration::from_millis(500) {
                         last_save = Instant::now();
                         let m = msg.clone();
@@ -612,7 +705,12 @@ impl Core {
             .map(|r| r.trim().to_owned())
             .filter(|r| !r.is_empty());
         msg.stage = None;
-        msg.content = msg.content.trim().to_owned();
+        if let Some(region) = &screen {
+            self.guide(&mut msg, region, &mut guided);
+        }
+        msg.content = wisp_screen::guide::strip_markers(&msg.content)
+            .trim()
+            .to_owned();
         if msg.status == MessageStatus::Complete && msg.content.is_empty() {
             msg.status = MessageStatus::Error;
             msg.error =

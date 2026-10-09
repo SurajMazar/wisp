@@ -1,9 +1,11 @@
 import type { Message } from "@wisp/contracts";
-import { CheckIcon, CopyIcon, RegenerateIcon, SpeakIcon, WispMark } from "@wisp/icons";
+import { CheckIcon, CopyIcon, PointIcon, RegenerateIcon, SpeakIcon, WispMark } from "@wisp/icons";
 import { Button, cn } from "@wisp/ui";
 import { useState } from "react";
 import { Link } from "react-router";
 import { copyText } from "../../lib/clipboard";
+import { stripMarkers } from "../../lib/guidance";
+import { ipc } from "../../services/ipc";
 import { useConversationStore } from "../../stores/conversationStore";
 import { useVoiceStore } from "../../stores/voiceStore";
 import { ReasoningBlock, StepTrail } from "./AnswerProgress";
@@ -75,6 +77,31 @@ function Actions({ m, onRegenerate }: { m: Message; onRegenerate?: () => void })
       <span className="ml-1.5">
         <Meta m={m} />
       </span>
+    </div>
+  );
+}
+
+/** What the answer pointed at on screen; click to show it again. */
+function GuidanceChips({ m }: { m: Message }) {
+  const show = () =>
+    void ipc()
+      .call("conversation.showGuidance", { id: m.id })
+      .catch(() => {});
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <span className="text-xs text-text-faint">Pointed at</span>
+      {(m.guidance ?? []).map((g, i) => (
+        <button
+          key={`${g.label}-${i}`}
+          type="button"
+          onClick={show}
+          title="Show on screen"
+          className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs text-text hover:bg-accent/20"
+        >
+          <PointIcon size={11} />
+          {g.label || "this spot"}
+        </button>
+      ))}
     </div>
   );
 }
@@ -166,7 +193,8 @@ export function MessageList({
             <div className="min-w-0 flex-1">
               <StepTrail m={m} steps={progress[m.id] ?? []} />
               <ReasoningBlock m={m} steps={progress[m.id] ?? []} />
-              {m.content && <RichText text={m.content} streaming={m.status === "streaming"} />}
+              {m.content && <RichText text={stripMarkers(m.content)} streaming={m.status === "streaming"} />}
+              {m.guidance && m.guidance.length > 0 && m.status !== "streaming" && <GuidanceChips m={m} />}
               {m.status === "cancelled" && <p className="mt-1 text-xs text-text-faint">Stopped</p>}
               {m.status === "error" && (
                 <ErrorBlock

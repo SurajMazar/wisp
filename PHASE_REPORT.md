@@ -315,3 +315,32 @@ conversation routing fix.
 ## Stop Gate 9
 Automated portions PASS; manual checklist (Phase 9) pending.
 
+---
+
+# Phase 10 — Visual Guidance (2026-10-09)
+
+## Summary
+Answers can show where things are: the target is highlighted and labeled on screen, and the buddy flies over to
+point at it, while the answer is still streaming.
+
+## Implemented
+- Contracts: `Annotation` (arrow, circle, rectangle, highlight, spotlight, label, pointer), `GuidanceShow`,
+  `GuidanceTarget` (element / text / coordinates); `host.guidance.show|clear`; `conversation.showGuidance`;
+  `Message.guidance` (persisted)
+- `wisp-screen::guide`: marker parsing, display/speech stripping, label resolution, coordinate mapping, show plan
+- Engine: pointing instruction added when there is screen context; incremental resolution during streaming;
+  screen region cached per focus (JSON, no pixels) so follow-ups can point too
+- Host: `GuidanceOverlayController` (per-display click-through overlay, animated stroke, glow pulse, labels,
+  ripple pointer, Esc/click/invocation/timeout dismissal, Reduce Motion), `BuddyController.point(at:)` flight
+- UI: markers hidden while streaming; "Pointed at" chips replay guidance
+
+## Tests Added
+- Rust: marker parsing/stripping, label resolution (exact element over sentence, unknown → none), text narrowing,
+  coordinate mapping (4); engine: answer points at Save → element frame, marker stripped, persisted; speech
+  never reads markers
+- Swift: engine JSON decodes and measures; all annotation kinds render (visually reviewed)
+- React: marker stripping while streaming; chips replay guidance
+
+## Stop Gate 10
+Automated portions PASS; manual checklist (Phase 10) pending.
+

@@ -39,6 +39,133 @@ public enum AnimationLevel: String, Codable, Sendable, Equatable, CaseIterable {
     case expressive = "expressive"
 }
 
+public struct Point: Codable, Sendable, Equatable {
+    public var x: Double
+    public var y: Double
+
+    public init(x: Double, y: Double) {
+        self.x = x
+        self.y = y
+    }
+}
+
+public struct ArrowAnnotation: Codable, Sendable, Equatable {
+    public var from: Point
+    public var label: String?
+    public var to: Point
+
+    public init(from: Point, label: String? = nil, to: Point) {
+        self.from = from
+        self.label = label
+        self.to = to
+    }
+}
+
+public struct CircleAnnotation: Codable, Sendable, Equatable {
+    public var center: Point
+    public var label: String?
+    public var radius: Double
+
+    public init(center: Point, label: String? = nil, radius: Double) {
+        self.center = center
+        self.label = label
+        self.radius = radius
+    }
+}
+
+public struct Rect: Codable, Sendable, Equatable {
+    public var height: Double
+    public var width: Double
+    public var x: Double
+    public var y: Double
+
+    public init(height: Double, width: Double, x: Double, y: Double) {
+        self.height = height
+        self.width = width
+        self.x = x
+        self.y = y
+    }
+}
+
+public struct RectAnnotation: Codable, Sendable, Equatable {
+    public var label: String?
+    public var rect: Rect
+
+    public init(label: String? = nil, rect: Rect) {
+        self.label = label
+        self.rect = rect
+    }
+}
+
+public struct LabelAnnotation: Codable, Sendable, Equatable {
+    public var at: Point
+    public var text: String
+
+    public init(at: Point, text: String) {
+        self.at = at
+        self.text = text
+    }
+}
+
+/// One drawing on the guidance overlay.
+public enum Annotation: Codable, Sendable, Equatable {
+    case arrow(ArrowAnnotation)
+    case circle(CircleAnnotation)
+    case rectangle(RectAnnotation)
+    case highlight(RectAnnotation)
+    case spotlight(RectAnnotation)
+    case label(LabelAnnotation)
+    case pointer(LabelAnnotation)
+
+    private enum CodingKeys: String, CodingKey {
+        case tag = "type"
+        case content = "data"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let tag = try c.decode(String.self, forKey: .tag)
+        switch tag {
+        case "arrow": self = .arrow(try c.decode(ArrowAnnotation.self, forKey: .content))
+        case "circle": self = .circle(try c.decode(CircleAnnotation.self, forKey: .content))
+        case "rectangle": self = .rectangle(try c.decode(RectAnnotation.self, forKey: .content))
+        case "highlight": self = .highlight(try c.decode(RectAnnotation.self, forKey: .content))
+        case "spotlight": self = .spotlight(try c.decode(RectAnnotation.self, forKey: .content))
+        case "label": self = .label(try c.decode(LabelAnnotation.self, forKey: .content))
+        case "pointer": self = .pointer(try c.decode(LabelAnnotation.self, forKey: .content))
+        default:
+            throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown Annotation variant \(tag)")
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .arrow(let v):
+            try c.encode("arrow", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .circle(let v):
+            try c.encode("circle", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .rectangle(let v):
+            try c.encode("rectangle", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .highlight(let v):
+            try c.encode("highlight", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .spotlight(let v):
+            try c.encode("spotlight", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .label(let v):
+            try c.encode("label", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .pointer(let v):
+            try c.encode("pointer", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        }
+    }
+}
+
 public struct AppInfo: Codable, Sendable, Equatable {
     public var coreVersion: String
     public var dataDir: String
@@ -464,20 +591,6 @@ public struct AudioChunk: Codable, Sendable, Equatable {
     }
 }
 
-public struct Rect: Codable, Sendable, Equatable {
-    public var height: Double
-    public var width: Double
-    public var x: Double
-    public var y: Double
-
-    public init(height: Double, width: Double, x: Double, y: Double) {
-        self.height = height
-        self.width = width
-        self.x = x
-        self.y = y
-    }
-}
-
 /// One normalized accessibility element. Secure text field values are never populated.
 public struct AxNode: Codable, Sendable, Equatable {
     public var actions: [String]?
@@ -521,16 +634,6 @@ public struct AxContext: Codable, Sendable, Equatable {
         self.nodes = nodes
         self.summary = summary
         self.underPointer = underPointer
-    }
-}
-
-public struct Point: Codable, Sendable, Equatable {
-    public var x: Double
-    public var y: Double
-
-    public init(x: Double, y: Double) {
-        self.x = x
-        self.y = y
     }
 }
 
@@ -667,6 +770,25 @@ public struct FocusAttachment: Codable, Sendable, Equatable {
     }
 }
 
+public enum TargetSource: String, Codable, Sendable, Equatable, CaseIterable {
+    case element = "element"
+    case text = "text"
+    case coordinates = "coordinates"
+}
+
+/// Something on screen an answer pointed at, resolved to where it is.
+public struct GuidanceTarget: Codable, Sendable, Equatable {
+    public var label: String
+    public var rect: Rect
+    public var source: TargetSource
+
+    public init(label: String, rect: Rect, source: TargetSource) {
+        self.label = label
+        self.rect = rect
+        self.source = source
+    }
+}
+
 public enum Locality: String, Codable, Sendable, Equatable, CaseIterable {
     case local = "local"
     case cloud = "cloud"
@@ -703,6 +825,7 @@ public struct Message: Codable, Sendable, Equatable {
     public var error: String?
     public var errorDetails: String?
     public var focus: FocusAttachment?
+    public var guidance: [GuidanceTarget]?
     public var id: String
     public var latencyMs: UInt32?
     public var locality: Locality?
@@ -714,7 +837,7 @@ public struct Message: Codable, Sendable, Equatable {
     public var stage: MessageStage?
     public var status: MessageStatus
 
-    public init(content: String, context: ContextInfo? = nil, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, reasoning: String? = nil, reasoningMs: UInt32? = nil, role: MessageRole, stage: MessageStage? = nil, status: MessageStatus) {
+    public init(content: String, context: ContextInfo? = nil, conversationId: String, createdAtMs: Int64, error: String? = nil, errorDetails: String? = nil, focus: FocusAttachment? = nil, guidance: [GuidanceTarget]? = nil, id: String, latencyMs: UInt32? = nil, locality: Locality? = nil, model: ModelRef? = nil, modelName: String? = nil, reasoning: String? = nil, reasoningMs: UInt32? = nil, role: MessageRole, stage: MessageStage? = nil, status: MessageStatus) {
         self.content = content
         self.context = context
         self.conversationId = conversationId
@@ -722,6 +845,7 @@ public struct Message: Codable, Sendable, Equatable {
         self.error = error
         self.errorDetails = errorDetails
         self.focus = focus
+        self.guidance = guidance
         self.id = id
         self.latencyMs = latencyMs
         self.locality = locality
@@ -935,6 +1059,20 @@ public struct FocusStarted: Codable, Sendable, Equatable {
 
     public init(kind: FocusKind) {
         self.kind = kind
+    }
+}
+
+public struct GuidanceShow: Codable, Sendable, Equatable {
+    public var annotations: [Annotation]
+    public var buddyTarget: Point?
+    public var durationMs: UInt32
+    public var id: String
+
+    public init(annotations: [Annotation], buddyTarget: Point? = nil, durationMs: UInt32, id: String) {
+        self.annotations = annotations
+        self.buddyTarget = buddyTarget
+        self.durationMs = durationMs
+        self.id = id
     }
 }
 
@@ -1632,7 +1770,10 @@ public enum IPCMethods {
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
     public static let conversationRegenerate = IPCMethod<RegenerateParams, Message>(name: "conversation.regenerate", target: .core)
+    public static let conversationShowGuidance = IPCMethod<IdParams, Empty>(name: "conversation.showGuidance", target: .core)
     public static let hostClipboardWriteText = IPCMethod<ClipboardText, Empty>(name: "host.clipboard.writeText", target: .host)
+    public static let hostGuidanceShow = IPCMethod<GuidanceShow, Empty>(name: "host.guidance.show", target: .host)
+    public static let hostGuidanceClear = IPCMethod<Empty, Empty>(name: "host.guidance.clear", target: .host)
     public static let hostVoiceStart = IPCMethod<HostVoiceStartParams, Empty>(name: "host.voice.start", target: .host)
     public static let hostVoiceStop = IPCMethod<Empty, VoiceFinishResult>(name: "host.voice.stop", target: .host)
     public static let hostVoiceStopSpeaking = IPCMethod<Empty, Empty>(name: "host.voice.stopSpeaking", target: .host)
@@ -1690,7 +1831,10 @@ public enum IPCMethods {
         "conversation.pin": .core,
         "conversation.delete": .core,
         "conversation.regenerate": .core,
+        "conversation.showGuidance": .core,
         "host.clipboard.writeText": .host,
+        "host.guidance.show": .host,
+        "host.guidance.clear": .host,
         "host.voice.start": .host,
         "host.voice.stop": .host,
         "host.voice.stopSpeaking": .host,

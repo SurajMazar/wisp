@@ -5,6 +5,7 @@
 //! or an image whose size doesn't match the crop at the display's scale, is rejected.
 
 pub mod describe;
+pub mod guide;
 
 use wisp_common::geometry::Rect;
 use wisp_ipc::types::focus::{FocusKind, FocusRegion};

@@ -26,6 +26,8 @@ public final class BuddyController {
     private var previewTask: Task<Void, Never>?
 
     public private(set) var state: AssistantState = .idle
+    /// Where the buddy is pointing during guidance (AppKit global points), and until when.
+    private var pointing: (target: CGPoint, until: Date)?
     private var summoned = false
     private var suppressed = false
 
@@ -77,6 +79,22 @@ public final class BuddyController {
         updateVisibility()
     }
 
+    /// Fly to `target` (AppKit global points) and point at it, then return to the pointer.
+    public func point(at target: CGPoint, for duration: TimeInterval) {
+        pointing = (target, Date().addingTimeInterval(duration))
+        lastMove = Date()
+        updateVisibility()
+        startTimer(fast: true)
+    }
+
+    public func stopPointing() {
+        guard pointing != nil else { return }
+        pointing = nil
+        lastMove = Date()
+        updateVisibility()
+        startTimer(fast: true)
+    }
+
     /// Hide while the assistant panel is expanded from the buddy.
     public func setSuppressed(_ s: Bool) {
         suppressed = s
@@ -119,7 +137,9 @@ public final class BuddyController {
     // MARK: Visibility & motion
 
     private var shouldShow: Bool {
-        guard settings.enabled, !suppressed else { return false }
+        guard settings.enabled else { return false }
+        if pointing != nil { return true }
+        guard !suppressed else { return false }
         return settings.visibility == .always || summoned || state != .idle
     }
 
@@ -152,12 +172,18 @@ public final class BuddyController {
     }
 
     private func tick() {
-        let cursor = NSEvent.mouseLocation
         let now = Date()
+        if let p = pointing, now > p.until {
+            pointing = nil
+            lastMove = now
+            updateVisibility()
+        }
+        // While pointing, the buddy rests beside the target exactly as it rests beside the pointer.
+        let cursor = pointing?.target ?? NSEvent.mouseLocation
         let moved = cursor != lastCursor
         if moved { lastMove = now; lastCursor = cursor }
         // Drop to 10 Hz once the pointer has rested and the buddy has settled.
-        if !moved, now.timeIntervalSince(lastMove) > 1, fastTicks { startTimer(fast: false); return }
+        if !moved, pointing == nil, now.timeIntervalSince(lastMove) > 1, fastTicks { startTimer(fast: false); return }
         if moved, !fastTicks { startTimer(fast: true) }
 
         guard let screen = NSScreen.screens.first(where: { NSMouseInRect(cursor, $0.frame, false) }) ?? NSScreen.main else { return }
@@ -168,7 +194,7 @@ public final class BuddyController {
             lastScreen = displayID
         }
         let size = window.frame.size
-        let center = motion.step(cursor: cursor, size: size, bounds: screen.frame, smoothing: smoothing)
+        let center = motion.step(cursor: cursor, size: size, bounds: screen.frame, smoothing: pointing != nil && !reduceMotion ? 0.14 : smoothing)
         let origin = NSPoint(x: (center.x - size.width / 2).rounded(), y: (center.y - size.height / 2).rounded())
         if window.frame.origin != origin { window.setFrameOrigin(origin) }
 

@@ -147,6 +147,7 @@ mod tests {
             reasoning: None,
             reasoning_ms: None,
             context: None,
+            guidance: vec![],
             stage: None,
             created_at_ms: 0,
         }

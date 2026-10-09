@@ -5,6 +5,7 @@ pub mod app;
 pub mod conversations;
 pub mod cursor;
 pub mod focus;
+pub mod guidance;
 pub mod invocation;
 pub mod models;
 pub mod settings;

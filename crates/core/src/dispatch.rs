@@ -216,6 +216,13 @@ impl Core {
                 self.call::<ConversationSend, _, _>(params, |c, p| async move { c.send(p).await })
                     .await
             }
+            wisp_ipc::methods::ConversationShowGuidance::NAME => {
+                self.call::<wisp_ipc::methods::ConversationShowGuidance, _, _>(
+                    params,
+                    |c, p| async move { c.show_guidance(&p.id).await },
+                )
+                .await
+            }
             wisp_ipc::methods::ConversationRegenerate::NAME => {
                 self.call::<wisp_ipc::methods::ConversationRegenerate, _, _>(
                     params,

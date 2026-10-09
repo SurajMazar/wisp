@@ -14,6 +14,7 @@ final class AssistantCoordinator {
     private let router: IPCRouter
     private let invocation: InvocationController
     let buddy = BuddyController()
+    let guidance = GuidanceOverlayController()
     private var panel: FloatingAssistantPanel?
     private(set) var state: AssistantState = .idle
     /// The panel was opened by a toggle invocation, so ending that invocation closes it.
@@ -22,6 +23,7 @@ final class AssistantCoordinator {
     init(router: IPCRouter, invocation: InvocationController) {
         self.router = router
         self.invocation = invocation
+        guidance.onDismiss = { [weak self] _ in self?.buddy.stopPointing() }
     }
 
     var isExpanded: Bool { panel?.isExpanded ?? false }
@@ -30,6 +32,23 @@ final class AssistantCoordinator {
 
     func apply(_ settings: CursorSettings) {
         buddy.apply(settings)
+        guidance.tint = BuddyTheme.color(for: settings.theme, custom: settings.customColor)
+    }
+
+    // MARK: Guidance
+
+    /// Draw guidance and send the buddy to point at the target (spec §54).
+    func showGuidance(_ g: GuidanceShow) {
+        guidance.show(g)
+        if let t = g.buddyTarget {
+            let p = FocusGeometry.appKitPoint(fromCG: CGPoint(x: t.x, y: t.y), primaryHeight: Displays.primaryHeight)
+            buddy.point(at: p, for: Double(max(1500, min(g.durationMs, 60_000))) / 1000)
+        }
+    }
+
+    func clearGuidance() {
+        guidance.clear()
+        buddy.stopPointing()
     }
 
     // MARK: Expansion
@@ -59,6 +78,7 @@ final class AssistantCoordinator {
     // MARK: Invocation
 
     func invocationStarted(behavior: InvocationBehavior) {
+        clearGuidance()
         switch behavior {
         case .hold, .pushToTalk:
             buddy.summon(true)

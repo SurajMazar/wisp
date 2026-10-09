@@ -162,6 +162,17 @@ enum HostMethods {
             return Empty()
         }
 
+        router.register(IPCMethods.hostGuidanceShow) { params in
+            guard params.annotations.count <= 20 else { throw IpcError.invalidRequest("at most 20 annotations") }
+            assistant.showGuidance(params)
+            return Empty()
+        }
+
+        router.register(IPCMethods.hostGuidanceClear) { _ in
+            assistant.clearGuidance()
+            return Empty()
+        }
+
         router.register(IPCMethods.hostCursorPreview) { params in
             guard (300...5_000).contains(params.stepMs), (1...12).contains(params.states.count) else {
                 throw IpcError.invalidRequest("stepMs must be 300–5000 and 1–12 states")

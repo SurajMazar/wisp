@@ -9,8 +9,8 @@ use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
-    accessibility::*, app::*, conversations::*, cursor::*, focus::*, invocation::*, models::*,
-    settings::*, voice::*,
+    accessibility::*, app::*, conversations::*, cursor::*, focus::*, guidance::*, invocation::*,
+    models::*, settings::*, voice::*,
 };
 
 /// Which side implements a method.
@@ -169,8 +169,14 @@ define_methods! {
     ConversationDelete = "conversation.delete", Core, IdParams => Empty;
     /// Answer the same question again, replacing an assistant message.
     ConversationRegenerate = "conversation.regenerate", Core, RegenerateParams => Message;
+    /// Show an answer's guidance on screen again.
+    ConversationShowGuidance = "conversation.showGuidance", Core, IdParams => Empty;
     /// Put text on the clipboard (Copy buttons).
     HostClipboardWrite = "host.clipboard.writeText", Host, ClipboardText => Empty;
+    /// Draw guidance on screen and fly the buddy to the target (spec §54).
+    HostGuidanceShow = "host.guidance.show", Host, GuidanceShow => Empty;
+    /// Remove any guidance from the screen.
+    HostGuidanceClear = "host.guidance.clear", Host, Empty => Empty;
 
     /// Start listening (push-to-talk from the panel or a microphone test).
     HostVoiceStart = "host.voice.start", Host, HostVoiceStartParams => Empty;

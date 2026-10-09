@@ -37,6 +37,126 @@
       ],
       "type": "string"
     },
+    "Annotation": {
+      "description": "One drawing on the guidance overlay.",
+      "oneOf": [
+        {
+          "properties": {
+            "data": {
+              "$ref": "#/definitions/ArrowAnnotation"
+            },
+            "type": {
+              "const": "arrow",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "data": {
+              "$ref": "#/definitions/CircleAnnotation"
+            },
+            "type": {
+              "const": "circle",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "data": {
+              "$ref": "#/definitions/RectAnnotation"
+            },
+            "type": {
+              "const": "rectangle",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Tinted box with a glowing edge.",
+          "properties": {
+            "data": {
+              "$ref": "#/definitions/RectAnnotation"
+            },
+            "type": {
+              "const": "highlight",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Dims everything except the rectangle.",
+          "properties": {
+            "data": {
+              "$ref": "#/definitions/RectAnnotation"
+            },
+            "type": {
+              "const": "spotlight",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "data": {
+              "$ref": "#/definitions/LabelAnnotation"
+            },
+            "type": {
+              "const": "label",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A pulsing cursor indicator at a point.",
+          "properties": {
+            "data": {
+              "$ref": "#/definitions/LabelAnnotation"
+            },
+            "type": {
+              "const": "pointer",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "AppInfo": {
       "additionalProperties": false,
       "properties": {
@@ -286,6 +406,28 @@
       "required": [
         "name",
         "pid"
+      ],
+      "type": "object"
+    },
+    "ArrowAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "#/definitions/Point"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "to": {
+          "$ref": "#/definitions/Point"
+        }
+      },
+      "required": [
+        "from",
+        "to"
       ],
       "type": "object"
     },
@@ -668,6 +810,29 @@
         "unsupported"
       ],
       "type": "string"
+    },
+    "CircleAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "center": {
+          "$ref": "#/definitions/Point"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "radius": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "center",
+        "radius"
+      ],
+      "type": "object"
     },
     "ClipboardText": {
       "additionalProperties": false,
@@ -1382,6 +1547,65 @@
         }
       ]
     },
+    "GuidanceShow": {
+      "additionalProperties": false,
+      "properties": {
+        "annotations": {
+          "items": {
+            "$ref": "#/definitions/Annotation"
+          },
+          "type": "array"
+        },
+        "buddyTarget": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Point"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where the buddy flies to point (it returns to the pointer afterwards)."
+        },
+        "durationMs": {
+          "description": "Auto-dismiss after this long; Esc, a click or the next invocation dismiss sooner.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "annotations",
+        "durationMs"
+      ],
+      "type": "object"
+    },
+    "GuidanceTarget": {
+      "additionalProperties": false,
+      "description": "Something on screen an answer pointed at, resolved to where it is.",
+      "properties": {
+        "label": {
+          "description": "What the model called it (e.g. \"Save\").",
+          "type": "string"
+        },
+        "rect": {
+          "$ref": "#/definitions/Rect"
+        },
+        "source": {
+          "$ref": "#/definitions/TargetSource"
+        }
+      },
+      "required": [
+        "label",
+        "rect",
+        "source"
+      ],
+      "type": "object"
+    },
     "HostVoiceStartParams": {
       "additionalProperties": false,
       "properties": {
@@ -1650,6 +1874,22 @@
       ],
       "type": "object"
     },
+    "LabelAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "$ref": "#/definitions/Point"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "text"
+      ],
+      "type": "object"
+    },
     "LatestFocus": {
       "additionalProperties": false,
       "properties": {
@@ -1719,6 +1959,13 @@
               "type": "null"
             }
           ]
+        },
+        "guidance": {
+          "description": "Things on screen this answer pointed at (shown with the guidance overlay).",
+          "items": {
+            "$ref": "#/definitions/GuidanceTarget"
+          },
+          "type": "array"
         },
         "id": {
           "type": "string"
@@ -2408,6 +2655,24 @@
       ],
       "type": "object"
     },
+    "RectAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rect": {
+          "$ref": "#/definitions/Rect"
+        }
+      },
+      "required": [
+        "rect"
+      ],
+      "type": "object"
+    },
     "RegenerateParams": {
       "additionalProperties": false,
       "properties": {
@@ -3043,6 +3308,25 @@
         "done"
       ],
       "type": "object"
+    },
+    "TargetSource": {
+      "oneOf": [
+        {
+          "const": "element",
+          "description": "Matched a UI element from Accessibility (exact frame).",
+          "type": "string"
+        },
+        {
+          "const": "text",
+          "description": "Matched text read on screen.",
+          "type": "string"
+        },
+        {
+          "const": "coordinates",
+          "description": "Coordinates given by a vision model.",
+          "type": "string"
+        }
+      ]
     },
     "TextLine": {
       "additionalProperties": false,
@@ -3841,9 +4125,39 @@
       "target": "core"
     },
     {
+      "name": "conversation.showGuidance",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
       "name": "host.clipboard.writeText",
       "params": {
         "$ref": "#/definitions/ClipboardText"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.guidance.show",
+      "params": {
+        "$ref": "#/definitions/GuidanceShow"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.guidance.clear",
+      "params": {
+        "$ref": "#/definitions/Empty"
       },
       "result": {
         "$ref": "#/definitions/Empty"
