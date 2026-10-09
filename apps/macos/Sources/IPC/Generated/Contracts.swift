@@ -32,6 +32,224 @@ public struct AccessibilityStatus: Codable, Sendable, Equatable {
     }
 }
 
+/// Hard limits for one run (spec §61).
+public struct AgentLimits: Codable, Sendable, Equatable {
+    public var maxMinutes: UInt32
+    public var maxSteps: UInt32
+    public var maxTokens: UInt32
+    public var maxToolCalls: UInt32
+
+    public init(maxMinutes: UInt32, maxSteps: UInt32, maxTokens: UInt32, maxToolCalls: UInt32) {
+        self.maxMinutes = maxMinutes
+        self.maxSteps = maxSteps
+        self.maxTokens = maxTokens
+        self.maxToolCalls = maxToolCalls
+    }
+}
+
+public struct ModelRef: Codable, Sendable, Equatable {
+    public var model: String
+    public var providerId: String
+
+    public init(model: String, providerId: String) {
+        self.model = model
+        self.providerId = providerId
+    }
+}
+
+public struct AgentDefinition: Codable, Sendable, Equatable {
+    public var avatar: String
+    public var createdAtMs: Int64
+    public var description: String
+    public var enabled: Bool
+    public var id: String
+    public var instructions: String
+    public var lastRunAtMs: Int64?
+    public var limits: AgentLimits
+    public var model: ModelRef?
+    public var name: String
+    public var skills: [String]
+    public var tools: [String]
+    public var updatedAtMs: Int64
+
+    public init(avatar: String, createdAtMs: Int64, description: String, enabled: Bool, id: String, instructions: String, lastRunAtMs: Int64? = nil, limits: AgentLimits, model: ModelRef? = nil, name: String, skills: [String], tools: [String], updatedAtMs: Int64) {
+        self.avatar = avatar
+        self.createdAtMs = createdAtMs
+        self.description = description
+        self.enabled = enabled
+        self.id = id
+        self.instructions = instructions
+        self.lastRunAtMs = lastRunAtMs
+        self.limits = limits
+        self.model = model
+        self.name = name
+        self.skills = skills
+        self.tools = tools
+        self.updatedAtMs = updatedAtMs
+    }
+}
+
+public struct AgentList: Codable, Sendable, Equatable {
+    public var agents: [AgentDefinition]
+
+    public init(agents: [AgentDefinition]) {
+        self.agents = agents
+    }
+}
+
+public enum PlanItemStatus: String, Codable, Sendable, Equatable, CaseIterable {
+    case pending = "pending"
+    case active = "active"
+    case done = "done"
+}
+
+public struct PlanItem: Codable, Sendable, Equatable {
+    public var status: PlanItemStatus
+    public var title: String
+
+    public init(status: PlanItemStatus, title: String) {
+        self.status = status
+        self.title = title
+    }
+}
+
+public enum RunStatus: String, Codable, Sendable, Equatable, CaseIterable {
+    case planning = "planning"
+    case running = "running"
+    case paused = "paused"
+    case completed = "completed"
+    case failed = "failed"
+    case cancelled = "cancelled"
+    case waitingPermission = "waitingPermission"
+    case stuck = "stuck"
+    case needsInput = "needsInput"
+}
+
+public enum StepKind: String, Codable, Sendable, Equatable, CaseIterable {
+    case observe = "observe"
+    case plan = "plan"
+    case act = "act"
+    case verify = "verify"
+    case message = "message"
+}
+
+public enum RunStepStatus: String, Codable, Sendable, Equatable, CaseIterable {
+    case running = "running"
+    case succeeded = "succeeded"
+    case failed = "failed"
+    case skipped = "skipped"
+}
+
+public struct RunStep: Codable, Sendable, Equatable {
+    public var detail: String?
+    public var kind: StepKind
+    public var seq: UInt32
+    public var status: RunStepStatus
+    public var title: String
+
+    public init(detail: String? = nil, kind: StepKind, seq: UInt32, status: RunStepStatus, title: String) {
+        self.detail = detail
+        self.kind = kind
+        self.seq = seq
+        self.status = status
+        self.title = title
+    }
+}
+
+public struct AgentRun: Codable, Sendable, Equatable {
+    public var agentId: String?
+    public var agentName: String
+    public var avatar: String
+    public var conversationId: String?
+    public var finishedAtMs: Int64?
+    public var goal: String
+    public var id: String
+    public var limits: AgentLimits
+    public var note: String?
+    public var plan: [PlanItem]
+    public var startedAtMs: Int64
+    public var status: RunStatus
+    public var steps: [RunStep]
+    public var stepsUsed: UInt32
+    public var tokensUsed: UInt32
+    public var toolCallsUsed: UInt32
+
+    public init(agentId: String? = nil, agentName: String, avatar: String, conversationId: String? = nil, finishedAtMs: Int64? = nil, goal: String, id: String, limits: AgentLimits, note: String? = nil, plan: [PlanItem], startedAtMs: Int64, status: RunStatus, steps: [RunStep], stepsUsed: UInt32, tokensUsed: UInt32, toolCallsUsed: UInt32) {
+        self.agentId = agentId
+        self.agentName = agentName
+        self.avatar = avatar
+        self.conversationId = conversationId
+        self.finishedAtMs = finishedAtMs
+        self.goal = goal
+        self.id = id
+        self.limits = limits
+        self.note = note
+        self.plan = plan
+        self.startedAtMs = startedAtMs
+        self.status = status
+        self.steps = steps
+        self.stepsUsed = stepsUsed
+        self.tokensUsed = tokensUsed
+        self.toolCallsUsed = toolCallsUsed
+    }
+}
+
+public struct AgentRunList: Codable, Sendable, Equatable {
+    public var runs: [AgentRun]
+
+    public init(runs: [AgentRun]) {
+        self.runs = runs
+    }
+}
+
+public struct AgentRunParams: Codable, Sendable, Equatable {
+    public var agentId: String?
+    public var conversationId: String?
+    public var goal: String
+
+    public init(agentId: String? = nil, conversationId: String? = nil, goal: String) {
+        self.agentId = agentId
+        self.conversationId = conversationId
+        self.goal = goal
+    }
+}
+
+public struct AgentRunsParams: Codable, Sendable, Equatable {
+    public var agentId: String?
+    public var limit: UInt32
+
+    public init(agentId: String? = nil, limit: UInt32) {
+        self.agentId = agentId
+        self.limit = limit
+    }
+}
+
+public struct AgentSaveParams: Codable, Sendable, Equatable {
+    public var avatar: String
+    public var description: String
+    public var enabled: Bool
+    public var id: String?
+    public var instructions: String
+    public var limits: AgentLimits
+    public var model: ModelRef?
+    public var name: String
+    public var skills: [String]
+    public var tools: [String]
+
+    public init(avatar: String, description: String, enabled: Bool, id: String? = nil, instructions: String, limits: AgentLimits, model: ModelRef? = nil, name: String, skills: [String], tools: [String]) {
+        self.avatar = avatar
+        self.description = description
+        self.enabled = enabled
+        self.id = id
+        self.instructions = instructions
+        self.limits = limits
+        self.model = model
+        self.name = name
+        self.skills = skills
+        self.tools = tools
+    }
+}
+
 /// How lively the buddy's motion is. Reduced Motion in macOS always wins.
 public enum AnimationLevel: String, Codable, Sendable, Equatable, CaseIterable {
     case minimal = "minimal"
@@ -377,16 +595,6 @@ public struct EndpointConfig: Codable, Sendable, Equatable {
         self.id = id
         self.keychainAccount = keychainAccount
         self.name = name
-    }
-}
-
-public struct ModelRef: Codable, Sendable, Equatable {
-    public var model: String
-    public var providerId: String
-
-    public init(model: String, providerId: String) {
-        self.model = model
-        self.providerId = providerId
     }
 }
 
@@ -1642,6 +1850,25 @@ public struct RouteParams: Codable, Sendable, Equatable {
     }
 }
 
+public enum RunAction: String, Codable, Sendable, Equatable, CaseIterable {
+    case pause = "pause"
+    case resume = "resume"
+    case stop = "stop"
+    case `continue` = "continue"
+}
+
+public struct RunControl: Codable, Sendable, Equatable {
+    public var action: RunAction
+    public var reply: String?
+    public var runId: String
+
+    public init(action: RunAction, reply: String? = nil, runId: String) {
+        self.action = action
+        self.reply = reply
+        self.runId = runId
+    }
+}
+
 public struct ScreenPermissionStatus: Codable, Sendable, Equatable {
     public var screenRecording: PermissionState
 
@@ -1665,6 +1892,7 @@ public struct ScrollArgs: Codable, Sendable, Equatable {
 }
 
 public struct SendParams: Codable, Sendable, Equatable {
+    public var act: Bool
     public var allowCloud: Bool
     public var conversationId: String?
     public var includeFocus: Bool
@@ -1672,7 +1900,8 @@ public struct SendParams: Codable, Sendable, Equatable {
     public var teach: Bool
     public var text: String
 
-    public init(allowCloud: Bool, conversationId: String? = nil, includeFocus: Bool, model: ModelRef? = nil, teach: Bool, text: String) {
+    public init(act: Bool, allowCloud: Bool, conversationId: String? = nil, includeFocus: Bool, model: ModelRef? = nil, teach: Bool, text: String) {
+        self.act = act
         self.allowCloud = allowCloud
         self.conversationId = conversationId
         self.includeFocus = includeFocus
@@ -2287,6 +2516,12 @@ public enum IPCMethods {
     public static let conversationPin = IPCMethod<PinParams, ConversationSummary>(name: "conversation.pin", target: .core)
     public static let conversationDelete = IPCMethod<IdParams, Empty>(name: "conversation.delete", target: .core)
     public static let conversationRegenerate = IPCMethod<RegenerateParams, Message>(name: "conversation.regenerate", target: .core)
+    public static let agentList = IPCMethod<Empty, AgentList>(name: "agent.list", target: .core)
+    public static let agentSave = IPCMethod<AgentSaveParams, AgentDefinition>(name: "agent.save", target: .core)
+    public static let agentDelete = IPCMethod<IdParams, Empty>(name: "agent.delete", target: .core)
+    public static let agentRun = IPCMethod<AgentRunParams, AgentRun>(name: "agent.run", target: .core)
+    public static let agentControl = IPCMethod<RunControl, Empty>(name: "agent.control", target: .core)
+    public static let agentRuns = IPCMethod<AgentRunsParams, AgentRunList>(name: "agent.runs", target: .core)
     public static let teachControl = IPCMethod<LessonControl, Empty>(name: "teach.control", target: .core)
     public static let teachCurrent = IPCMethod<Empty, CurrentLesson>(name: "teach.current", target: .core)
     public static let toolList = IPCMethod<Empty, ToolList>(name: "tool.list", target: .core)
@@ -2358,6 +2593,12 @@ public enum IPCMethods {
         "conversation.pin": .core,
         "conversation.delete": .core,
         "conversation.regenerate": .core,
+        "agent.list": .core,
+        "agent.save": .core,
+        "agent.delete": .core,
+        "agent.run": .core,
+        "agent.control": .core,
+        "agent.runs": .core,
         "teach.control": .core,
         "teach.current": .core,
         "tool.list": .core,
@@ -2410,6 +2651,7 @@ public enum IPCEvents {
     public static let toolApprovalResolved = IPCEvent<ApprovalResolved>(name: "tool.approvalResolved")
     public static let toolCallUpdated = IPCEvent<ToolCallRecord>(name: "tool.callUpdated")
     public static let teachUpdated = IPCEvent<Lesson>(name: "teach.updated")
+    public static let agentRunUpdated = IPCEvent<AgentRun>(name: "agent.runUpdated")
     public static let audioChunk = IPCEvent<AudioChunk>(name: "audio.chunk")
     public static let voiceSpeechChunk = IPCEvent<SpeechChunk>(name: "voice.speechChunk")
     public static let voiceModelProgress = IPCEvent<SpeechModelProgress>(name: "voice.modelProgress")

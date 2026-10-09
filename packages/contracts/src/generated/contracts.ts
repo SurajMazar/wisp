@@ -15,6 +15,122 @@ export const AccessibilityStatus = z.strictObject({
 });
 export type AccessibilityStatus = z.output<typeof AccessibilityStatus>;
 
+/** Hard limits for one run (spec §61). */
+export const AgentLimits = z.strictObject({
+  "maxMinutes": z.number().int().nonnegative().default(10),
+  "maxSteps": z.number().int().nonnegative().default(15),
+  "maxTokens": z.number().int().nonnegative().default(60000),
+  "maxToolCalls": z.number().int().nonnegative().default(25),
+});
+export type AgentLimits = z.output<typeof AgentLimits>;
+
+export const ModelRef = z.strictObject({
+  "model": z.string(),
+  "providerId": z.string(),
+});
+export type ModelRef = z.output<typeof ModelRef>;
+
+export const AgentDefinition = z.strictObject({
+  "avatar": z.string(),
+  "createdAtMs": z.number().int(),
+  "description": z.string(),
+  "enabled": z.boolean(),
+  "id": z.string(),
+  "instructions": z.string(),
+  "lastRunAtMs": z.number().int().nullable().optional(),
+  "limits": AgentLimits,
+  "model": ModelRef.nullable().optional(),
+  "name": z.string(),
+  "skills": z.array(z.string()).default([]),
+  "tools": z.array(z.string()),
+  "updatedAtMs": z.number().int(),
+});
+export type AgentDefinition = z.output<typeof AgentDefinition>;
+
+export const AgentList = z.strictObject({
+  "agents": z.array(AgentDefinition),
+});
+export type AgentList = z.output<typeof AgentList>;
+
+export const PlanItemStatus = z.enum(["pending","active","done"]);
+export type PlanItemStatus = z.output<typeof PlanItemStatus>;
+
+export const PlanItem = z.strictObject({
+  "status": PlanItemStatus,
+  "title": z.string(),
+});
+export type PlanItem = z.output<typeof PlanItem>;
+
+export const RunStatus = z.enum(["planning","running","paused","completed","failed","cancelled","waitingPermission","stuck","needsInput"]);
+export type RunStatus = z.output<typeof RunStatus>;
+
+export const StepKind = z.enum(["observe","plan","act","verify","message"]);
+export type StepKind = z.output<typeof StepKind>;
+
+export const RunStepStatus = z.enum(["running","succeeded","failed","skipped"]);
+export type RunStepStatus = z.output<typeof RunStepStatus>;
+
+export const RunStep = z.strictObject({
+  "detail": z.string().nullable().optional(),
+  "kind": StepKind,
+  "seq": z.number().int().nonnegative(),
+  "status": RunStepStatus,
+  "title": z.string(),
+});
+export type RunStep = z.output<typeof RunStep>;
+
+export const AgentRun = z.strictObject({
+  "agentId": z.string().nullable().optional(),
+  "agentName": z.string(),
+  "avatar": z.string(),
+  "conversationId": z.string().nullable().optional(),
+  "finishedAtMs": z.number().int().nullable().optional(),
+  "goal": z.string(),
+  "id": z.string(),
+  "limits": AgentLimits,
+  "note": z.string().nullable().optional(),
+  "plan": z.array(PlanItem),
+  "startedAtMs": z.number().int(),
+  "status": RunStatus,
+  "steps": z.array(RunStep),
+  "stepsUsed": z.number().int().nonnegative(),
+  "tokensUsed": z.number().int().nonnegative(),
+  "toolCallsUsed": z.number().int().nonnegative(),
+});
+export type AgentRun = z.output<typeof AgentRun>;
+
+export const AgentRunList = z.strictObject({
+  "runs": z.array(AgentRun),
+});
+export type AgentRunList = z.output<typeof AgentRunList>;
+
+export const AgentRunParams = z.strictObject({
+  "agentId": z.string().nullable().optional(),
+  "conversationId": z.string().nullable().optional(),
+  "goal": z.string(),
+});
+export type AgentRunParams = z.output<typeof AgentRunParams>;
+
+export const AgentRunsParams = z.strictObject({
+  "agentId": z.string().nullable().optional(),
+  "limit": z.number().int().nonnegative(),
+});
+export type AgentRunsParams = z.output<typeof AgentRunsParams>;
+
+export const AgentSaveParams = z.strictObject({
+  "avatar": z.string().default(""),
+  "description": z.string().default(""),
+  "enabled": z.boolean().default(true),
+  "id": z.string().nullable().optional(),
+  "instructions": z.string().default(""),
+  "limits": AgentLimits.default(() => AgentLimits.parse({"maxMinutes":10,"maxSteps":15,"maxTokens":60000,"maxToolCalls":25})),
+  "model": ModelRef.nullable().optional(),
+  "name": z.string(),
+  "skills": z.array(z.string()).default([]),
+  "tools": z.array(z.string()).default([]),
+});
+export type AgentSaveParams = z.output<typeof AgentSaveParams>;
+
 /** How lively the buddy's motion is. Reduced Motion in macOS always wins. */
 export const AnimationLevel = z.enum(["minimal","normal","expressive"]);
 export type AnimationLevel = z.output<typeof AnimationLevel>;
@@ -184,12 +300,6 @@ export const EndpointConfig = z.strictObject({
   "name": z.string(),
 });
 export type EndpointConfig = z.output<typeof EndpointConfig>;
-
-export const ModelRef = z.strictObject({
-  "model": z.string(),
-  "providerId": z.string(),
-});
-export type ModelRef = z.output<typeof ModelRef>;
 
 export const ModelSettings = z.strictObject({
   "contextLength": z.number().int().nonnegative().default(8192),
@@ -885,6 +995,16 @@ export const RouteParams = z.strictObject({
 });
 export type RouteParams = z.output<typeof RouteParams>;
 
+export const RunAction = z.enum(["pause","resume","stop","continue"]);
+export type RunAction = z.output<typeof RunAction>;
+
+export const RunControl = z.strictObject({
+  "action": RunAction,
+  "reply": z.string().nullable().optional(),
+  "runId": z.string(),
+});
+export type RunControl = z.output<typeof RunControl>;
+
 export const ScreenPermissionStatus = z.strictObject({
   "screenRecording": PermissionState,
 });
@@ -899,6 +1019,7 @@ export const ScrollArgs = z.strictObject({
 export type ScrollArgs = z.output<typeof ScrollArgs>;
 
 export const SendParams = z.strictObject({
+  "act": z.boolean().default(false),
   "allowCloud": z.boolean().default(false),
   "conversationId": z.string().nullable().optional(),
   "includeFocus": z.boolean().default(false),
@@ -1176,6 +1297,12 @@ export const methods = {
   "conversation.pin": { target: "core", params: PinParams, result: ConversationSummary },
   "conversation.delete": { target: "core", params: IdParams, result: Empty },
   "conversation.regenerate": { target: "core", params: RegenerateParams, result: Message },
+  "agent.list": { target: "core", params: Empty, result: AgentList },
+  "agent.save": { target: "core", params: AgentSaveParams, result: AgentDefinition },
+  "agent.delete": { target: "core", params: IdParams, result: Empty },
+  "agent.run": { target: "core", params: AgentRunParams, result: AgentRun },
+  "agent.control": { target: "core", params: RunControl, result: Empty },
+  "agent.runs": { target: "core", params: AgentRunsParams, result: AgentRunList },
   "teach.control": { target: "core", params: LessonControl, result: Empty },
   "teach.current": { target: "core", params: Empty, result: CurrentLesson },
   "tool.list": { target: "core", params: Empty, result: ToolList },
@@ -1227,6 +1354,7 @@ export const events = {
   "tool.approvalResolved": ApprovalResolved,
   "tool.callUpdated": ToolCallRecord,
   "teach.updated": Lesson,
+  "agent.runUpdated": AgentRun,
   "audio.chunk": AudioChunk,
   "voice.speechChunk": SpeechChunk,
   "voice.modelProgress": SpeechModelProgress,

@@ -2,11 +2,12 @@ import type { AssistantState } from "@wisp/contracts";
 import { CloseIcon, PlusIcon, WispMark } from "@wisp/icons";
 import { useEffect } from "react";
 import { ChatThread } from "../../components/chat/ChatThread";
-import { Composer } from "../../components/chat/Composer";
+import { Composer, type SendMode } from "../../components/chat/Composer";
 import { useComposerFocus } from "../../components/chat/useComposerFocus";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { streamingMessage, useConversationStore } from "../../stores/conversationStore";
 import { useFocusStore } from "../../stores/focusStore";
+import { RunStack } from "../../components/agents/AgentRunCard";
 import { LessonCard } from "../../components/teach/LessonCard";
 import { ApprovalStack } from "../../components/tools/ApprovalCard";
 import { FocusActions } from "./FocusActions";
@@ -44,7 +45,7 @@ export function AssistantPanel() {
     return () => window.removeEventListener("keydown", onKey);
   }, [dismiss]);
 
-  const ask = async (text: string, opts?: { teach?: boolean }) => {
+  const ask = async (text: string, opts?: SendMode) => {
     const id = await send(text, { conversationId: panelId, includeFocus, ...opts });
     if (id) {
       setPanel(id);
@@ -112,6 +113,9 @@ export function AssistantPanel() {
         <ApprovalStack className="mb-2" />
         <div className="mb-2 empty:hidden">
           <LessonCard compact />
+        </div>
+        <div className="mb-2 empty:hidden">
+          <RunStack compact />
         </div>
         {error && (
           <p className="mb-1 px-1 text-xs text-danger" role="alert">

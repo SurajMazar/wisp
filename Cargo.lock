@@ -2292,10 +2292,9 @@ dependencies = [
 name = "wisp-agents"
 version = "0.1.0"
 dependencies = [
- "wisp-ai",
  "wisp-common",
  "wisp-ipc",
- "wisp-permissions",
+ "wisp-screen",
 ]
 
 [[package]]
@@ -2372,6 +2371,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "wisp-accessibility",
+ "wisp-agents",
  "wisp-ai",
  "wisp-audio",
  "wisp-common",

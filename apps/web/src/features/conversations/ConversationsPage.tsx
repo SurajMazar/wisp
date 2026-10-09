@@ -4,8 +4,9 @@ import { Button, cn } from "@wisp/ui";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ChatThread } from "../../components/chat/ChatThread";
-import { Composer } from "../../components/chat/Composer";
+import { Composer, type SendMode } from "../../components/chat/Composer";
 import { useComposerFocus } from "../../components/chat/useComposerFocus";
+import { RunStack } from "../../components/agents/AgentRunCard";
 import { LessonCard } from "../../components/teach/LessonCard";
 import { dayGroup } from "../../lib/time";
 import { streamingMessage, useConversationStore } from "../../stores/conversationStore";
@@ -89,7 +90,7 @@ export function ConversationsPage() {
     if (id) void open(id).catch(() => navigate("/conversations", { replace: true }));
   }, [id, open, navigate]);
 
-  const ask = (t: string, opts?: { teach?: boolean }) =>
+  const ask = (t: string, opts?: SendMode) =>
     void send(t, { conversationId: id ?? null, includeFocus, ...opts }).then((cid) => {
       if (!cid) return;
       consumed();
@@ -186,6 +187,9 @@ export function ConversationsPage() {
             <div className="mx-auto w-full max-w-[720px] px-6 pb-5 pt-1">
               <div className="mb-2 empty:hidden">
                 <LessonCard conversationId={id} />
+              </div>
+              <div className="mb-2 empty:hidden">
+                <RunStack conversationId={id} />
               </div>
               {error && (
                 <p role="alert" className="mb-1.5 px-2 text-sm text-danger">

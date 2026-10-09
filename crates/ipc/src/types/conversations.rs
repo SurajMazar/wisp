@@ -198,6 +198,9 @@ pub struct SendParams {
     /// Start a guided lesson for this goal instead of answering (spec §53).
     #[serde(default)]
     pub teach: bool,
+    /// Carry out this goal on the computer as an agent run instead of answering (spec §60).
+    #[serde(default)]
+    pub act: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

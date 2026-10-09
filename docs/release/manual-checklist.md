@@ -139,5 +139,16 @@ Prerequisite: Screen Recording (to watch), Accessibility (to notice steps by its
 - [ ] When the goal is reached, the card says Done with a short note. Wisp never clicks or types by itself during a lesson.
 - [ ] Without Accessibility, the card says to press "I did it" after each step.
 
+## Phase 13 — Agents
+Prerequisite: Computer control on (Settings), Accessibility, Screen Recording.
+- [ ] Agents → start from the Note Taker template; Run with "Make a note called Groceries with milk and eggs".
+- [ ] The run card shows the plan (○ / ● / ✓) and each action live; every risky action asks in an approval card first.
+- [ ] Pause stops it between steps; Resume continues; Stop ends it and clears any highlight.
+- [ ] Deny an action: the run stops and says why — it never tries another way around.
+- [ ] Give an agent only read-only tools and ask it to click something: it stops and says it needs permission for “click”.
+- [ ] In the chat, turn on "Do it" and ask for a small task: the answer is the run's summary when it's done.
+- [ ] Watch for loops: an agent repeating itself pauses with "The assistant may be stuck…" and Continue / Stop.
+- [ ] Activity lists every action an agent took.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

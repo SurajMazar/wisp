@@ -307,6 +307,7 @@ impl Core {
         let sent = self
             .send(SendParams {
                 teach: false,
+                act: false,
                 conversation_id: p.conversation_id,
                 text: text.clone(),
                 include_focus: p.include_focus,

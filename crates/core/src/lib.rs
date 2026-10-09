@@ -1,5 +1,6 @@
 //! Composition root of `wisp-core`: wires the database, event bus, dispatcher and transport.
 
+pub mod agents;
 pub mod ai;
 pub mod config;
 pub mod context;

@@ -9,8 +9,8 @@ use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
-    accessibility::*, app::*, conversations::*, cursor::*, focus::*, guidance::*, invocation::*,
-    models::*, settings::*, teacher::*, tools::*, voice::*,
+    accessibility::*, agents::*, app::*, conversations::*, cursor::*, focus::*, guidance::*,
+    invocation::*, models::*, settings::*, teacher::*, tools::*, voice::*,
 };
 
 /// Which side implements a method.
@@ -169,6 +169,17 @@ define_methods! {
     ConversationDelete = "conversation.delete", Core, IdParams => Empty;
     /// Answer the same question again, replacing an assistant message.
     ConversationRegenerate = "conversation.regenerate", Core, RegenerateParams => Message;
+    /// Saved agents.
+    AgentListMethod = "agent.list", Core, Empty => AgentList;
+    /// Create or update an agent.
+    AgentSave = "agent.save", Core, AgentSaveParams => AgentDefinition;
+    AgentDelete = "agent.delete", Core, IdParams => Empty;
+    /// Start a run (returns at once; follow `agent.runUpdated`).
+    AgentRunMethod = "agent.run", Core, AgentRunParams => AgentRun;
+    /// Pause, resume, continue or stop a run.
+    AgentControl = "agent.control", Core, RunControl => Empty;
+    /// Recent runs, newest first.
+    AgentRuns = "agent.runs", Core, AgentRunsParams => AgentRunList;
     /// Control the running lesson.
     TeachControl = "teach.control", Core, LessonControl => Empty;
     /// The running (or last) lesson, if any.
@@ -267,6 +278,8 @@ define_events! {
     ToolCallUpdated = "tool.callUpdated", ToolCallRecord;
     /// A lesson changed (new step, waiting, done…).
     TeachUpdated = "teach.updated", Lesson;
+    /// An agent run changed (plan, step, status).
+    AgentRunUpdated = "agent.runUpdated", AgentRun;
     /// Captured microphone audio (host → core only).
     AudioChunkEvent = "audio.chunk", AudioChunk;
     /// Synthesized speech ready to play (core → host).

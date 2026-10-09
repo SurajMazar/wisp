@@ -43,6 +43,7 @@ struct Inner {
     latest_focus: Mutex<Option<FocusRegion>>,
     tools: crate::tools::ToolService,
     teacher: crate::teacher::Teacher,
+    agents: crate::agents::AgentRuntime,
 }
 
 impl Core {
@@ -57,6 +58,7 @@ impl Core {
         }
         // Tool calls interrupted mid-approval or mid-action are recorded as failed.
         let _ = db.fail_unfinished_tool_calls();
+        let _ = db.recover_unfinished_runs();
         let schema_version = db
             .schema_version()
             .map_err(|e| IpcError::internal(e.to_string()))?;
@@ -78,6 +80,7 @@ impl Core {
                 latest_focus: Mutex::new(None),
                 tools: Default::default(),
                 teacher: Default::default(),
+                agents: Default::default(),
             }),
         })
     }
@@ -221,6 +224,44 @@ impl Core {
             ConversationSend::NAME => {
                 self.call::<ConversationSend, _, _>(params, |c, p| async move { c.send(p).await })
                     .await
+            }
+            wisp_ipc::methods::AgentListMethod::NAME => {
+                self.call::<wisp_ipc::methods::AgentListMethod, _, _>(params, |c, _| async move {
+                    c.agent_list().await
+                })
+                .await
+            }
+            wisp_ipc::methods::AgentSave::NAME => {
+                self.call::<wisp_ipc::methods::AgentSave, _, _>(params, |c, p| async move {
+                    c.agent_save(p).await
+                })
+                .await
+            }
+            wisp_ipc::methods::AgentDelete::NAME => {
+                self.call::<wisp_ipc::methods::AgentDelete, _, _>(params, |c, p| async move {
+                    c.agent_delete(p.id).await
+                })
+                .await
+            }
+            wisp_ipc::methods::AgentRunMethod::NAME => {
+                self.call::<wisp_ipc::methods::AgentRunMethod, _, _>(params, |c, p| async move {
+                    c.agent_start(p, None).await
+                })
+                .await
+            }
+            wisp_ipc::methods::AgentControl::NAME => {
+                self.call::<wisp_ipc::methods::AgentControl, _, _>(params, |c, p| async move {
+                    c.agent_control(p)
+                })
+                .await
+            }
+            wisp_ipc::methods::AgentRuns::NAME => {
+                self.call::<wisp_ipc::methods::AgentRuns, _, _>(params, |c, p| async move {
+                    Ok(wisp_ipc::types::agents::AgentRunList {
+                        runs: c.agent_runs(p.agent_id, p.limit).await?,
+                    })
+                })
+                .await
             }
             wisp_ipc::methods::TeachControl::NAME => {
                 self.call::<wisp_ipc::methods::TeachControl, _, _>(params, |c, p| async move {
@@ -450,6 +491,10 @@ impl Core {
             .events
             .publish::<wisp_ipc::methods::ConversationUpdated>(&s);
         Ok(s)
+    }
+
+    pub(crate) fn agent_runtime(&self) -> &crate::agents::AgentRuntime {
+        &self.inner.agents
     }
 
     pub(crate) fn teacher_state(&self) -> &crate::teacher::Teacher {

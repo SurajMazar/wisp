@@ -28,6 +28,360 @@
       ],
       "type": "object"
     },
+    "AgentDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "avatar": {
+          "description": "A single emoji.",
+          "type": "string"
+        },
+        "createdAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "lastRunAtMs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "limits": {
+          "$ref": "#/definitions/AgentLimits"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ModelRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "skills": {
+          "default": [],
+          "description": "Skill ids attached to this agent.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tools": {
+          "description": "Tool names this agent may use (see `tool.list`). Empty = read-only.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "updatedAtMs": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "avatar",
+        "instructions",
+        "tools",
+        "limits",
+        "enabled",
+        "createdAtMs",
+        "updatedAtMs"
+      ],
+      "type": "object"
+    },
+    "AgentLimits": {
+      "additionalProperties": false,
+      "description": "Hard limits for one run (spec §61).",
+      "properties": {
+        "maxMinutes": {
+          "default": 10,
+          "description": "1–120.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxSteps": {
+          "default": 15,
+          "description": "1–50.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxTokens": {
+          "default": 60000,
+          "description": "Rough prompt tokens across the run; 1 000–500 000.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxToolCalls": {
+          "default": 25,
+          "description": "1–100.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "AgentList": {
+      "additionalProperties": false,
+      "properties": {
+        "agents": {
+          "items": {
+            "$ref": "#/definitions/AgentDefinition"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "agents"
+      ],
+      "type": "object"
+    },
+    "AgentRun": {
+      "additionalProperties": false,
+      "properties": {
+        "agentId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "agentName": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "conversationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finishedAtMs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "goal": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "limits": {
+          "$ref": "#/definitions/AgentLimits"
+        },
+        "note": {
+          "description": "Final summary, question for the user, or why it stopped.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "plan": {
+          "items": {
+            "$ref": "#/definitions/PlanItem"
+          },
+          "type": "array"
+        },
+        "startedAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/definitions/RunStatus"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/definitions/RunStep"
+          },
+          "type": "array"
+        },
+        "stepsUsed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tokensUsed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "toolCallsUsed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "agentName",
+        "avatar",
+        "goal",
+        "status",
+        "plan",
+        "steps",
+        "stepsUsed",
+        "toolCallsUsed",
+        "tokensUsed",
+        "limits",
+        "startedAtMs"
+      ],
+      "type": "object"
+    },
+    "AgentRunList": {
+      "additionalProperties": false,
+      "properties": {
+        "runs": {
+          "items": {
+            "$ref": "#/definitions/AgentRun"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "runs"
+      ],
+      "type": "object"
+    },
+    "AgentRunParams": {
+      "additionalProperties": false,
+      "properties": {
+        "agentId": {
+          "description": "Omit for a one-off task with default limits (\"Do it\" in the composer).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "conversationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "goal": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "goal"
+      ],
+      "type": "object"
+    },
+    "AgentRunsParams": {
+      "additionalProperties": false,
+      "properties": {
+        "agentId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limit": {
+          "description": "1–200.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "limit"
+      ],
+      "type": "object"
+    },
+    "AgentSaveParams": {
+      "additionalProperties": false,
+      "properties": {
+        "avatar": {
+          "default": "",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "type": "string"
+        },
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "id": {
+          "description": "Omit to create.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "instructions": {
+          "default": "",
+          "type": "string"
+        },
+        "limits": {
+          "$ref": "#/definitions/AgentLimits",
+          "default": {
+            "maxMinutes": 10,
+            "maxSteps": 15,
+            "maxTokens": 60000,
+            "maxToolCalls": 25
+          }
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ModelRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "skills": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tools": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
     "AnimationLevel": {
       "description": "How lively the buddy's motion is. Reduced Motion in macOS always wins.",
       "enum": [
@@ -2829,6 +3183,30 @@
       ],
       "type": "object"
     },
+    "PlanItem": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/PlanItemStatus"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "status"
+      ],
+      "type": "object"
+    },
+    "PlanItemStatus": {
+      "enum": [
+        "pending",
+        "active",
+        "done"
+      ],
+      "type": "string"
+    },
     "Point": {
       "properties": {
         "x": {
@@ -3169,6 +3547,117 @@
       ],
       "type": "object"
     },
+    "RunAction": {
+      "oneOf": [
+        {
+          "enum": [
+            "pause",
+            "resume",
+            "stop"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "continue",
+          "description": "Keep going after being stuck.",
+          "type": "string"
+        }
+      ]
+    },
+    "RunControl": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/RunAction"
+        },
+        "reply": {
+          "description": "Reply to a question the agent asked (with Continue).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "action"
+      ],
+      "type": "object"
+    },
+    "RunStatus": {
+      "oneOf": [
+        {
+          "enum": [
+            "planning",
+            "running",
+            "paused",
+            "completed",
+            "failed",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "waitingPermission",
+          "description": "Waiting for the user to approve an action.",
+          "type": "string"
+        },
+        {
+          "const": "stuck",
+          "description": "Repeated itself or hit a dead end; Continue or Stop.",
+          "type": "string"
+        },
+        {
+          "const": "needsInput",
+          "description": "Asked the user a question.",
+          "type": "string"
+        }
+      ]
+    },
+    "RunStep": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "$ref": "#/definitions/StepKind"
+        },
+        "seq": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/definitions/RunStepStatus"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "kind",
+        "title",
+        "status"
+      ],
+      "type": "object"
+    },
+    "RunStepStatus": {
+      "enum": [
+        "running",
+        "succeeded",
+        "failed",
+        "skipped"
+      ],
+      "type": "string"
+    },
     "ScreenPermissionStatus": {
       "additionalProperties": false,
       "properties": {
@@ -3236,6 +3725,11 @@
     "SendParams": {
       "additionalProperties": false,
       "properties": {
+        "act": {
+          "default": false,
+          "description": "Carry out this goal on the computer as an agent run instead of answering (spec §60).",
+          "type": "boolean"
+        },
         "allowCloud": {
           "default": false,
           "description": "The user approved cloud for this message (Local Preferred).",
@@ -3757,6 +4251,16 @@
         "done"
       ],
       "type": "object"
+    },
+    "StepKind": {
+      "enum": [
+        "observe",
+        "plan",
+        "act",
+        "verify",
+        "message"
+      ],
+      "type": "string"
     },
     "StepStatus": {
       "enum": [
@@ -4790,6 +5294,12 @@
       }
     },
     {
+      "name": "agent.runUpdated",
+      "payload": {
+        "$ref": "#/definitions/AgentRun"
+      }
+    },
+    {
       "name": "audio.chunk",
       "payload": {
         "$ref": "#/definitions/AudioChunk"
@@ -5228,6 +5738,66 @@
       },
       "result": {
         "$ref": "#/definitions/Message"
+      },
+      "target": "core"
+    },
+    {
+      "name": "agent.list",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/AgentList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "agent.save",
+      "params": {
+        "$ref": "#/definitions/AgentSaveParams"
+      },
+      "result": {
+        "$ref": "#/definitions/AgentDefinition"
+      },
+      "target": "core"
+    },
+    {
+      "name": "agent.delete",
+      "params": {
+        "$ref": "#/definitions/IdParams"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "agent.run",
+      "params": {
+        "$ref": "#/definitions/AgentRunParams"
+      },
+      "result": {
+        "$ref": "#/definitions/AgentRun"
+      },
+      "target": "core"
+    },
+    {
+      "name": "agent.control",
+      "params": {
+        "$ref": "#/definitions/RunControl"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "core"
+    },
+    {
+      "name": "agent.runs",
+      "params": {
+        "$ref": "#/definitions/AgentRunsParams"
+      },
+      "result": {
+        "$ref": "#/definitions/AgentRunList"
       },
       "target": "core"
     },

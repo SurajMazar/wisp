@@ -1,7 +1,7 @@
 import { WispMark } from "@wisp/icons";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Composer } from "../../components/chat/Composer";
+import { Composer, type SendMode } from "../../components/chat/Composer";
 import { useComposerFocus } from "../../components/chat/useComposerFocus";
 import { useConversationStore } from "../../stores/conversationStore";
 import { useFocusStore } from "../../stores/focusStore";
@@ -32,7 +32,7 @@ export function HomePage() {
   const [draft, setDraft] = useState("");
   const box = useRef<HTMLDivElement>(null);
 
-  const ask = (t: string, opts?: { teach?: boolean }) =>
+  const ask = (t: string, opts?: SendMode) =>
     void send(t, { includeFocus, ...opts }).then((id) => {
       if (!id) return;
       consumed();

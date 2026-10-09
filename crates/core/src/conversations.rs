@@ -123,7 +123,7 @@ fn focus_label(r: &FocusRegion) -> String {
 }
 
 /// Load the model-sized image for a focus capture from the cache, confined to it.
-fn load_focus_image(data_dir: &Path, focus_id: &str) -> Option<ImagePart> {
+pub(crate) fn load_focus_image(data_dir: &Path, focus_id: &str) -> Option<ImagePart> {
     if !wisp_common::ids::is_valid_id(focus_id) {
         return None;
     }
@@ -241,7 +241,14 @@ impl Core {
         } else {
             crate::teacher::lesson_goal(&text)
         };
-        if let Some(goal) = goal {
+        if p.act {
+            let params = wisp_ipc::types::agents::AgentRunParams {
+                agent_id: None,
+                goal: text.clone(),
+                conversation_id: Some(conversation_id.clone()),
+            };
+            self.agent_start(params, Some(assistant.clone())).await?;
+        } else if let Some(goal) = goal {
             self.start_lesson(goal, assistant.clone(), p);
         } else {
             let token = CancellationToken::new();
@@ -327,6 +334,7 @@ impl Core {
         self.inner_streams().insert(&assistant.id, token.clone());
         let send = SendParams {
             teach: false,
+            act: false,
             conversation_id: Some(old.conversation_id.clone()),
             text: question.content.clone(),
             include_focus: focus.is_some(),

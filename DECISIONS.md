@@ -210,3 +210,16 @@ instructions mark the lesson stuck (loop detection, spec §61). Lessons never ac
 Phase 11 tool pipeline and its approvals. Intent detection starts a lesson for "teach me how to…", "show me how to…",
 "walk/guide me through…", or the composer's Teach me mode.
 
+## D-030 — Agents speak a tiny action language; every action goes through the tool pipeline
+**Status** accepted (2026-10-09)
+Local models are unreliable at JSON tool calling, so agents reply with `THOUGHT:` / `STEP:` / `ACTION:` lines in a small,
+documented command language (`click "Save"`, `type "…"`, `hotkey cmd+s`, `done "…"`, `ask "…"`; full list in
+`wisp-agents::ACTION_HELP`), parsed strictly with one correction retry. Targets are labels resolved against the
+observed window (the Phase 10 resolver), or 0–1000 image coordinates for vision models. A run plans once (2–6 items,
+shown as a checklist), then loops observe → decide → execute → observe. Every action is a `tool.run` — validation,
+risk, policy, approval, verification, audit — and an agent may only use the tools its definition lists (spec §104:
+no automatic new permissions). A denial ends the run (never routed around). Hard limits per agent: steps, minutes,
+actions and an estimated token budget; the same action three times in a row pauses the run as stuck (spec §61);
+users can pause, resume, continue, answer questions and stop. Runs and steps are persisted; interrupted runs are
+marked cancelled at startup. The chat's "Do it" mode starts a one-off run with default limits.
+

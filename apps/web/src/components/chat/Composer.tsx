@@ -1,5 +1,6 @@
 import type { FocusKind, FocusRegion } from "@wisp/contracts";
 import {
+  ActIcon,
   AreaIcon,
   CloseIcon,
   PlusIcon,
@@ -76,6 +77,8 @@ function FocusChip({ region }: { region: FocusRegion }) {
   );
 }
 
+export type SendMode = { teach?: boolean; act?: boolean };
+
 export function Composer({
   onSend,
   onStop,
@@ -87,7 +90,7 @@ export function Composer({
   text: controlledText,
   onTextChange,
 }: {
-  onSend: (text: string, opts?: { teach?: boolean }) => void;
+  onSend: (text: string, opts?: SendMode) => void;
   onStop?: () => void;
   streaming: boolean;
   placeholder?: string;
@@ -112,13 +115,15 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, compact ? 140 : 220)}px`;
   }, [text, compact]);
 
-  const [teach, setTeach] = useState(false);
+  const [mode, setMode] = useState<"ask" | "teach" | "act">("ask");
+  const teach = mode === "teach";
+  const act = mode === "act";
   const submit = () => {
     const t = text.trim();
     if (!t || streaming) return;
-    onSend(t, teach ? { teach: true } : undefined);
+    onSend(t, teach ? { teach: true } : act ? { act: true } : undefined);
     setText("");
-    setTeach(false);
+    setMode("ask");
   };
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -165,7 +170,13 @@ export function Composer({
           "block w-full resize-none bg-transparent px-1 outline-none placeholder:text-text-faint",
           compact ? "text-base" : "text-md",
         )}
-        placeholder={teach ? "What do you want to learn? e.g. how to make a pivot table" : placeholder}
+        placeholder={
+          teach
+            ? "What do you want to learn? e.g. how to make a pivot table"
+            : act
+              ? "What should Wisp do? e.g. make a new note called Groceries"
+              : placeholder
+        }
         value={text}
         autoFocus={autoFocus}
         onChange={(e) => setText(e.target.value)}
@@ -220,7 +231,7 @@ export function Composer({
           aria-pressed={teach}
           title="Teach me step by step: Wisp highlights each step and waits for you"
           onClick={() => {
-            setTeach((t) => !t);
+            setMode((m) => (m === "teach" ? "ask" : "teach"));
             area.current?.focus();
           }}
           className={cn(
@@ -230,6 +241,22 @@ export function Composer({
         >
           <TeachIcon size={15} />
           {(teach || !compact) && <span>Teach me</span>}
+        </button>
+        <button
+          type="button"
+          aria-pressed={act}
+          title="Do it for me: Wisp works through it on screen, asking before each risky step"
+          onClick={() => {
+            setMode((m) => (m === "act" ? "ask" : "act"));
+            area.current?.focus();
+          }}
+          className={cn(
+            "flex h-7 items-center gap-1 rounded-full px-2 text-sm text-text-muted transition-colors hover:bg-surface-hover hover:text-text",
+            act && "bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent",
+          )}
+        >
+          <ActIcon size={15} />
+          {(act || !compact) && <span>Do it</span>}
         </button>
         <span className="ml-auto" />
         <ModelPicker />

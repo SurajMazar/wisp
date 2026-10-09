@@ -1,6 +1,7 @@
 //! Contract types grouped by domain.
 
 pub mod accessibility;
+pub mod agents;
 pub mod app;
 pub mod conversations;
 pub mod cursor;

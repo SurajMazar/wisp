@@ -34,7 +34,6 @@ export const sections: Section[] = [
     path: "/agents",
     label: "Agents",
     icon: AgentsIcon,
-    unavailableNote: "Agents aren't available in this build yet.",
   },
   {
     path: "/skills",

@@ -42,6 +42,12 @@ export {
   ShieldAlert as RiskIcon,
   Hand as ControlIcon,
   GraduationCap as TeachIcon,
+  Zap as ActIcon,
+  Pause as PauseIcon,
+  Play as PlayIcon,
+  Bot as BotIcon,
+  Trash2 as DeleteIcon,
+  Pencil as EditIcon,
   Circle as StepPendingIcon,
 } from "lucide-react";
 

@@ -13,5 +13,4 @@ workspace = true
 [dependencies]
 wisp-common.workspace = true
 wisp-ipc.workspace = true
-wisp-ai.workspace = true
-wisp-permissions.workspace = true
+wisp-screen.workspace = true

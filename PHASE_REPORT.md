@@ -404,3 +404,32 @@ waits while you do it, notices when you have, and continues until the goal is re
 ## Stop Gate 12
 Automated portions PASS; manual checklist (Phase 12) pending.
 
+---
+
+# Phase 13 — Agents (2026-10-09)
+
+## Summary
+Saved agents (and the chat's "Do it" mode) carry out multi-step tasks on the Mac: plan, observe, act through the
+approval pipeline, verify, repeat — visibly, within hard limits, with pause/stop and loop detection.
+
+## Implemented
+- Contracts: `AgentDefinition`, `AgentLimits`, `AgentRun` (plan, steps, counters), `RunControl`; `agent.list|save|
+  delete|run|control|runs`; `agent.runUpdated`; `SendParams.act`
+- `wisp-agents`: action language parser, decision/plan parsing, label/coordinate resolution to tool calls, loop
+  detector (pure)
+- Database: agents (+ skills links), runs and steps; startup recovery
+- Core runtime: validation of definitions, plan + act loop, tool scope per agent, limits, stuck/needs-input holds,
+  denial stops, chat integration (answer = run summary)
+- UI: Agents page (templates, editor with tools by risk and limits, run with a goal, recent runs), live run card
+  (plan checklist, actions, controls, reply box) in the panel and conversations, composer "Do it" mode
+
+## Tests Added
+- Rust: action language (11 forms + rejects), decisions and plans, resolution to tool calls, loop detection (4);
+  repository (2); runtime end to end — plan → click resolved to the Save button through approval → done, persisted
+  history; repetition → stuck → stop; denial ends the run with nothing performed; validation; tool scope (3)
+- React: template → run with goal → live card; plan/actions with pause/stop; stuck continue and question reply;
+  Do it mode (4)
+
+## Stop Gate 13
+Automated portions PASS; manual checklist (Phase 13) pending.
+
