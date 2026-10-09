@@ -44,7 +44,12 @@ pub struct AiServices {
     cooldown: Mutex<HashMap<String, Instant>>,
     /// Whether the privacy mode allows cloud at all; until known, assume Local Only (the default).
     cloud_permitted: std::sync::atomic::AtomicBool,
+    /// Recent first-token latency per model (exponential average, ms), measured on this Mac.
+    first_token_ms: Mutex<HashMap<(String, String), f64>>,
 }
+
+/// A model whose recent first-token average exceeds this is treated as slow by the router.
+const SLOW_FIRST_TOKEN_MS: f64 = 4000.0;
 
 const COOLDOWN: Duration = Duration::from_secs(120);
 
@@ -54,6 +59,31 @@ pub struct Prepared {
 }
 
 impl AiServices {
+    /// Record how long a model took to start answering (feeds routing).
+    pub fn record_first_token(&self, model: &ModelRef, ms: u64) {
+        if let Ok(mut m) = self.first_token_ms.lock() {
+            let e = m
+                .entry((model.provider_id.clone(), model.model.clone()))
+                .or_insert(ms as f64);
+            *e = *e * 0.6 + ms as f64 * 0.4;
+        }
+    }
+
+    fn slow_models(&self) -> Vec<ModelRef> {
+        self.first_token_ms
+            .lock()
+            .map(|m| {
+                m.iter()
+                    .filter(|(_, ms)| **ms > SLOW_FIRST_TOKEN_MS)
+                    .map(|((p, id), _)| ModelRef {
+                        provider_id: p.clone(),
+                        model: id.clone(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// Remember the privacy mode so Local Only never contacts cloud endpoints.
     pub fn set_privacy(&self, privacy: PrivacyMode) {
         self.cloud_permitted.store(
@@ -183,6 +213,7 @@ impl AiServices {
         } else {
             settings.general.as_ref()
         });
+        let slow = self.slow_models();
         let route = wisp_ai::route(&RouteInput {
             providers: &catalog,
             privacy,
@@ -190,6 +221,7 @@ impl AiServices {
             allow_cloud,
             preference,
             estimated_prompt_tokens,
+            slow: &slow,
         })?;
         let provider = self
             .providers(settings)

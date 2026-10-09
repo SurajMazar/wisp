@@ -191,5 +191,10 @@ Prerequisite: Computer control on (Settings), Accessibility, Screen Recording.
 - [ ] Approve a typing action, then switch apps before it runs: it refuses ("The app in front changed…").
 - [ ] Local Only: add an endpoint like http://localhost.example.com — it's refused as not local.
 
+## Phase 19 — Performance
+- [ ] Opening Agents/Skills/Memory/Files/Routines for the first time shows "Loading…" only briefly.
+- [ ] After Wisp has answered slowly with one model a few times, short questions go to a faster local model.
+- [ ] Leave Wisp idle 15+ minutes: Activity Monitor shows wisp-core's memory drop; the next push-to-talk still works.
+
 ## Later phases
 Added as each phase lands (invocation, cursor, multi-monitor, Retina, microphone, Whisper, Kokoro, Ollama, Apple Foundation Models, Accessibility, Screen Recording).

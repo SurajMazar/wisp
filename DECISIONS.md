@@ -281,3 +281,14 @@ allowed, and approvals are bound to the frontmost app / target process they were
 prompts is fenced with neutralized fence tokens. "Local" means an exact loopback host, and Local Only never contacts
 cloud endpoints. Details: docs/security/hardening-2026-10.md.
 
+## D-036 — Performance: measure, index in memory, split the UI, route by measured latency
+**Status** accepted (2026-10-09)
+A repeatable harness (`cargo test --release -p wisp-core --test perf -- --ignored --nocapture`) measures engine
+startup, dispatch, settings, memory, indexing, search, conversation listing and scheduling. File search keeps an
+in-memory index (decoded vectors + precomputed term sets) rebuilt only when files change; a question's embedding is
+cached so memory and files share it. Secondary pages are lazy-loaded (chat surfaces stay eager). Speech models stay
+warm for an instant first push-to-talk, are re-warmed when a hold starts, and are released after 15 minutes idle.
+The router learns first-token latency per model (exponential average, seeded from recent diagnostics) and stops
+preferring a model that averages over 4 s — on this Mac Apple's on-device model averaged 8.0 s to the first word
+while warm Ollama instruct answered in ~0.25 s.
+

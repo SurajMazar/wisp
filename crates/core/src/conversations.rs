@@ -789,6 +789,9 @@ impl Core {
         let route = msg.model.clone();
         let locality = msg.locality;
         let first_ms = first_token.map(|d| d.as_millis() as i64);
+        if let (Some(m), Some(ms)) = (&msg.model, first_ms) {
+            self.ai().record_first_token(m, ms as u64);
+        }
         let total_ms = started.elapsed().as_millis() as i64;
         let _ = self
             .blocking(move |db| {

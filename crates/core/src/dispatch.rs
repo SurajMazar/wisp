@@ -95,6 +95,18 @@ impl Core {
         if let Ok(s) = core.inner.db.load_settings() {
             core.inner.ai.set_privacy(s.privacy.mode);
         }
+        // Start routing from what this Mac measured before.
+        if let Ok(rows) = core.inner.db.recent_first_token_ms() {
+            for (provider, model, ms) in rows {
+                core.inner.ai.record_first_token(
+                    &wisp_ipc::types::models::ModelRef {
+                        provider_id: provider,
+                        model,
+                    },
+                    ms as u64,
+                );
+            }
+        }
         Ok(core)
     }
 
@@ -717,6 +729,8 @@ impl Core {
         }
         let record: Option<Value> = match name {
             InvocationStartedEvent::NAME => {
+                // The user may be about to talk: make sure speech models are loaded (no-op if they are).
+                self.warm_up_voice();
                 parse::<InvocationStartedEvent>(&payload).map(|_| payload.clone())
             }
             InvocationEndedEvent::NAME => {

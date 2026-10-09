@@ -153,6 +153,7 @@ where
 
     core.events().publish::<CoreReady>(core.info());
     core.warm_up_voice();
+    core.start_voice_janitor();
 
     let mut reader = BufReader::new(input);
     let mut buf = Vec::with_capacity(64 * 1024);

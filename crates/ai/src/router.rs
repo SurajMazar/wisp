@@ -23,6 +23,8 @@ pub struct RouteInput<'a> {
     pub preference: Option<&'a ModelRef>,
     /// Rough prompt size, to keep small-context models out of long conversations.
     pub estimated_prompt_tokens: u32,
+    /// Models measured as slow to start answering on this Mac (recent first-token average).
+    pub slow: &'a [ModelRef],
 }
 
 fn locality_allowed(l: Locality, privacy: PrivacyMode, allow_cloud: bool) -> bool {
@@ -87,8 +89,15 @@ pub fn route(input: &RouteInput<'_>) -> Result<RouteInfo, AiError> {
         let local = (m.locality == Locality::Local) as u8;
         // Reasoning ("thinking") models deliberate silently before answering; for interactive
         // questions prefer models that answer straight away.
-        let answers_immediately = !m.capabilities.contains(&ModelCapability::Reasoning) as u8;
+        let is_slow = input
+            .slow
+            .iter()
+            .any(|s| s.provider_id == p.id && s.model == m.id);
+        let answers_immediately =
+            (!m.capabilities.contains(&ModelCapability::Reasoning) && !is_slow) as u8;
+        // Apple's on-device model is preferred for short questions — unless it has proven slow here.
         let apple_short = (p.kind == ProviderKind::Apple
+            && !is_slow
             && !input.needs_vision
             && input.estimated_prompt_tokens < 2500) as u8;
         let vision_bonus = (input.needs_vision && p.kind == ProviderKind::Ollama) as u8;
@@ -216,6 +225,7 @@ mod tests {
             allow_cloud: false,
             preference: None,
             estimated_prompt_tokens: 200,
+            slow: &[],
         }
     }
 
@@ -319,6 +329,20 @@ mod tests {
                 .model,
             "qwen3-vl:8b"
         );
+    }
+
+    #[test]
+    fn measured_slowness_moves_answers_to_a_faster_local_model() {
+        let w = world();
+        let slow = [ModelRef {
+            provider_id: "apple".into(),
+            model: "system".into(),
+        }];
+        let mut i = input(&w, PrivacyMode::LocalOnly, false);
+        i.slow = &slow;
+        let r = route(&i).expect("route");
+        assert_eq!(r.model.provider_id, "ollama");
+        assert_eq!(r.locality, Locality::Local, "still local");
     }
 
     #[test]

@@ -593,3 +593,37 @@ core-binary signature checking (Phase 21). Write-up: docs/security/hardening-202
 ## Stop Gate 18
 PASS on automated evidence; manual checks listed (Phase 18).
 
+---
+
+# Phase 19 — Performance (2026-10-09)
+
+## Measured (this Mac, M1 Pro; release build)
+| Measurement | Before | After |
+|---|---|---|
+| Engine startup (fresh data folder: migrations + seed) | 6.6 ms | 6.6 ms |
+| IPC dispatch round trip (median) | < 0.01 ms | < 0.01 ms |
+| `settings.get` / `memory.list` (500 memories) | 0.02 / 0.25 ms | same |
+| Import + index 40 documents (10 720 passages) | 0.55 s | 0.55 s |
+| **File search over 10 720 passages** | **139 ms** | **9.4 ms** |
+| `conversation.list` with 1 000 conversations | 0.27 ms | same |
+| Main UI bundle | 664 KB | **378 KB** (pages 4–24 KB, loaded on first visit) |
+| Engine memory with speech models warm / after 15 min idle | 489 MB | 489 MB / models released |
+| App (host) memory | 100 MB | — |
+| First token, Apple on-device (10 answers, from diagnostics) | 8.0 s avg (1.8 s best) | routed away from when slow |
+| First token, Ollama qwen3-vl:8b-instruct (warm) | ~0.25 s | preferred |
+| Whisper load (cached) / speech recognition | 191 ms / 217 ms | same |
+
+## Implemented
+- Perf harness writing `target/perf.json`
+- In-memory search index; question-embedding cache
+- Lazy-loaded secondary pages
+- Speech models: re-warm on hold, release after idle
+- Latency-aware routing (per-model first-token EWMA, seeded from diagnostics, slow > 4 s)
+
+## Tests Added
+- Router: measured slowness moves answers to a faster local model (still local)
+- Idle unload no-op; perf harness (manual)
+
+## Stop Gate 19
+PASS on automated evidence; app-level timings above (manual feel checks in the checklist).
+

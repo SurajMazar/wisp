@@ -74,6 +74,24 @@ impl Database {
     }
 }
 
+impl Database {
+    /// Average first-token latency per (provider, model) over recent answers (ms).
+    pub fn recent_first_token_ms(&self) -> DbResult<Vec<(String, String, f64)>> {
+        let conn = self.lock()?;
+        let mut stmt = conn.prepare(
+            "SELECT provider, model, AVG(json_extract(data, '$.firstTokenMs')) FROM (
+               SELECT provider, model, data FROM diagnostics
+               WHERE category = 'model' AND provider IS NOT NULL AND model IS NOT NULL
+                 AND json_extract(data, '$.firstTokenMs') IS NOT NULL
+               ORDER BY created_at DESC LIMIT 200)
+             GROUP BY provider, model",
+        )?;
+        Ok(stmt
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get::<_, f64>(2)?)))?
+            .collect::<Result<Vec<_>, _>>()?)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

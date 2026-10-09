@@ -53,7 +53,12 @@ pub struct VoiceService {
     queue: Mutex<Option<mpsc::UnboundedSender<SpeakJob>>>,
     /// Bumped by "stop speaking" so queued jobs from before are dropped.
     generation: Mutex<u64>,
+    /// When the speech models were last used (for unloading them when idle).
+    last_used: Mutex<Option<Instant>>,
 }
+
+/// Speech models (~400 MB) are released after this long unused and reloaded on the next hold.
+pub const VOICE_IDLE: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 
 impl VoiceService {
     pub fn append(&self, session_id: &str, pcm_b64: &str) {
@@ -107,7 +112,57 @@ impl Core {
         self.inner_voice()
     }
 
+    fn touch_voice(&self) {
+        if let Ok(mut t) = self.voice().last_used.lock() {
+            *t = Some(Instant::now());
+        }
+    }
+
+    /// Release the speech models if they've been idle for `idle`. Returns whether any were loaded.
+    pub fn unload_idle_voice(&self, idle: std::time::Duration) -> bool {
+        let stale = self
+            .voice()
+            .last_used
+            .lock()
+            .ok()
+            .and_then(|t| *t)
+            .is_some_and(|t| t.elapsed() >= idle);
+        if !stale {
+            return false;
+        }
+        let had_stt = self
+            .voice()
+            .stt
+            .lock()
+            .ok()
+            .and_then(|mut g| g.take())
+            .is_some();
+        let had_tts = self
+            .voice()
+            .tts
+            .lock()
+            .ok()
+            .and_then(|mut g| g.take())
+            .is_some();
+        if had_stt || had_tts {
+            tracing::info!("speech models unloaded after being idle");
+        }
+        had_stt || had_tts
+    }
+
+    /// Unload idle speech models periodically.
+    pub fn start_voice_janitor(&self) {
+        let core = self.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                core.unload_idle_voice(VOICE_IDLE);
+            }
+        });
+    }
+
     fn whisper(&self, settings: &VoiceSettings) -> Result<Arc<WhisperStt>, IpcError> {
+        self.touch_voice();
         if let Some((_, s)) = self
             .voice()
             .stt
@@ -143,6 +198,7 @@ impl Core {
     }
 
     fn kokoro(&self) -> Result<Arc<KokoroTts>, IpcError> {
+        self.touch_voice();
         if let Some(t) = self.voice().tts.lock().ok().and_then(|g| g.clone()) {
             return Ok(t);
         }
