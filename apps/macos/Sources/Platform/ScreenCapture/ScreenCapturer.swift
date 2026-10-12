@@ -8,7 +8,8 @@ import WispUtilities
 /// One-shot captures of a screen region via ScreenCaptureKit. Never continuous (spec §37, §86):
 /// a capture happens only when the user completes a focus selection.
 ///
-/// Wisp's own windows (buddy, overlay, panel) are excluded from every capture.
+/// Wisp's floating windows (buddy, island, drawing overlay, panel, guidance) are excluded from every
+/// capture. Its main window is a normal window like any other app's, so a question about it sees it.
 public enum ScreenCapturer {
     public enum CaptureError: Error, LocalizedError {
         case permissionDenied
@@ -36,8 +37,11 @@ public enum ScreenCapturer {
         guard let scDisplay = content.displays.first(where: { $0.displayID == CGDirectDisplayID(display.id) }) else {
             throw CaptureError.displayNotFound(CGDirectDisplayID(display.id))
         }
-        let me = excludingSelf ? content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier } : []
-        let filter = SCContentFilter(display: scDisplay, excludingApplications: me, exceptingWindows: [])
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let overlays = excludingSelf
+            ? content.windows.filter { $0.owningApplication?.processID == pid && $0.windowLayer != 0 }
+            : []
+        let filter = SCContentFilter(display: scDisplay, excludingWindows: overlays)
 
         let config = SCStreamConfiguration()
         let px = FocusGeometry.pixelSize(local, scale: display.scale)

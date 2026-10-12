@@ -122,4 +122,49 @@ import Testing
         let justInside = try #require(color(atPoint: 12, crop.height / 2))
         #expect(justInside.0 > 200 && justInside.2 > 200 && justInside.1 < 60, "target begins 10 pt in, got \(justInside)")
     }
+
+    @Test func seesWispsMainWindowButNotItsOverlays() async throws {
+        guard CGPreflightScreenCaptureAccess() else {
+            print("skipping: no Screen Recording permission for the test runner")
+            return
+        }
+        let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+        if session?["CGSSessionScreenIsLocked"] as? Bool == true {
+            print("skipping: the screen is locked")
+            return
+        }
+        _ = NSApplication.shared
+        guard let screen = NSScreen.main else { return }
+        let display = Displays.info(for: screen)
+        let h = Displays.primaryHeight
+
+        // A normal window (like Wisp's main window), and a floating overlay (like the drawing layer)
+        // covering its left half.
+        let mainCG = CGRect(x: display.frame.x + 320, y: display.frame.y + 300, width: 240, height: 160)
+        let main = NSWindow(contentRect: FocusGeometry.appKitRect(fromCG: mainCG, primaryHeight: h),
+                            styleMask: .borderless, backing: .buffered, defer: false)
+        main.backgroundColor = NSColor(srgbRed: 1, green: 0, blue: 1, alpha: 1)
+        let overlayCG = CGRect(x: mainCG.minX, y: mainCG.minY, width: mainCG.width / 2, height: mainCG.height)
+        let overlay = NSPanel(contentRect: FocusGeometry.appKitRect(fromCG: overlayCG, primaryHeight: h),
+                              styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        overlay.level = .popUpMenu
+        overlay.backgroundColor = .cyan
+        main.orderFrontRegardless()
+        overlay.orderFrontRegardless()
+        defer { main.orderOut(nil); overlay.orderOut(nil) }
+        try await Task.sleep(for: .milliseconds(400))
+
+        let image = try await ScreenCapturer.capture(rect: mainCG, display: display)
+        let scale = display.scale
+        func color(atPoint x: CGFloat, _ y: CGFloat) -> (Int, Int, Int)? {
+            guard let data = image.dataProvider?.data, let ptr = CFDataGetBytePtr(data) else { return nil }
+            let o = Int(y * scale) * image.bytesPerRow + Int(x * scale) * (image.bitsPerPixel / 8)
+            let le = image.bitmapInfo.contains(.byteOrder32Little)
+            return le ? (Int(ptr[o + 2]), Int(ptr[o + 1]), Int(ptr[o])) : (Int(ptr[o]), Int(ptr[o + 1]), Int(ptr[o + 2]))
+        }
+        for x in [mainCG.width / 4, mainCG.width * 3 / 4] {
+            let c = try #require(color(atPoint: x, mainCG.height / 2))
+            #expect(c.0 > 200 && c.1 < 60 && c.2 > 200, "main window should be captured under the overlay, got \(c) at \(x)")
+        }
+    }
 }
