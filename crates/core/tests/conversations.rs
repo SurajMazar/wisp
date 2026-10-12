@@ -561,7 +561,7 @@ async fn prepares_the_screen_while_the_user_talks_and_the_question_reuses_it() {
     let r = core
         .dispatch(
             "conversation.send",
-            json!({ "text": "Where do I export this?", "includeFocus": true }),
+            json!({ "text": "Summarize this report.", "includeFocus": true }),
         )
         .await
         .expect("send");
@@ -590,7 +590,7 @@ async fn prepares_the_screen_while_the_user_talks_and_the_question_reuses_it() {
         "the question's prompt must begin with exactly what was prepared:\n{p}\n---\n{a}"
     );
     assert!(
-        a.trim_end().ends_with("Where do I export this?"),
+        a.trim_end().ends_with("Summarize this report."),
         "question last: {a}"
     );
     assert!(

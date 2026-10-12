@@ -69,8 +69,10 @@ right after you mention it, using the control's label exactly as it appears in t
 (for example: Click Save [[point: Save]] to keep your changes.). Markers: [[point: label]] outlines it (the default), \
 [[circle: label]] circles it, [[arrow: label]] draws an arrow to it, [[underline: label]] underlines text, and \
 [[spotlight: label]] dims everything else. If an image is attached you may instead give its position as \
-[[point: x,y]] with x and y from 0 to 1000 across the image. Mark at most three things, and only things that \
-are actually there.";
+[[point: x,y]] with x and y from 0 to 1000 across the image (x from the left, y from the top) — do that for icons \
+without a label, for example: Click the pause button [[point: 40,955]] at the bottom left. Every answer that tells \
+them to click, press or find something must include a marker. Mark at most three things, and only things that are \
+actually there.";
 const MAX_TEXT: usize = 8000;
 
 #[derive(Default)]
@@ -560,6 +562,57 @@ impl Core {
             .await
     }
 
+    /// Ask the model where the control its answer mentions is (one short request reusing the
+    /// processed screenshot); None if it can't say.
+    async fn locate_mentioned(
+        &self,
+        settings: &wisp_ipc::types::settings::AppSettings,
+        system: &str,
+        messages: &[ChatMessage],
+        answer: &str,
+        region: &FocusRegion,
+    ) -> Option<wisp_ipc::types::guidance::GuidanceTarget> {
+        use futures::StreamExt;
+        let mut models = settings.models.clone();
+        models.max_tokens = 40;
+        models.temperature = 0.0;
+        let mut msgs = messages.to_vec();
+        msgs.push(ChatMessage::text(Role::Assistant, answer));
+        msgs.push(ChatMessage::text(Role::User, LOCATE_PROMPT));
+        let started = Instant::now();
+        let prepared = self
+            .ai()
+            .generate(
+                &models,
+                settings.privacy.mode,
+                false,
+                None,
+                Some(system.to_owned()),
+                msgs,
+                CancellationToken::new(),
+                &|_, _| {},
+            )
+            .await
+            .ok()?;
+        let mut stream = wisp_ai::think::separate_reasoning(prepared.stream);
+        let mut text = String::new();
+        while let Some(Ok(c)) = stream.next().await {
+            match c {
+                wisp_ai::Chunk::Text(t) => text.push_str(&t),
+                wisp_ai::Chunk::Done(_) => break,
+                wisp_ai::Chunk::Reasoning(_) => {}
+            }
+        }
+        let (x, y) = position_in(&text)?;
+        tracing::info!(
+            ms = started.elapsed().as_millis() as u64,
+            x,
+            y,
+            "located the mentioned control"
+        );
+        wisp_screen::guide::resolve(&wisp_screen::guide::TargetRef::Coordinates(x, y), region)
+    }
+
     fn screen_cache_path(&self, focus_id: &str) -> Option<PathBuf> {
         wisp_common::ids::is_valid_id(focus_id).then(|| {
             self.data_dir()
@@ -702,6 +755,14 @@ impl Core {
         msg.context = Some(built.info.clone());
         msg.citations = built.citations.clone();
         let screen = built.screen.clone();
+        // Kept to ask "where exactly?" if the answer names a control without marking it.
+        let grounding = built.info.image_bytes.is_some().then(|| {
+            (
+                built.settings.clone(),
+                built.system.clone(),
+                built.messages.clone(),
+            )
+        });
         let built_parts = built;
         let mut guided = 0usize;
         let snapshot = msg.clone();
@@ -845,6 +906,27 @@ impl Core {
         if let Some(region) = &screen {
             self.guide(&mut msg, region, &mut guided);
         }
+        // Small models often say "click the pause button at the bottom left" without marking it.
+        // With the picture already processed, one short follow-up asks where exactly.
+        if let (Some(region), Some((settings, system, messages))) = (&screen, &grounding)
+            && msg.guidance.is_empty()
+            && msg.status == MessageStatus::Complete
+            && tells_to_act(&msg.content)
+            && let Some(target) = self
+                .locate_mentioned(settings, system, messages, &msg.content, region)
+                .await
+        {
+            msg.guidance = vec![target];
+            if let (Some(show), Some(host)) = (
+                wisp_screen::guide::show(&msg.id, &msg.guidance, GUIDANCE_MS),
+                self.ai().host(),
+            ) {
+                let params = serde_json::to_value(&show).unwrap_or_default();
+                if let Err(e) = host.call("host.guidance.show", params).await {
+                    tracing::debug!(error = %e.message, "guidance not shown");
+                }
+            }
+        }
         msg.content = wisp_screen::guide::strip_markers(&msg.content)
             .trim()
             .to_owned();
@@ -931,9 +1013,40 @@ fn wants_image(
         .as_ref()
         .map(|t| t.lines.iter().map(|l| l.text.len()).sum())
         .unwrap_or(0);
+    // Labelled controls let the model point by name; without enough of them (web pages in some
+    // browsers, icon-only buttons like ▶︎ ❚❚), "where is…" needs the picture to point by position.
+    let labelled = f.accessibility.as_ref().map_or(0, |a| {
+        a.nodes
+            .iter()
+            .filter(|n| n.title.is_some() || n.description.is_some())
+            .count()
+    });
     mode == wisp_ipc::types::focus::ScreenshotMode::Always
         || ocr_chars < 80
         || question.is_some_and(is_visual_question)
+        || (labelled < 5 && question.is_some_and(is_pointing_question))
+}
+
+/// "Where is…", "how do I…", "show me…", "which button…": the answer should point at something.
+fn is_pointing_question(q: &str) -> bool {
+    let q = format!(" {} ", q.to_lowercase());
+    [
+        " where ",
+        " how do i ",
+        " how can i ",
+        " how to ",
+        " show me ",
+        " point ",
+        " which button",
+        " find ",
+        " click ",
+        " press ",
+        " locate ",
+        " button ",
+        " icon ",
+    ]
+    .iter()
+    .any(|w| q.contains(w))
 }
 
 /// Questions about appearance, pictures or graphics.
@@ -982,6 +1095,26 @@ mod image_tests {
     use super::is_visual_question;
 
     #[test]
+    fn pointing_questions_are_recognized() {
+        use super::is_pointing_question;
+        for q in [
+            "How do I pause this video?",
+            "Where is the export option?",
+            "Show me the settings",
+            "Which button saves?",
+        ] {
+            assert!(is_pointing_question(q), "{q}");
+        }
+        for q in [
+            "Summarize this page",
+            "What does this error mean?",
+            "Translate this",
+        ] {
+            assert!(!is_pointing_question(q), "{q}");
+        }
+    }
+
+    #[test]
     fn visual_questions_are_recognized() {
         for q in [
             "What colour is the main button?",
@@ -1001,5 +1134,84 @@ mod image_tests {
         ] {
             assert!(!is_visual_question(q), "{q}");
         }
+    }
+}
+
+const LOCATE_PROMPT: &str = "Where exactly is the thing you just told me to click or use? Reply with only its \
+position as [[point: x,y]], x and y from 0 to 1000 across the image (x from the left, y from the top).";
+
+/// The answer tells the user to act on something on screen.
+fn tells_to_act(answer: &str) -> bool {
+    let a = format!(" {} ", answer.to_lowercase());
+    [
+        " click",
+        " press",
+        " tap ",
+        " select",
+        " choose",
+        " toggle",
+        " drag",
+        " button",
+        " icon",
+        " open the",
+        " find the",
+    ]
+    .iter()
+    .any(|w| a.contains(w))
+}
+
+/// A position from a grounding reply: a marker, "x,y", or a box "x1,y1,x2,y2" (its centre), in
+/// 0–1000 image coordinates.
+fn position_in(reply: &str) -> Option<(f64, f64)> {
+    if let Some(wisp_screen::guide::Marker {
+        target: wisp_screen::guide::TargetRef::Coordinates(x, y),
+        ..
+    }) = wisp_screen::guide::parse_targets(reply).into_iter().next()
+    {
+        return Some((x, y));
+    }
+    // Standalone numbers only: the "2" in "bbox_2d" is part of a word.
+    let mut nums: Vec<f64> = vec![];
+    let mut cur = String::new();
+    let mut in_word = false;
+    for c in reply.chars().chain(std::iter::once(' ')) {
+        if c.is_ascii_digit() || (c == '.' && !cur.is_empty()) {
+            if !in_word {
+                cur.push(c);
+            }
+        } else {
+            if !cur.is_empty()
+                && let Ok(n) = cur.parse::<f64>()
+                && (0.0..=1000.0).contains(&n)
+            {
+                nums.push(n);
+            }
+            cur.clear();
+            in_word = c.is_alphabetic() || c == '_';
+        }
+    }
+    let (x, y) = match nums[..] {
+        [x1, y1, x2, y2, ..] => ((x1 + x2) / 2.0, (y1 + y2) / 2.0),
+        [x, y, ..] => (x, y),
+        _ => return None,
+    };
+    Some((x, y))
+}
+
+#[cfg(test)]
+mod locate_tests {
+    use super::{position_in, tells_to_act};
+
+    #[test]
+    fn reads_positions_in_the_shapes_models_reply_with() {
+        assert_eq!(position_in("[[point: 40,955]]"), Some((40.0, 955.0)));
+        assert_eq!(position_in("(40, 955)"), Some((40.0, 955.0)));
+        assert_eq!(
+            position_in(r#"{"bbox_2d": [30, 940, 50, 970]}"#),
+            Some((40.0, 955.0))
+        );
+        assert_eq!(position_in("It's at the bottom left."), None);
+        assert!(tells_to_act("Click the pause button at the bottom left."));
+        assert!(!tells_to_act("This page is about acoustics."));
     }
 }

@@ -14,6 +14,7 @@ public final class SpeechPlayer: NSObject, AVAudioPlayerDelegate {
     private var player: AVAudioPlayer?
     private var current: String?
     private var lastReceived = false
+    private var announced = false
     private let root: URL
 
     public init(root: URL) {
@@ -33,6 +34,7 @@ public final class SpeechPlayer: NSObject, AVAudioPlayerDelegate {
             stop()
             current = utterance
             lastReceived = false
+            announced = false
         }
         if last { lastReceived = true }
         // An empty final marker has no audio file; only record that the utterance is complete.
@@ -65,9 +67,18 @@ public final class SpeechPlayer: NSObject, AVAudioPlayerDelegate {
             p.delegate = self
             p.volume = volume
             p.prepareToPlay()
-            p.play()
+            // A piece that won't play (e.g. empty audio) never reports finishing: move on now
+            // rather than waiting forever.
+            guard p.duration > 0.01, p.play() else {
+                player = nil
+                playNext()
+                return
+            }
             player = p
-            if next.seq == 0 || queue.isEmpty { onStart?(next.utterance) }
+            if !announced {
+                announced = true
+                onStart?(next.utterance)
+            }
         } catch {
             Log.app.error("speech playback failed: \(error.localizedDescription, privacy: .public)")
             playNext()

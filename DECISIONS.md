@@ -422,3 +422,27 @@ as a hold, so Step 2's prefill applies), listens, and ends after ~0.9 s of quiet
 never listens while it speaks — the next turn starts 350 ms after the answer finishes playing — so its own voice
 can't be heard as a question; there is no always-on wake word. Turns continue one conversation (D-041's 10-minute
 follow-up), and the island stays open saying "Talking" between turns.
+
+## D-047 — First run, polish, and three fixes from hands-on use
+**Status** accepted (2026-10-12)
+- **Stuck in "Speaking":** the end-of-answer marker had no text, so the engine wrote a zero-length WAV, which
+  AVAudioPlayer never reports as finished. The engine now sends that marker without audio, and the player skips any
+  piece that won't play. Regression test: every way an answer can end reports finished, and "speaking" is
+  announced once per answer.
+- **"Show me" didn't point:** with text-first (D-041), questions about icon-only controls (▶︎ ❚❚) on pages that
+  expose no accessibility labels had neither a label nor a picture to point with. Now "where / how do I / show me"
+  questions get the picture when there are fewer than five labelled controls; Chromium and Electron apps are asked to
+  expose web content to accessibility (`AXManualAccessibility`, per app, when it comes to the front); and when an
+  answer tells the user to click something but marks nothing, one short follow-up asks the model where (reusing the
+  processed image), accepting a marker, "x,y" or a box. Measured with a drawn video player (scripts/validation/
+  point-check.ts): 0/6 → 6/6 pointed at the pause button on both 8B and 4B.
+- **Drawing on the real display** is covered by an opt-in on-screen test (WISP_ONSCREEN=1): the window server
+  reports the drawing layer as the top window at the pointer, it never takes focus, strokes persist, and a capture
+  of only that window shows the glow, ink and tip.
+- **First run:** a "Wisp's brain" step answers with whatever is there (Apple's on-device model), offers one click
+  to download the recommended model (switching to it when done), and explains Ollama or cloud keys otherwise. The
+  shortcut step shows the user's real shortcuts plus talk mode, dictation and "Agent, …". The voice step downloads
+  only the chosen voice engine; new installs default to full-precision Kokoro.
+- **Polish:** Settings switches for the notch island and for opt-in tips (after 10 minutes in an app, once per app,
+  using only which app is in front, never screenshots; skips password managers and system apps); a finished
+  background task shows its summary in the island; OpenAI voices with the user's key (never in Local Only).

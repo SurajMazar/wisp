@@ -580,12 +580,13 @@ public struct CursorSettings: Codable, Sendable, Equatable {
     public var label: String
     public var opacity: Double
     public var shape: CursorShape
+    public var showIsland: Bool
     public var showLabel: Bool
     public var size: Double
     public var theme: AccentColor
     public var visibility: CursorVisibility
 
-    public init(animation: AnimationLevel, customColor: String? = nil, enabled: Bool, glow: Double, glowFrom: String, glowMode: GlowMode, glowTo: String, label: String, opacity: Double, shape: CursorShape, showLabel: Bool, size: Double, theme: AccentColor, visibility: CursorVisibility) {
+    public init(animation: AnimationLevel, customColor: String? = nil, enabled: Bool, glow: Double, glowFrom: String, glowMode: GlowMode, glowTo: String, label: String, opacity: Double, shape: CursorShape, showIsland: Bool, showLabel: Bool, size: Double, theme: AccentColor, visibility: CursorVisibility) {
         self.animation = animation
         self.customColor = customColor
         self.enabled = enabled
@@ -596,6 +597,7 @@ public struct CursorSettings: Codable, Sendable, Equatable {
         self.label = label
         self.opacity = opacity
         self.shape = shape
+        self.showIsland = showIsland
         self.showLabel = showLabel
         self.size = size
         self.theme = theme
@@ -680,10 +682,12 @@ public struct FocusSettings: Codable, Sendable, Equatable {
 
 public struct GeneralSettings: Codable, Sendable, Equatable {
     public var launchAtLogin: Bool
+    public var proactiveTips: Bool
     public var showMenuBarIcon: Bool
 
-    public init(launchAtLogin: Bool, showMenuBarIcon: Bool) {
+    public init(launchAtLogin: Bool, proactiveTips: Bool, showMenuBarIcon: Bool) {
         self.launchAtLogin = launchAtLogin
+        self.proactiveTips = proactiveTips
         self.showMenuBarIcon = showMenuBarIcon
     }
 }

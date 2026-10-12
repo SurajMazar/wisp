@@ -27,7 +27,7 @@ public final class IslandController {
         panel.isReleasedWhenClosed = false
         panel.sharingType = .none
         panel.animationBehavior = .none
-        let host = NSHostingView(rootView: IslandView(model: model, onClick: { [weak self] in self?.onClick?() }))
+        let host = NSHostingView(rootView: IslandView(model: model, onClick: { [weak self] in self?.clicked() }))
         host.frame = NSRect(origin: .zero, size: Self.canvas)
         panel.contentView = host
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
@@ -51,6 +51,38 @@ public final class IslandController {
     public func set(level: Double) { model.level = level }
 
     public func set(accent: NSColor) { model.accent = Color(nsColor: accent) }
+
+    private var acceptTip: (() -> Void)?
+    private var tipTimeout: Task<Void, Never>?
+
+    /// Offer something (a tour of the app in front) for a few seconds; a click accepts.
+    public func showTip(_ text: String, onAccept: @escaping () -> Void) {
+        guard enabled else { return }
+        model.tip = text
+        acceptTip = onAccept
+        place()
+        panel.orderFrontRegardless()
+        tipTimeout?.cancel()
+        tipTimeout = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(12))
+            guard !Task.isCancelled else { return }
+            self?.clearTip()
+        }
+    }
+
+    private func clearTip() {
+        model.tip = nil
+        acceptTip = nil
+    }
+
+    private func clicked() {
+        if let accept = acceptTip {
+            clearTip()
+            accept()
+        } else {
+            onClick?()
+        }
+    }
 
     /// Talk mode: stay open between turns and say so; a click ends it.
     public func set(talking: Bool) {
@@ -93,8 +125,10 @@ final class IslandModel {
     var notch = CGSize(width: 0, height: 32)
 
     var talking = false
+    /// A suggestion shown while idle (e.g. "Want a quick tour of Figma?").
+    var tip: String?
 
-    var isActive: Bool { talking || ![.idle, .following].contains(state) }
+    var isActive: Bool { talking || tip != nil || ![.idle, .following].contains(state) }
 
     var label: String {
         switch state {
@@ -109,7 +143,7 @@ final class IslandModel {
         case .waitingForPermission: "Needs permission"
         case .success: "Got it"
         case .error: "Something went wrong"
-        case .idle, .following: talking ? "Talking · click to end" : ""
+        case .idle, .following: talking ? "Talking · click to end" : (tip ?? "")
         }
     }
 }

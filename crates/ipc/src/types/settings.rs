@@ -42,6 +42,9 @@ pub struct ComputerSettings {
 pub struct GeneralSettings {
     pub launch_at_login: bool,
     pub show_menu_bar_icon: bool,
+    /// After a while in an app, offer a quick tour of it (uses only the app's name). Off by
+    /// default.
+    pub proactive_tips: bool,
 }
 
 impl Default for GeneralSettings {
@@ -49,6 +52,7 @@ impl Default for GeneralSettings {
         Self {
             launch_at_login: false,
             show_menu_bar_icon: true,
+            proactive_tips: false,
         }
     }
 }

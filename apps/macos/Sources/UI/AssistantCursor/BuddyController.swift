@@ -33,7 +33,7 @@ public final class BuddyController {
 
     public init(settings: CursorSettings = CursorSettings(
         animation: .normal, customColor: nil, enabled: true, glow: 0.6, glowFrom: "#8B7CF6", glowMode: .gradient,
-        glowTo: "#5EC8F2", label: "Wisp", opacity: 0.95, shape: .wisp, showLabel: false, size: 1, theme: .default,
+        glowTo: "#5EC8F2", label: "Wisp", opacity: 0.95, shape: .wisp, showIsland: true, showLabel: false, size: 1, theme: .default,
         visibility: .always
     )) {
         self.settings = settings

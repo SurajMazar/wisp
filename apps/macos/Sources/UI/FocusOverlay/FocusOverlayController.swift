@@ -29,7 +29,8 @@ public final class FocusOverlayController {
     }
 
     public var onPhase: ((AssistantState) -> Void)?
-    private var windows: [NSPanel] = []
+    /// One overlay per display (internal for on-screen tests).
+    var windows: [NSPanel] = []
     private var completion: ((Result?) -> Void)?
     private var timeout: Task<Void, Never>?
     private var screenObserver: NSObjectProtocol?

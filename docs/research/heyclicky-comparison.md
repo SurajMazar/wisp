@@ -158,7 +158,7 @@ it work on every answer, and extends it:
 - Always-on listening without a key press stays out of scope by default (privacy). It could be an explicit,
   clearly indicated option later.
 
-### Step 7 — First run and polish (≈1 week)
+### Step 7 — First run and polish (≈1 week) ✅ done 2026-10-12 (see D-047)
 
 - **Zero-setup first run:**
   - If no model is available, use Apple's on-device model immediately.

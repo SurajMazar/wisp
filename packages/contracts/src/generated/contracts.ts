@@ -283,6 +283,7 @@ export const CursorSettings = z.strictObject({
   "label": z.string().default("Wisp"),
   "opacity": z.number().default(0.95),
   "shape": CursorShape.default(() => CursorShape.parse("wisp")),
+  "showIsland": z.boolean().default(true),
   "showLabel": z.boolean().default(false),
   "size": z.number().default(1),
   "theme": AccentColor.default(() => AccentColor.parse("default")),
@@ -335,6 +336,7 @@ export type FocusSettings = z.output<typeof FocusSettings>;
 
 export const GeneralSettings = z.strictObject({
   "launchAtLogin": z.boolean().default(false),
+  "proactiveTips": z.boolean().default(false),
   "showMenuBarIcon": z.boolean().default(true),
 });
 export type GeneralSettings = z.output<typeof GeneralSettings>;
@@ -418,7 +420,7 @@ export const VoiceSettings = z.strictObject({
   "speakAnswers": SpeakAnswers.default(() => SpeakAnswers.parse("voiceQuestions")),
   "speed": z.number().default(1),
   "sttModel": z.string().default("whisper-base.en"),
-  "ttsModel": z.string().default("kokoro-82m"),
+  "ttsModel": z.string().default("kokoro-82m-full"),
   "vadSensitivity": z.number().default(0.5),
   "voice": z.string().default("af_heart"),
   "volume": z.number().default(1),
@@ -429,16 +431,16 @@ export const AppSettings = z.strictObject({
   "appearance": AppearanceSettings.default(() => AppearanceSettings.parse({"accent":"default","theme":"system"})),
   "computer": ComputerSettings.default(() => ComputerSettings.parse({"confirmEveryAction":false,"enabled":false})),
   "connections": ConnectionsSettings.default(() => ConnectionsSettings.parse({"servers":[]})),
-  "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"glowFrom":"#8B7CF6","glowMode":"gradient","glowTo":"#5EC8F2","label":"Wisp","opacity":0.95,"shape":"wisp","showLabel":false,"size":1,"theme":"default","visibility":"always"})),
+  "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"glowFrom":"#8B7CF6","glowMode":"gradient","glowTo":"#5EC8F2","label":"Wisp","opacity":0.95,"shape":"wisp","showIsland":true,"showLabel":false,"size":1,"theme":"default","visibility":"always"})),
   "dictation": DictationSettings.default(() => DictationSettings.parse({"cleanup":false,"enabled":true,"shortcut":{"modifiers":["control","shift"]}})),
   "focus": FocusSettings.default(() => FocusSettings.parse({"askContext":"window","dimSurroundings":true,"drawStyle":"rectangle","excludedApps":["com.1password.1password","com.agilebits.onepassword7","com.bitwarden.desktop","com.lastpass.LastPass","com.dashlane.dashlanephonefinal","com.apple.keychainaccess","com.apple.Passwords","com.keepassxc.keepassxc"],"margin":24,"pointSize":480,"screenshots":"auto"})),
-  "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
+  "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"proactiveTips":false,"showMenuBarIcon":true})),
   "invocation": InvocationSettings.default(() => InvocationSettings.parse({"behavior":"hold","holdDelayMs":150,"mouseAction":"focusCursor","mouseButton":"none","shortcut":{"modifiers":["option","command"]}})),
   "memory": MemorySettings.default(() => MemorySettings.parse({"enabled":true,"learnFromChats":true})),
   "models": ModelSettings.default(() => ModelSettings.parse({"contextLength":8192,"deepThinking":false,"endpoints":[],"maxTokens":1024,"ollamaUrl":"http://127.0.0.1:11434","temperature":0.4})),
   "onboarding": OnboardingSettings.default(() => OnboardingSettings.parse({"completed":false})),
   "privacy": PrivacySettings.default(() => PrivacySettings.parse({"mode":"localOnly"})),
-  "voice": VoiceSettings.default(() => VoiceSettings.parse({"enabled":true,"language":"auto","speakAnswers":"voiceQuestions","speed":1,"sttModel":"whisper-base.en","ttsModel":"kokoro-82m","vadSensitivity":0.5,"voice":"af_heart","volume":1})),
+  "voice": VoiceSettings.default(() => VoiceSettings.parse({"enabled":true,"language":"auto","speakAnswers":"voiceQuestions","speed":1,"sttModel":"whisper-base.en","ttsModel":"kokoro-82m-full","vadSensitivity":0.5,"voice":"af_heart","volume":1})),
 });
 export type AppSettings = z.output<typeof AppSettings>;
 

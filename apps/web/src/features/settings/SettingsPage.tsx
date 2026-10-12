@@ -70,6 +70,20 @@ export function SettingsPage() {
             />
           }
         />
+        <SettingsRow
+          label="Offer tips"
+          hint="After you've spent a while in an app, Wisp offers a quick tour of it — once per app. Uses only which app is in front, never your screen."
+          control={
+            <Switch
+              label="Offer tips"
+              checked={general.proactiveTips}
+              disabled={saving === "general"}
+              onCheckedChange={(v) =>
+                void update({ section: "general", value: { ...general, proactiveTips: v } })
+              }
+            />
+          }
+        />
       </SettingsGroup>
 
       <InvocationSettingsGroup invocation={invocation} />

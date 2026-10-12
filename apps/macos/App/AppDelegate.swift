@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var assistant: AssistantCoordinator?
     private var focus: FocusCoordinator?
     private var voice: VoiceCoordinator?
+    private var tips: TipsCoordinator?
     /// A single tap waits briefly in case a second one follows (double tap = talk mode).
     private var pendingTap: Task<Void, Never>?
     private var lastTapAt = Date.distantPast
@@ -29,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         focus.onCompleted = { [weak voice] in voice?.lastFocusAt = Date() }
         voice.settleFocus = { [weak focus] in await focus?.settle() }
         voice.captureScreen = { [weak focus] in focus?.captureForTurn() }
+        tips = TipsCoordinator(router: deps.router, assistant: assistant)
         voice.onTalkModeChanged = { [weak deps] on in deps?.invocation.watchEscape = on }
         // Clicking the island ends talk mode, otherwise opens the panel.
         assistant.island.onClick = { [weak voice, weak assistant] in
@@ -114,6 +116,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let previous = deps?.state.settings
         deps?.state.settings = settings
         menuBar?.setVisible(settings.general.showMenuBarIcon)
+        tips?.enabled = settings.general.proactiveTips
         menuBar?.setShortcutHint(KeyNames.display(settings.invocation.shortcut))
         if previous?.invocation != settings.invocation {
             deps?.invocation.apply(settings.invocation)

@@ -19,6 +19,7 @@ describe("First run", () => {
       .handle("host.system.openSettingsPane", () => ({}))
       .handle("host.app.relaunch", () => ({}))
       .handle("voice.status", () => ({ models: [], phonemizer: true, sttReady: false, ttsReady: false }))
+      .handle("models.list", () => ({ providers: [], models: [] }))
       .handle("settings.update", () => useSettingsStore.getState().settings as never);
     setIpcClient(new IpcClient(transport));
   });
@@ -44,7 +45,7 @@ describe("First run", () => {
       expect(transport.sent.some((e) => e.kind === "request" && e.method === "host.app.relaunch")).toBe(true),
     );
     // Skip the rest.
-    for (const name of [/Skip for now/, /Skip for now/, /Got it/, /Later|Continue/, /Continue/]) {
+    for (const name of [/Skip for now/, /Skip for now/, /Got it/, /Continue/, /Later|Continue/, /Continue/]) {
       await userEvent.click(screen.getAllByRole("button", { name })[0]!);
     }
     expect(screen.getByRole("heading", { name: "You're all set." })).toBeInTheDocument();

@@ -127,6 +127,18 @@ export function CursorSettingsGroup({ cursor }: { cursor: CursorSettings }) {
       </div>
 
       <SettingsRow
+        label="Show status at the notch"
+        hint="A small capsule at the top of the screen shows when Wisp is listening, thinking or speaking, with a caption of the answer."
+        control={
+          <Switch
+            label="Show status at the notch"
+            checked={draft.showIsland}
+            disabled={saving}
+            onCheckedChange={(showIsland) => save({ showIsland })}
+          />
+        }
+      />
+      <SettingsRow
         label="Show assistant cursor"
         control={
           <Switch

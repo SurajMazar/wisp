@@ -306,7 +306,8 @@ impl Core {
             .iter()
             .any(|m| m.id == settings.stt_model && m.installed);
         let phonemizer = wisp_audio::tts::find_espeak().is_some();
-        let system = settings.tts_model == wisp_ipc::types::voice::SYSTEM_TTS;
+        let system = settings.tts_model == wisp_ipc::types::voice::SYSTEM_TTS
+            || settings.tts_model == wisp_ipc::types::voice::OPENAI_TTS;
         let tts_ready = system
             || phonemizer
                 && list
@@ -519,6 +520,20 @@ impl Core {
                 Err(_) => continue,
             };
             let path = dir.join(format!("{utterance}-{seq}.wav"));
+            // The end-of-answer marker usually has no text: send it without audio (a zero-length
+            // file never "finishes playing", which left the app stuck in "Speaking").
+            if wisp_audio::text::speakable(&text).trim().is_empty() {
+                if last {
+                    self.events().publish::<SpeechChunkEvent>(&SpeechChunk {
+                        utterance_id: utterance,
+                        seq,
+                        path: path.display().to_string(),
+                        text,
+                        last,
+                    });
+                }
+                continue;
+            }
             let ok: Result<Result<(), String>, String> = if settings.tts_model
                 == wisp_ipc::types::voice::SYSTEM_TTS
             {
@@ -539,6 +554,11 @@ impl Core {
                         .map_err(|e| e.message)),
                     None => Err("the app isn't connected".into()),
                 }
+            } else if settings.tts_model == wisp_ipc::types::voice::OPENAI_TTS {
+                Ok(self
+                    .openai_speech(&text, &settings, &path)
+                    .await
+                    .map_err(|e| e.message))
             } else {
                 let Ok(tts) = self.kokoro(&settings.tts_model) else {
                     continue;
@@ -872,5 +892,71 @@ mod cleanup_tests {
             said,
             "an answer instead of a tidy-up is ignored"
         );
+    }
+}
+
+impl Core {
+    /// Speak with OpenAI's voices (cloud, the user's key). Refused in Local Only.
+    async fn openai_speech(
+        &self,
+        text: &str,
+        voice: &VoiceSettings,
+        path: &std::path::Path,
+    ) -> Result<(), IpcError> {
+        let settings = self.blocking(|db| db.load_settings()).await?;
+        if settings.privacy.mode == wisp_ipc::types::settings::PrivacyMode::LocalOnly {
+            return Err(IpcError::new(
+                wisp_ipc::ErrorCode::PermissionDenied,
+                "OpenAI voices are off in Local Only.",
+            ));
+        }
+        let account = settings
+            .models
+            .endpoints
+            .iter()
+            .find(|e| e.preset == Some(wisp_ipc::types::models::CloudPreset::Openai))
+            .and_then(|e| e.keychain_account.clone())
+            .ok_or_else(|| {
+                IpcError::new(
+                    wisp_ipc::ErrorCode::NotFound,
+                    "Add an OpenAI key in Models → Cloud models to use OpenAI voices.",
+                )
+            })?;
+        let key = self.secret(&account).await.ok_or_else(|| {
+            IpcError::new(
+                wisp_ipc::ErrorCode::Unavailable,
+                "The OpenAI key couldn't be read.",
+            )
+        })?;
+        let name = if wisp_ipc::types::voice::OPENAI_VOICES.contains(&voice.voice.as_str()) {
+            voice.voice.as_str()
+        } else {
+            "alloy"
+        };
+        let resp = reqwest::Client::new()
+            .post("https://api.openai.com/v1/audio/speech")
+            .bearer_auth(key)
+            .timeout(Duration::from_secs(30))
+            .json(&serde_json::json!({
+                "model": "gpt-4o-mini-tts",
+                "voice": name,
+                "input": wisp_audio::text::speakable(text),
+                "response_format": "wav",
+                "speed": voice.speed.clamp(0.25, 4.0),
+            }))
+            .send()
+            .await
+            .map_err(|e| IpcError::new(wisp_ipc::ErrorCode::Unavailable, e.to_string()))?;
+        if !resp.status().is_success() {
+            return Err(IpcError::new(
+                wisp_ipc::ErrorCode::Unavailable,
+                format!("OpenAI voices answered {}", resp.status()),
+            ));
+        }
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| IpcError::internal(e.to_string()))?;
+        std::fs::write(path, &bytes).map_err(|e| IpcError::internal(e.to_string()))
     }
 }

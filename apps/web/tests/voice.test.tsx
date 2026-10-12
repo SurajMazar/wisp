@@ -36,8 +36,8 @@ const status = (over: Partial<VoiceStatus> = {}): VoiceStatus => ({
       license: "MIT",
     },
     {
-      id: "kokoro-82m",
-      name: "Kokoro 82M",
+      id: "kokoro-82m-full",
+      name: "Kokoro 82M (full precision)",
       kind: "tts",
       sizeBytes: 95000000,
       installed: true,

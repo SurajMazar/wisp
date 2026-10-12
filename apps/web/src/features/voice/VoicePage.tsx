@@ -24,6 +24,8 @@ const voices: { id: string; label: string }[] = [
 ];
 
 const SYSTEM = "system";
+const OPENAI = "openai";
+const openaiVoices = ["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer"];
 const modelNote: Record<string, string> = {
   "kokoro-82m-full": "Fastest natural voice (about 2.5× faster than compressed)",
   "kokoro-82m": "Smaller download, slower to start speaking",
@@ -196,6 +198,10 @@ export function VoicePage() {
   const stt = status.models.filter((m) => m.kind === "stt");
   const tts = status.models.filter((m) => m.kind === "tts");
   const system = draft.ttsModel === SYSTEM;
+  const openai = draft.ttsModel === OPENAI;
+  const all = useSettingsStore.getState().settings;
+  const hasOpenAI = !!all?.models.endpoints.some((e) => e.preset === "openai");
+  const cloudOk = all?.privacy.mode !== "localOnly";
 
   return (
     <>
@@ -262,7 +268,7 @@ export function VoicePage() {
             key={m.id}
             m={m}
             selected={draft.ttsModel === m.id}
-            onSelect={() => save({ ttsModel: m.id, voice: system ? "af_heart" : draft.voice })}
+            onSelect={() => save({ ttsModel: m.id, voice: system || openai ? "af_heart" : draft.voice })}
           />
         ))}
         <SettingsRow
@@ -287,6 +293,26 @@ export function VoicePage() {
               }
             >
               {system ? "In use" : "Use"}
+            </Button>
+          }
+        />
+        <SettingsRow
+          label="OpenAI voices"
+          hint={
+            !hasOpenAI
+              ? "Natural cloud voices with your OpenAI key — add one in Models → Cloud models first."
+              : !cloudOk
+                ? "Off while privacy is Local Only: answers would be sent to OpenAI to be spoken."
+                : "Natural cloud voices. Each answer's text is sent to OpenAI to be spoken (uses your key)."
+          }
+          control={
+            <Button
+              size="sm"
+              variant={openai ? "primary" : "secondary"}
+              disabled={openai || !hasOpenAI || !cloudOk}
+              onClick={() => save({ ttsModel: OPENAI, voice: "alloy" })}
+            >
+              {openai ? "In use" : "Use"}
             </Button>
           }
         />
@@ -317,18 +343,24 @@ export function VoicePage() {
               value={draft.voice}
               onChange={(e) => save({ voice: e.target.value })}
             >
-              {system
-                ? systemVoices.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name} ({v.language}
-                      {v.quality !== "default" ? `, ${v.quality}` : ""})
+              {openai
+                ? openaiVoices.map((v) => (
+                    <option key={v} value={v}>
+                      {v.charAt(0).toUpperCase() + v.slice(1)}
                     </option>
                   ))
-                : voices.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.label}
-                    </option>
-                  ))}
+                : system
+                  ? systemVoices.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} ({v.language}
+                        {v.quality !== "default" ? `, ${v.quality}` : ""})
+                      </option>
+                    ))
+                  : voices.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.label}
+                      </option>
+                    ))}
             </select>
           }
         />

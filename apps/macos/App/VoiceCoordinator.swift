@@ -274,6 +274,10 @@ final class VoiceCoordinator {
         case .needsInput, .stuck, .paused:
             assistant.set(state: .idle)
             assistant.expand()
+        case .completed, .failed, .cancelled:
+            // The island shows what happened while the summary is spoken.
+            assistant.island.resetCaption()
+            assistant.island.appendCaption(r.note ?? (r.status == .completed ? "Done." : "Stopped."))
         default:
             break
         }

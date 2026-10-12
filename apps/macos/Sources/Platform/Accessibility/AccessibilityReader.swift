@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import Synchronization
 import WispIPC
 
 /// Reads macOS Accessibility (AX) data: the element under a point, its ancestors, the focused
@@ -33,6 +34,19 @@ public enum AccessibilityReader {
     }
 
     /// Snapshot around `point` (global CG points) and inside `region`, without blocking the caller's actor.
+    private static let prepared = Mutex<Set<pid_t>>([])
+
+    /// Ask Chromium and Electron apps (Chrome, Brave, Edge, Slack, VS Code…) to expose their web
+    /// content to accessibility — they don't by default, so their buttons were invisible to Wisp
+    /// and it couldn't point at them. `AXManualAccessibility` is the switch assistive tools use;
+    /// other apps ignore it. Once per app process.
+    public nonisolated static func prepare(pid: pid_t) {
+        guard pid > 0, AXIsProcessTrusted(), prepared.withLock({ $0.insert(pid).inserted }) else { return }
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.2)
+        _ = AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    }
+
     public static func snapshot(point: CGPoint, region: CGRect?, limits: Limits, excludingPID: pid_t) async -> AxSnapshot {
         await Task.detached(priority: .userInitiated) {
             read(point: point, region: region, limits: limits, excludingPID: excludingPID)
@@ -67,6 +81,7 @@ public enum AccessibilityReader {
             if appPID != excludingPID { appElement = focusedApp }
         }
         if let appElement { AXUIElementSetMessagingTimeout(appElement, 0.2) }
+        prepare(pid: appPID)
 
         let window: AXUIElement? = under.flatMap { windowOf($0) }
             ?? appElement.flatMap { copy($0, kAXFocusedWindowAttribute) }

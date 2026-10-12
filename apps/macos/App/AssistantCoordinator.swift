@@ -36,6 +36,7 @@ final class AssistantCoordinator {
     func apply(_ settings: CursorSettings) {
         buddy.apply(settings)
         island.set(accent: BuddyTheme.color(for: settings.theme, custom: settings.customColor))
+        island.enabled = settings.showIsland
         guidance.tint = BuddyTheme.color(for: settings.theme, custom: settings.customColor)
     }
 

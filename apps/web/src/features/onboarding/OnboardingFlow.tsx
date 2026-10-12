@@ -7,19 +7,32 @@ import { usePermissionsStore, type PermissionKind } from "../../stores/permissio
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useVoiceStore } from "../../stores/voiceStore";
 import { accents } from "../settings/accents";
+import { formatShortcut } from "../../lib/shortcut";
+import { useModelsStore } from "../../stores/modelsStore";
 
 type Step =
-  "welcome" | "microphone" | "screenRecording" | "accessibility" | "shortcut" | "voice" | "theme" | "ready";
+  | "welcome"
+  | "microphone"
+  | "screenRecording"
+  | "accessibility"
+  | "shortcut"
+  | "brain"
+  | "voice"
+  | "theme"
+  | "ready";
 const steps: Step[] = [
   "welcome",
   "microphone",
   "screenRecording",
   "accessibility",
   "shortcut",
+  "brain",
   "voice",
   "theme",
   "ready",
 ];
+/** Fast enough for spoken answers on a 16 GB Mac (DECISIONS.md D-042). */
+const RECOMMENDED_MODEL = "qwen3-vl:4b-instruct";
 
 const permissionCopy: Record<PermissionKind, { title: string; why: string; how: string; button: string }> = {
   microphone: {
@@ -218,6 +231,13 @@ export function OnboardingFlow() {
   }
 
   if (step === "shortcut") {
+    const keys = settings ? formatShortcut(settings.invocation.shortcut) : "⌥⌘";
+    const dictate = settings ? formatShortcut(settings.dictation.shortcut) : "⌃⇧";
+    const kbd = (k: string) => (
+      <kbd className="rounded border border-border-strong bg-surface px-1.5 py-0.5 font-mono text-sm text-text">
+        {k}
+      </kbd>
+    );
     return (
       <Frame
         footer={
@@ -227,29 +247,39 @@ export function OnboardingFlow() {
         }
       >
         {progress}
-        <h1 className="text-xl font-semibold tracking-tight">Your shortcut</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Your shortcuts</h1>
         <ul className="mt-4 space-y-3 text-md text-text-muted">
           <li>
-            <kbd className="rounded border border-border-strong bg-surface px-1.5 py-0.5 font-mono text-sm text-text">
-              ⌥⌘
-            </kbd>{" "}
-            <b className="text-text">Hold</b> to talk — and drag while holding to point at something.
+            {kbd(keys)} <b className="text-text">Hold</b> and ask out loud — drag while holding to point at
+            something.
           </li>
           <li>
-            <kbd className="rounded border border-border-strong bg-surface px-1.5 py-0.5 font-mono text-sm text-text">
-              ⌥⌘
-            </kbd>{" "}
-            <b className="text-text">Tap</b> to open Wisp next to your cursor.
+            {kbd(keys)} <b className="text-text">Tap</b> to open Wisp next to your cursor;{" "}
+            <b className="text-text">tap twice</b> to just talk back and forth.
+          </li>
+          <li>
+            {kbd(dictate)} <b className="text-text">Hold</b> to dictate — what you say is typed wherever
+            you're writing.
+          </li>
+          <li>
+            Start with <b className="text-text">“Agent, …”</b> to have Wisp do something for you, like “Agent,
+            remind me tomorrow at 9 to call Sam”.
           </li>
         </ul>
-        <p className="mt-3 text-sm text-text-faint">You can change it anytime in Settings.</p>
+        <p className="mt-3 text-sm text-text-faint">You can change these anytime in Settings.</p>
       </Frame>
     );
   }
 
+  if (step === "brain") {
+    return <BrainStep progress={progress} next={next} />;
+  }
+
   if (step === "voice") {
     const wanted = (voice.status?.models ?? []).filter(
-      (m) => (m.kind === "stt" && m.id === settings?.voice.sttModel) || m.kind === "tts",
+      (m) =>
+        (m.kind === "stt" && m.id === settings?.voice.sttModel) ||
+        (m.kind === "tts" && m.id === settings?.voice.ttsModel),
     );
     const missing = wanted.filter((m) => !m.installed);
     const mb = Math.round(missing.reduce((n, m) => n + m.sizeBytes, 0) / 1e6);
@@ -356,6 +386,105 @@ export function OnboardingFlow() {
         Hold <b className="text-text">⌥⌘</b> and ask "What am I looking at?", or say "Teach me how to…" to
         learn something step by step. Everything you allowed can be changed in Permissions.
       </p>
+    </Frame>
+  );
+}
+
+/**
+ * Wisp's "brain": works immediately with whatever is on this Mac (Apple's on-device model), and
+ * offers a one-click download of the recommended model for better, faster answers.
+ */
+function BrainStep({ progress, next }: { progress: ReactNode; next: () => void }) {
+  const { list, load, pull, pulls, startOllama } = useModelsStore();
+  const { settings, update } = useSettingsStore();
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const pulling = pulls[RECOMMENDED_MODEL];
+  // When the download finishes, use it for everything.
+  useEffect(() => {
+    if (pulling?.done && !pulling.error && settings) {
+      const ref = { providerId: "ollama", model: RECOMMENDED_MODEL };
+      void update({ section: "models", value: { ...settings.models, general: ref, vision: ref } });
+      void load();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pulling?.done]);
+
+  const ollama = list?.providers.find((p) => p.kind === "ollama");
+  const apple = list?.providers.find((p) => p.kind === "apple" && p.state === "available");
+  const local = (list?.models ?? []).filter((m) => m.providerId === "ollama");
+  const hasRecommended = local.some((m) => m.id === RECOMMENDED_MODEL);
+  const pct = pulling?.total ? Math.round(((pulling.completed ?? 0) / pulling.total) * 100) : null;
+
+  let body: ReactNode;
+  let action: ReactNode = null;
+  if (!list) {
+    body = <p className="mt-3 text-md text-text-muted">Checking what's on this Mac…</p>;
+  } else if (hasRecommended || (local.length > 0 && !pulling)) {
+    body = (
+      <p className="mt-3 flex items-center gap-1.5 text-md text-success" role="status">
+        <StepDoneIcon size={15} /> Ready — answering with{" "}
+        {hasRecommended ? RECOMMENDED_MODEL : local[0]?.name}, on this Mac.
+      </p>
+    );
+  } else if (ollama && ollama.state !== "notInstalled") {
+    body = (
+      <>
+        <p className="mt-3 text-md leading-relaxed text-text-muted">
+          {apple
+            ? "Wisp can already answer with Apple's on-device model. For faster answers that can see your screen, download Wisp's recommended model."
+            : "Download Wisp's recommended model so it can answer — and see your screen — entirely on this Mac."}
+        </p>
+        {pulling && !pulling.done && (
+          <div className="mt-4" role="status">
+            <div className="h-1.5 overflow-hidden rounded-full bg-bg-sunken">
+              <div className="h-full bg-accent transition-[width]" style={{ width: `${pct ?? 0}%` }} />
+            </div>
+            <p className="mt-1 text-xs text-text-faint">
+              {pct !== null ? `${pct}%` : pulling.status} · keeps going in the background — you can continue
+            </p>
+          </div>
+        )}
+        {pulling?.error && <p className="mt-2 text-sm text-danger">{pulling.error}</p>}
+      </>
+    );
+    if (!pulling || pulling.error) {
+      action =
+        ollama.state === "notRunning" ? (
+          <Button variant="primary" onClick={() => void startOllama().then(() => load())}>
+            Start Ollama
+          </Button>
+        ) : (
+          <Button variant="primary" onClick={() => void pull(RECOMMENDED_MODEL)}>
+            Download {RECOMMENDED_MODEL} (3.3 GB)
+          </Button>
+        );
+    }
+  } else {
+    body = (
+      <p className="mt-3 text-md leading-relaxed text-text-muted">
+        {apple
+          ? "Wisp will answer with Apple's on-device model for now. For better answers, install Ollama from ollama.com, then download a model in Models — or add a cloud key there."
+          : "Wisp needs a model to answer. Install Ollama from ollama.com (free, runs on this Mac), or add an OpenAI, Anthropic or Gemini key in Models."}
+      </p>
+    );
+  }
+
+  return (
+    <Frame
+      footer={
+        <>
+          {action}
+          <Button variant={action ? "ghost" : "primary"} onClick={next}>
+            {action ? "Later" : "Continue →"}
+          </Button>
+        </>
+      }
+    >
+      {progress}
+      <h1 className="text-xl font-semibold tracking-tight">Wisp's brain</h1>
+      {body}
     </Frame>
   );
 }

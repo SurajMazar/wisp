@@ -598,6 +598,7 @@
             "label": "Wisp",
             "opacity": 0.95,
             "shape": "wisp",
+            "showIsland": true,
             "showLabel": false,
             "size": 1,
             "theme": "default",
@@ -642,6 +643,7 @@
           "$ref": "#/definitions/GeneralSettings",
           "default": {
             "launchAtLogin": false,
+            "proactiveTips": false,
             "showMenuBarIcon": true
           }
         },
@@ -698,7 +700,7 @@
             "speakAnswers": "voiceQuestions",
             "speed": 1,
             "sttModel": "whisper-base.en",
-            "ttsModel": "kokoro-82m",
+            "ttsModel": "kokoro-82m-full",
             "vadSensitivity": 0.5,
             "voice": "af_heart",
             "volume": 1
@@ -1806,6 +1808,11 @@
           "$ref": "#/definitions/CursorShape",
           "default": "wisp"
         },
+        "showIsland": {
+          "default": true,
+          "description": "The status capsule at the notch (listening, thinking, captions).",
+          "type": "boolean"
+        },
         "showLabel": {
           "default": false,
           "type": "boolean"
@@ -2628,6 +2635,11 @@
       "properties": {
         "launchAtLogin": {
           "default": false,
+          "type": "boolean"
+        },
+        "proactiveTips": {
+          "default": false,
+          "description": "After a while in an app, offer a quick tour of it (uses only the app's name). Off by\ndefault.",
           "type": "boolean"
         },
         "showMenuBarIcon": {
@@ -7326,7 +7338,7 @@
           "type": "string"
         },
         "ttsModel": {
-          "default": "kokoro-82m",
+          "default": "kokoro-82m-full",
           "description": "What speaks: a downloaded voice model (e.g. \"kokoro-82m\") or \"system\" (the voices built into\nmacOS: instant, nothing to download).",
           "type": "string"
         },

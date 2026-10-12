@@ -45,7 +45,8 @@ impl Default for VoiceSettings {
             language: "auto".into(),
             vad_sensitivity: 0.5,
             speak_answers: SpeakAnswers::VoiceQuestions,
-            tts_model: "kokoro-82m".into(),
+            // Full precision synthesizes ~2.7× faster than the compressed model (D-042).
+            tts_model: "kokoro-82m-full".into(),
             voice: "af_heart".into(),
             speed: 1.0,
             volume: 1.0,
@@ -230,6 +231,12 @@ pub struct HostVoiceStartParams {
 
 /// The voice engine built into macOS.
 pub const SYSTEM_TTS: &str = "system";
+/// OpenAI's voices, with the user's OpenAI key (cloud; never in Local Only).
+pub const OPENAI_TTS: &str = "openai";
+/// Voices OpenAI offers for speech.
+pub const OPENAI_VOICES: [&str; 10] = [
+    "alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer",
+];
 
 /// A voice installed in macOS.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

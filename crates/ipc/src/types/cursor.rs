@@ -97,6 +97,8 @@ pub struct CursorSettings {
     pub animation: AnimationLevel,
     pub show_label: bool,
     pub label: String,
+    /// The status capsule at the notch (listening, thinking, captions).
+    pub show_island: bool,
 }
 
 impl Default for CursorSettings {
@@ -116,6 +118,7 @@ impl Default for CursorSettings {
             animation: AnimationLevel::Normal,
             show_label: false,
             label: "Wisp".into(),
+            show_island: true,
         }
     }
 }

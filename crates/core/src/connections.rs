@@ -198,7 +198,7 @@ impl Core {
         status
     }
 
-    async fn secret(&self, account: &str) -> Option<String> {
+    pub(crate) async fn secret(&self, account: &str) -> Option<String> {
         let host = self.ai().host()?;
         host.call(
             "host.keychain.get",
