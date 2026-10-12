@@ -15,11 +15,14 @@ public protocol InvocationDelegate: AnyObject {
     func dictationStarted()
     /// The dictation chord ended; `commit` is false when it was cancelled (another key pressed).
     func dictationEnded(commit: Bool)
+    /// Esc was pressed anywhere (only reported while `watchEscape` is on, e.g. in talk mode).
+    func escapePressed()
 }
 
 public extension InvocationDelegate {
     func dictationStarted() {}
     func dictationEnded(commit _: Bool) {}
+    func escapePressed() {}
 }
 
 /// Owns every global invocation channel and turns raw input into start/end decisions.
@@ -43,6 +46,8 @@ public final class InvocationController {
     )
     private var dictationChord = ChordStateMachine(target: [.control, .shift], behavior: .hold, holdDelay: .milliseconds(150))
     private(set) public var isDictating = false
+    /// Report Esc presses to the delegate (talk mode turns this on).
+    public var watchEscape = false
     private lazy var tap = EventTapMonitor { [weak self] event in self?.handle(event) }
     private lazy var hotKey = CarbonHotKey(
         onPress: { [weak self] in self?.keyChordPressed() },
@@ -171,8 +176,9 @@ public final class InvocationController {
             if dictation.enabled { performDictation(dictationChord.flagsChanged(held)) }
             guard settings.shortcut.keyCode == nil else { return }
             perform(chord.flagsChanged(held), source: .keyboard)
-        case .keyDown(_, let isRepeat):
+        case .keyDown(let keyCode, let isRepeat):
             guard !isRepeat else { return }
+            if watchEscape, keyCode == 53 { delegate?.escapePressed() }
             if dictation.enabled { performDictation(dictationChord.keyDown()) }
             guard settings.shortcut.keyCode == nil else { return }
             perform(chord.keyDown(), source: .keyboard)

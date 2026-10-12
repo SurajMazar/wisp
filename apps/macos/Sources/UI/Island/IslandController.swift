@@ -52,6 +52,13 @@ public final class IslandController {
 
     public func set(accent: NSColor) { model.accent = Color(nsColor: accent) }
 
+    /// Talk mode: stay open between turns and say so; a click ends it.
+    public func set(talking: Bool) {
+        model.talking = talking
+        guard enabled else { return }
+        if talking { place(); panel.orderFrontRegardless() }
+    }
+
     /// Answer text as it streams (shown as a caption while thinking/speaking).
     public func appendCaption(_ text: String) {
         model.caption += text
@@ -85,11 +92,13 @@ final class IslandModel {
     /// Notch size in points (width 0: no notch, height = menu bar).
     var notch = CGSize(width: 0, height: 32)
 
-    var isActive: Bool { ![.idle, .following].contains(state) }
+    var talking = false
+
+    var isActive: Bool { talking || ![.idle, .following].contains(state) }
 
     var label: String {
         switch state {
-        case .listening: "Listening"
+        case .listening: talking ? "Talking · listening" : "Listening"
         case .dictating: "Dictating"
         case .selecting: "Draw to point"
         case .drawing: "Release to ask"
@@ -100,7 +109,7 @@ final class IslandModel {
         case .waitingForPermission: "Needs permission"
         case .success: "Got it"
         case .error: "Something went wrong"
-        case .idle, .following: ""
+        case .idle, .following: talking ? "Talking · click to end" : ""
         }
     }
 }

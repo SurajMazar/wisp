@@ -148,7 +148,7 @@ it work on every answer, and extends it:
 - Never into secure fields.
 - Acceptance: dictating into Notes, Slack and a browser text box inserts the text in under 1 s after release.
 
-### Step 6 — Talk mode (≈1 week)
+### Step 6 — Talk mode (≈1 week) ✅ done 2026-10-12 (see D-046)
 
 - Tap the shortcut twice to start a conversation:
   - Wisp listens and uses voice activity detection to end each turn.

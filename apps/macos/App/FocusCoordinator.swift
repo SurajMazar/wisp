@@ -73,6 +73,12 @@ final class FocusCoordinator {
         if overlay.isActive { overlay.finishInk() }
     }
 
+    /// Talk mode: look at the screen for the next turn (quietly, like the start of a hold).
+    func captureForTurn() {
+        guard ScreenPermission.status == .enabled, !overlay.isActive else { return }
+        pending = startAmbientCapture()
+    }
+
     /// Wait for a capture that releasing the keys started (bounded, so voice never hangs on it).
     func settle() async {
         guard let pending else { return }

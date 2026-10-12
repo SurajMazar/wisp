@@ -12,6 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var assistant: AssistantCoordinator?
     private var focus: FocusCoordinator?
     private var voice: VoiceCoordinator?
+    /// A single tap waits briefly in case a second one follows (double tap = talk mode).
+    private var pendingTap: Task<Void, Never>?
+    private var lastTapAt = Date.distantPast
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let deps = DependencyContainer()
@@ -25,6 +28,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let focus = FocusCoordinator(router: deps.router, assistant: assistant)
         focus.onCompleted = { [weak voice] in voice?.lastFocusAt = Date() }
         voice.settleFocus = { [weak focus] in await focus?.settle() }
+        voice.captureScreen = { [weak focus] in focus?.captureForTurn() }
+        voice.onTalkModeChanged = { [weak deps] on in deps?.invocation.watchEscape = on }
+        // Clicking the island ends talk mode, otherwise opens the panel.
+        assistant.island.onClick = { [weak voice, weak assistant] in
+            if voice?.talking == true { voice?.endTalk() } else { assistant?.expand() }
+        }
         self.focus = focus
 
         let menuBar = MenuBarController(actions: .init(
@@ -127,6 +136,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: InvocationDelegate {
     func invocationStarted(source: InvocationSource, behavior: InvocationBehavior) {
+        // Holding the shortcut during talk mode ends it and asks the usual way.
+        if voice?.talking == true { voice?.endTalk() }
         assistant?.invocationStarted(behavior: behavior)
         if behavior == .hold { focus?.holdStarted() }
         if behavior != .toggle { voice?.holdStarted() }
@@ -138,10 +149,11 @@ extension AppDelegate: InvocationDelegate {
     func invocationEnded(source: InvocationSource, reason: InvocationEndReason, duration: Duration) {
         focus?.holdEnded()
         if reason == .tapped {
-            // A quick tap: nothing was said or drawn — just open/close the panel.
+            // A quick tap: nothing was said or drawn — open/close the panel (or, tapped twice,
+            // start/stop talk mode).
             voice?.cancelHold()
             assistant?.invocationEnded()
-            assistant?.toggleExpanded()
+            handleTap()
         } else {
             voice?.holdEnded()
             assistant?.invocationEnded()
@@ -159,7 +171,35 @@ extension AppDelegate: InvocationDelegate {
     }
 
     func invocationTapped() {
-        assistant?.toggleExpanded()
+        handleTap()
+    }
+
+    func escapePressed() {
+        voice?.endTalk()
+    }
+
+    /// One tap toggles the panel; two quick taps start (or stop) talk mode; one tap in talk mode
+    /// ends it.
+    private func handleTap() {
+        let now = Date()
+        defer { lastTapAt = now }
+        if voice?.talking == true {
+            pendingTap?.cancel()
+            voice?.endTalk()
+            return
+        }
+        if now.timeIntervalSince(lastTapAt) < 0.45, let p = pendingTap {
+            p.cancel()
+            pendingTap = nil
+            voice?.startTalk()
+            return
+        }
+        pendingTap = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(320))
+            guard !Task.isCancelled else { return }
+            self?.pendingTap = nil
+            self?.assistant?.toggleExpanded()
+        }
     }
 
     func invocationRequestsMainWindow() {

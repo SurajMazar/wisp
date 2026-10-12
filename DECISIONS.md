@@ -411,3 +411,14 @@ as a question. The host inserts by pasting (works in native, browser and Electro
 slow and mangles non-ASCII) and restores every clipboard item and type afterwards, unless the user copied something
 in the meantime. It refuses when the focused element is a secure text field. Measured release → text ready:
 0.28–0.39 s plain (whisper base.en), 0.56–1.3 s with clean-up on the 4B model.
+
+## D-046 — Talk mode: double-tap for a hands-free back-and-forth
+**Status** accepted (2026-10-12)
+Double-tapping the assistant shortcut starts talk mode; one tap, Esc, a click on the island, or 20 s of silence
+ends it (a single tap waits 320 ms to tell it apart from a double tap, then toggles the panel as before; holding the
+shortcut ends talk mode and asks the usual way). Each turn takes a fresh look at the screen (the same quiet capture
+as a hold, so Step 2's prefill applies), listens, and ends after ~0.9 s of quiet once the user has spoken
+(`TurnDetector`, from the microphone level; sensitivity follows Voice settings; turns are capped at 45 s). Wisp
+never listens while it speaks — the next turn starts 350 ms after the answer finishes playing — so its own voice
+can't be heard as a question; there is no always-on wake word. Turns continue one conversation (D-041's 10-minute
+follow-up), and the island stays open saying "Talking" between turns.

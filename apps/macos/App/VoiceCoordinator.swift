@@ -24,6 +24,14 @@ final class VoiceCoordinator {
     /// The conversation whose answer is captioned in the island.
     private var captionFor: String?
 
+    // Talk mode: a hands-free back-and-forth.
+    private(set) var talking = false
+    /// Called when talk mode starts or ends (the app watches Esc meanwhile).
+    var onTalkModeChanged: ((Bool) -> Void)?
+    /// Takes a fresh look at the screen for the next turn (set by the app delegate).
+    var captureScreen: (() -> Void)?
+    private var turn = TurnDetector(sensitivity: 0.5)
+
     init(router: IPCRouter, assistant: AssistantCoordinator) {
         self.router = router
         self.assistant = assistant
@@ -31,13 +39,16 @@ final class VoiceCoordinator {
         capture.onChunk = { [weak router] session, seq, data in
             router?.sendToCore(IPCEvents.audioChunk, AudioChunk(pcm: data.base64EncodedString(), seq: seq, sessionId: session))
         }
-        capture.onLevel = { [weak router, weak assistant] level in
+        capture.onLevel = { [weak self, weak router, weak assistant] level in
             assistant?.island.set(level: level)
+            self?.talkLevel(level)
             router?.broadcast(event: IPCEvents.voiceLevel.name, payload: .object(["level": .double(level)]))
         }
         player.onStart = { [weak assistant] _ in assistant?.set(state: .speaking) }
-        player.onFinish = { [weak assistant] _ in
+        player.onFinish = { [weak self, weak assistant] _ in
             if assistant?.state == .speaking { assistant?.set(state: .idle) }
+            // Talk mode: the answer has been spoken — the user's turn again.
+            self?.nextTurnSoon()
         }
         router.subscribe(IPCEvents.conversationDelta) { [weak self] d in
             guard let self, d.conversationId == self.captionFor else { return }
@@ -94,6 +105,71 @@ final class VoiceCoordinator {
         if player.isSpeaking {
             player.stop()
             Task { _ = try? await router.core.request(method: IPCMethods.voiceStopSpeaking.name, params: .object([:])) }
+        }
+    }
+
+    // MARK: Talk mode
+
+    func toggleTalkMode() {
+        if talking { endTalk() } else { startTalk() }
+    }
+
+    func startTalk() {
+        guard settings.enabled, !talking else { return }
+        guard MicrophonePermission.status == .enabled else {
+            Task { _ = await MicrophonePermission.request() }
+            return
+        }
+        interrupt()
+        talking = true
+        assistant.island.set(talking: true)
+        onTalkModeChanged?(true)
+        listenTurn()
+    }
+
+    func endTalk() {
+        guard talking else { return }
+        talking = false
+        assistant.island.set(talking: false)
+        onTalkModeChanged?(false)
+        if purpose == .ask, let session = capture.sessionId {
+            capture.stop()
+            Task { _ = try? await router.core.request(method: IPCMethods.voiceCancel.name, params: .object(["sessionId": .string(session)])) }
+        }
+        if [.listening, .thinking].contains(assistant.state) { assistant.set(state: .idle) }
+    }
+
+    /// The user's turn: a fresh look at the screen, then listen.
+    private func listenTurn() {
+        guard talking, !capture.isRunning else { return }
+        captureScreen?()
+        begin(.ask)
+        turn = TurnDetector(sensitivity: settings.vadSensitivity)
+    }
+
+    private func nextTurnSoon() {
+        guard talking else { return }
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))  // let the speakers fall quiet
+            if self.talking, !self.player.isSpeaking { self.listenTurn() }
+        }
+    }
+
+    /// End a turn after a pause once the user has spoken; give up after a long silence.
+    private func talkLevel(_ level: Double) {
+        guard talking, capture.isRunning, purpose == .ask else { return }
+        switch turn.feed(level) {
+        case .keepListening: break
+        case .endTurn: endTurn()
+        case .giveUp: endTalk()
+        }
+    }
+
+    private func endTurn() {
+        Task {
+            let result = try? await finish()
+            // Nothing understood (or no answer coming): straight back to listening.
+            if self.talking, result?.sent == nil { self.listenTurn() }
         }
     }
 
@@ -170,6 +246,10 @@ final class VoiceCoordinator {
     private func replyUpdated(_ m: Message) {
         guard m.conversationId == awaiting, m.role == .assistant, m.status != .streaming else { return }
         awaiting = nil
+        // Talk mode: an answer that won't be spoken (or failed) hands the turn back now.
+        if talking, m.status != .complete || settings.speakAnswers == .never || m.content.isEmpty {
+            Task { try? await Task.sleep(for: .milliseconds(500)); self.nextTurnSoon() }
+        }
         switch m.status {
         case .error:
             assistant.set(state: .error)
