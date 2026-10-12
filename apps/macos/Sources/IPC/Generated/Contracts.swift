@@ -603,6 +603,41 @@ public struct CursorSettings: Codable, Sendable, Equatable {
     }
 }
 
+/// Modifier keys, in canonical display order (⌃ ⌥ ⇧ ⌘ fn).
+public enum Modifier: String, Codable, Sendable, Equatable, CaseIterable {
+    case control = "control"
+    case option = "option"
+    case shift = "shift"
+    case command = "command"
+    case function = "function"
+}
+
+/// A global shortcut: modifiers plus an optional key. No key means a modifier-only chord (⌘⌥).
+public struct Shortcut: Codable, Sendable, Equatable {
+    public var keyCode: Int?
+    public var keyLabel: String?
+    public var modifiers: [Modifier]
+
+    public init(keyCode: Int? = nil, keyLabel: String? = nil, modifiers: [Modifier]) {
+        self.keyCode = keyCode
+        self.keyLabel = keyLabel
+        self.modifiers = modifiers
+    }
+}
+
+/// Hold a shortcut to dictate: what you say is typed where your cursor is.
+public struct DictationSettings: Codable, Sendable, Equatable {
+    public var cleanup: Bool
+    public var enabled: Bool
+    public var shortcut: Shortcut
+
+    public init(cleanup: Bool, enabled: Bool, shortcut: Shortcut) {
+        self.cleanup = cleanup
+        self.enabled = enabled
+        self.shortcut = shortcut
+    }
+}
+
 /// What a spoken question includes when nothing was drawn.
 public enum AskContext: String, Codable, Sendable, Equatable, CaseIterable {
     case window = "window"
@@ -674,28 +709,6 @@ public enum MouseButton: String, Codable, Sendable, Equatable, CaseIterable {
     case middle = "middle"
     case back = "back"
     case forward = "forward"
-}
-
-/// Modifier keys, in canonical display order (⌃ ⌥ ⇧ ⌘ fn).
-public enum Modifier: String, Codable, Sendable, Equatable, CaseIterable {
-    case control = "control"
-    case option = "option"
-    case shift = "shift"
-    case command = "command"
-    case function = "function"
-}
-
-/// A global shortcut: modifiers plus an optional key. No key means a modifier-only chord (⌘⌥).
-public struct Shortcut: Codable, Sendable, Equatable {
-    public var keyCode: Int?
-    public var keyLabel: String?
-    public var modifiers: [Modifier]
-
-    public init(keyCode: Int? = nil, keyLabel: String? = nil, modifiers: [Modifier]) {
-        self.keyCode = keyCode
-        self.keyLabel = keyLabel
-        self.modifiers = modifiers
-    }
 }
 
 public struct InvocationSettings: Codable, Sendable, Equatable {
@@ -832,6 +845,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var computer: ComputerSettings
     public var connections: ConnectionsSettings
     public var cursor: CursorSettings
+    public var dictation: DictationSettings
     public var focus: FocusSettings
     public var general: GeneralSettings
     public var invocation: InvocationSettings
@@ -841,11 +855,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var privacy: PrivacySettings
     public var voice: VoiceSettings
 
-    public init(appearance: AppearanceSettings, computer: ComputerSettings, connections: ConnectionsSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, memory: MemorySettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings, voice: VoiceSettings) {
+    public init(appearance: AppearanceSettings, computer: ComputerSettings, connections: ConnectionsSettings, cursor: CursorSettings, dictation: DictationSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, memory: MemorySettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings, voice: VoiceSettings) {
         self.appearance = appearance
         self.computer = computer
         self.connections = connections
         self.cursor = cursor
+        self.dictation = dictation
         self.focus = focus
         self.general = general
         self.invocation = invocation
@@ -1364,6 +1379,7 @@ public enum AssistantState: String, Codable, Sendable, Equatable, CaseIterable {
     case error = "error"
     case idle = "idle"
     case following = "following"
+    case dictating = "dictating"
 }
 
 public struct AssistantStateChanged: Codable, Sendable, Equatable {
@@ -2156,6 +2172,7 @@ public struct GuidanceShow: Codable, Sendable, Equatable {
 public enum VoicePurpose: String, Codable, Sendable, Equatable, CaseIterable {
     case ask = "ask"
     case test = "test"
+    case dictate = "dictate"
 }
 
 public struct HostVoiceStartParams: Codable, Sendable, Equatable {
@@ -2922,6 +2939,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
     case computer(ComputerSettings)
     case memory(MemorySettings)
     case connections(ConnectionsSettings)
+    case dictation(DictationSettings)
 
     private enum CodingKeys: String, CodingKey {
         case tag = "section"
@@ -2944,6 +2962,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
         case "computer": self = .computer(try c.decode(ComputerSettings.self, forKey: .content))
         case "memory": self = .memory(try c.decode(MemorySettings.self, forKey: .content))
         case "connections": self = .connections(try c.decode(ConnectionsSettings.self, forKey: .content))
+        case "dictation": self = .dictation(try c.decode(DictationSettings.self, forKey: .content))
         default:
             throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown SettingsSection variant \(tag)")
         }
@@ -2987,6 +3006,9 @@ public enum SettingsSection: Codable, Sendable, Equatable {
             try c.encode(v, forKey: .content)
         case .connections(let v):
             try c.encode("connections", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .dictation(let v):
+            try c.encode("dictation", forKey: .tag)
             try c.encode(v, forKey: .content)
         }
     }
@@ -3464,12 +3486,14 @@ public struct VoiceAsked: Codable, Sendable, Equatable {
 
 public struct VoiceFinishParams: Codable, Sendable, Equatable {
     public var conversationId: String?
+    public var dictation: Bool
     public var includeFocus: Bool
     public var sessionId: String
     public var transcribeOnly: Bool
 
-    public init(conversationId: String? = nil, includeFocus: Bool, sessionId: String, transcribeOnly: Bool) {
+    public init(conversationId: String? = nil, dictation: Bool, includeFocus: Bool, sessionId: String, transcribeOnly: Bool) {
         self.conversationId = conversationId
+        self.dictation = dictation
         self.includeFocus = includeFocus
         self.sessionId = sessionId
         self.transcribeOnly = transcribeOnly

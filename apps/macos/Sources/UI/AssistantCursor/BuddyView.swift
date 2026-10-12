@@ -164,7 +164,7 @@ final class BuddyView: NSView {
         case .following:
             glowLayer.opacity = 1
             if style.animates { breathe(shapeGroup, amount: 0.08 * a, duration: 1.6); breathe(glowLayer, amount: 0.12 * a, duration: 1.6) }
-        case .listening:
+        case .listening, .dictating:
             glowLayer.opacity = 1
             ringLayer.opacity = 0.9
             if style.animates { pulse(ringLayer, to: 1 + 0.45 * a, duration: 1.0); breathe(glowLayer, amount: 0.18 * a, duration: 1.0) }

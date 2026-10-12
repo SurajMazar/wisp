@@ -399,3 +399,15 @@ the server's hints (read-only → Low, destructive → High = ask every time), p
 isn't implemented yet: servers that need it are reached with a token or a local program instead.
 Small local models mixed up "notes service" with the built-in Notes until the prompt said to prefer a service the
 user names; with that, both 8B and 4B called the right tool (scripts/validation/agent-check.ts --mcp).
+
+## D-045 — Dictation: hold a second chord, transcribe locally, paste at the cursor
+**Status** accepted (2026-10-12)
+Holding the dictation chord (default ⌃⇧; ⌥⇧ and ⌃⌘ offered) records speech; releasing types it where the cursor is.
+It's a second `ChordStateMachine` on the same listen-only event tap, so the rules carry over: exact modifiers, any
+other key cancels (no accidental typing), and dictation and the assistant never run at once. The engine's
+`voice.finish` with `dictation` transcribes (and, if enabled, cleans up with the language model, keeping the original
+when the result is empty or changes length a lot — e.g. if the model "answers" instead of tidying) and never asks it
+as a question. The host inserts by pasting (works in native, browser and Electron apps alike; key-by-key typing is
+slow and mangles non-ASCII) and restores every clipboard item and type afterwards, unless the user copied something
+in the meantime. It refuses when the focused element is a secure text field. Measured release → text ready:
+0.28–0.39 s plain (whisper base.en), 0.56–1.3 s with clean-up on the 4B model.

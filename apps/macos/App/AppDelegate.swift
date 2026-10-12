@@ -119,6 +119,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if previous?.voice != settings.voice {
             voice?.apply(settings.voice)
         }
+        if previous?.dictation != settings.dictation {
+            deps?.invocation.applyDictation(settings.dictation)
+        }
     }
 }
 
@@ -145,6 +148,14 @@ extension AppDelegate: InvocationDelegate {
         }
         let ms = duration.components.seconds * 1000 + duration.components.attoseconds / 1_000_000_000_000_000
         deps?.router.emit(IPCEvents.invocationEnded, InvocationEnded(durationMs: ms, reason: reason, source: source))
+    }
+
+    func dictationStarted() {
+        voice?.dictationStarted()
+    }
+
+    func dictationEnded(commit: Bool) {
+        voice?.dictationEnded(commit: commit)
     }
 
     func invocationTapped() {

@@ -97,6 +97,52 @@ final class VoiceCoordinator {
         }
     }
 
+    // MARK: Dictation
+
+    /// The dictation chord is held: record (the island says "Dictating").
+    func dictationStarted() {
+        interrupt()
+        guard settings.enabled, !capture.isRunning else { return }
+        switch MicrophonePermission.status {
+        case .enabled:
+            begin(.dictate)
+            if purpose == .dictate, capture.isRunning { assistant.set(state: .dictating) }
+        case .notRequested:
+            Task { _ = await MicrophonePermission.request() }
+        case .needsAttention:
+            break
+        }
+    }
+
+    /// Released: transcribe and type it where the cursor is. Cancelled (another key): drop it.
+    func dictationEnded(commit: Bool) {
+        guard let session = capture.sessionId, purpose == .dictate else { return }
+        capture.stop()
+        guard commit else {
+            if assistant.state == .dictating { assistant.set(state: .idle) }
+            Task { _ = try? await router.core.request(method: IPCMethods.voiceCancel.name, params: .object(["sessionId": .string(session)])) }
+            return
+        }
+        Task {
+            // Let the final chunk reach the core first.
+            try? await Task.sleep(for: .milliseconds(60))
+            do {
+                let result = try await router.core.call(
+                    IPCMethods.voiceFinish,
+                    VoiceFinishParams(conversationId: nil, dictation: true, includeFocus: false, sessionId: session, transcribeOnly: true),
+                    timeout: .seconds(60)
+                )
+                if assistant.state == .dictating { assistant.set(state: .idle) }
+                guard let text = result.transcript?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return }
+                try await TextInserter.insert(text)
+            } catch {
+                Log.app.error("dictation failed: \(String(describing: error), privacy: .public)")
+                assistant.set(state: .error)
+                Task { try? await Task.sleep(for: .seconds(1.5)); if self.assistant.state == .error { self.assistant.set(state: .idle) } }
+            }
+        }
+    }
+
     // MARK: Panel / tests
 
     func start(_ p: VoicePurpose) throws {
@@ -181,7 +227,7 @@ final class VoiceCoordinator {
         do {
             let result = try await router.core.call(
                 IPCMethods.voiceFinish,
-                VoiceFinishParams(conversationId: nil, includeFocus: includeFocus, sessionId: session, transcribeOnly: testOnly),
+                VoiceFinishParams(conversationId: nil, dictation: false, includeFocus: includeFocus, sessionId: session, transcribeOnly: testOnly),
                 timeout: .seconds(120)
             )
             if let transcript = result.transcript, let sent = result.sent {

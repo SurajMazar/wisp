@@ -90,6 +90,7 @@ final class IslandModel {
     var label: String {
         switch state {
         case .listening: "Listening"
+        case .dictating: "Dictating"
         case .selecting: "Draw to point"
         case .drawing: "Release to ask"
         case .analyzing: "Looking"
@@ -178,7 +179,7 @@ struct IslandView: View {
 
     @ViewBuilder private var trailing: some View {
         switch model.state {
-        case .listening:
+        case .listening, .dictating:
             Waveform(level: model.level, color: model.accent, animate: !reduceMotion)
         case .thinking, .analyzing, .executing:
             ProgressView().controlSize(.mini).tint(.white)

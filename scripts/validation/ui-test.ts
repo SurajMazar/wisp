@@ -112,6 +112,36 @@ async function main() {
     await until(async () => (await settings()).focus.screenshots === "auto", "screenshots auto saved");
     check((await settings()).focus.excludedApps.length > 0, "changing it keeps the excluded apps");
 
+    console.log("Settings → Dictation");
+    await page.goto(`http://127.0.0.1:${PORT}/#/settings`);
+    const dict = page.getByRole("radiogroup", { name: "Dictation shortcut" });
+    await dict.waitFor();
+    check(
+      (await dict.getByRole("radio", { name: "⌃⇧" }).getAttribute("aria-checked")) === "true",
+      "dictation defaults to ⌃⇧",
+    );
+    check(
+      (await page.getByRole("switch", { name: "Hold to dictate" }).getAttribute("aria-checked")) === "true",
+      "dictation is on",
+    );
+    await dict.getByRole("radio", { name: "⌥⇧" }).click();
+    await until(
+      async () =>
+        JSON.stringify((await app.call<{ dictation: unknown }>("settings.get")).dictation).includes(
+          '"option","shift"',
+        ),
+      "dictation shortcut saved",
+    );
+    check(true, "choosing ⌥⇧ saves it");
+    await page.getByRole("switch", { name: "Clean up dictated text" }).click();
+    await until(
+      async () => (await app.call<{ dictation: { cleanup: boolean } }>("settings.get")).dictation.cleanup,
+      "cleanup saved",
+    );
+    check(true, "clean-up can be turned on");
+    await dict.scrollIntoViewIfNeeded();
+    await shot("6-dictation");
+
     console.log("Settings → Models");
     await page.goto(`http://127.0.0.1:${PORT}/#/models`);
     const deep = page.getByRole("switch", { name: "Deep thinking" });

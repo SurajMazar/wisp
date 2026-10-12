@@ -24,7 +24,8 @@ const regionId = arg("--region");
 const hold = Number(arg("--hold") ?? 3000);
 /** Speak each question (macOS `say`) and send it as microphone audio: measures the full loop
  * through speech recognition to the first spoken word of the answer. */
-const voice = process.argv.includes("--voice");
+const dictate = process.argv.includes("--dictate");
+const voice = process.argv.includes("--voice") || dictate;
 if (!regionId) throw new Error("--region <id> required");
 
 const cache = join(homedir(), "Library/Application Support/Wisp/cache/focus");
@@ -110,6 +111,13 @@ async function main() {
     for (const m of readdirSync(models))
       execFileSync("ln", ["-sfn", join(models, m), join(data, "models", m)]);
     const v = userSetting("voice") ?? {};
+    if (process.argv.includes("--cleanup"))
+      await call("settings.update", {
+        update: {
+          section: "dictation",
+          value: { enabled: true, cleanup: true, shortcut: { modifiers: ["control", "shift"] } },
+        },
+      });
     const tts = arg("--tts");
     if (tts) v.ttsModel = tts;
     if (Object.keys(v).length) await call("settings.update", { update: { section: "voice", value: v } });
@@ -177,6 +185,19 @@ async function main() {
         }
       }),
     );
+    if (dictate) {
+      // Release → text ready to type (the host pastes it right away).
+      const r = await call<{ transcript?: string; sttMs: number }>("voice.finish", {
+        sessionId: session,
+        dictation: true,
+        transcribeOnly: true,
+      });
+      console.log(
+        `${String(Date.now() - t0).padStart(6)} ms to text (${r.sttMs} ms speech-to-text) · “${r.transcript}”`,
+      );
+      results.push({ q, firstMs: Date.now() - t0, totalMs: Date.now() - t0, image: false });
+      continue;
+    }
     if (voice) await call("voice.finish", { sessionId: session, includeFocus: true });
     else
       await call("conversation.send", {
@@ -197,6 +218,12 @@ async function main() {
     );
   }
   const firsts = results.map((r) => r.firstMs).sort((a, b) => a - b);
+  if (dictate) {
+    const d = results.map((r) => r.firstMs).sort((a, b) => a - b);
+    console.log(`median release → text: ${d[Math.floor(d.length / 2)]} ms`);
+    core.stdin!.end();
+    return;
+  }
   console.log(
     `median first ${voice ? "spoken " : ""}word: ${firsts[Math.floor(firsts.length / 2)]} ms (hold ${hold} ms)`,
   );

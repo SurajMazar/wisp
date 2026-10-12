@@ -138,7 +138,7 @@ it work on every answer, and extends it:
 - Acceptance: with a Notion MCP server connected, "agent, add these notes to my Project page" works with one
   approval.
 
-### Step 5 — Dictation (≈3 days)
+### Step 5 — Dictation (≈3 days) ✅ done 2026-10-12 (see D-045; default chord ⌃⇧)
 
 - A separate hold chord (default ⌃⌥ + Space, configurable) records speech, transcribes it locally, and inserts the
   text at the caret:

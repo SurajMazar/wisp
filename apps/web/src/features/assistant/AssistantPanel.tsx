@@ -16,6 +16,7 @@ const stateText: Record<AssistantState, string> = {
   idle: "",
   following: "",
   listening: "Listening…",
+  dictating: "Dictating…",
   selecting: "Point at something",
   drawing: "Drawing…",
   analyzing: "Looking at your screen…",

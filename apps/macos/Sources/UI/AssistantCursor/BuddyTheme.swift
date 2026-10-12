@@ -36,6 +36,7 @@ public enum BuddyTheme {
         switch state {
         case .idle, .following: nil
         case .listening: "Listening…"
+        case .dictating: "Dictating…"
         case .selecting: "Point at something"
         case .drawing: "Drawing…"
         case .analyzing: "Looking…"

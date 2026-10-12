@@ -604,6 +604,19 @@
             "visibility": "always"
           }
         },
+        "dictation": {
+          "$ref": "#/definitions/DictationSettings",
+          "default": {
+            "cleanup": false,
+            "enabled": true,
+            "shortcut": {
+              "modifiers": [
+                "control",
+                "shift"
+              ]
+            }
+          }
+        },
         "focus": {
           "$ref": "#/definitions/FocusSettings",
           "default": {
@@ -990,6 +1003,11 @@
         {
           "const": "following",
           "description": "Summoned and attentive; tracks the pointer closely.",
+          "type": "string"
+        },
+        {
+          "const": "dictating",
+          "description": "Recording speech to type it where the cursor is.",
           "type": "string"
         }
       ]
@@ -1855,6 +1873,32 @@
       "required": [
         "day"
       ],
+      "type": "object"
+    },
+    "DictationSettings": {
+      "additionalProperties": false,
+      "description": "Hold a shortcut to dictate: what you say is typed where your cursor is.",
+      "properties": {
+        "cleanup": {
+          "default": false,
+          "description": "Fix punctuation and drop filler words with the language model before typing (slower).",
+          "type": "boolean"
+        },
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "shortcut": {
+          "$ref": "#/definitions/Shortcut",
+          "default": {
+            "modifiers": [
+              "control",
+              "shift"
+            ]
+          },
+          "description": "A modifier-only chord held while speaking (default ⌃⇧)."
+        }
+      },
       "type": "object"
     },
     "DisplayInfo": {
@@ -5614,6 +5658,22 @@
             "value"
           ],
           "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "dictation",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/DictationSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -7138,6 +7198,11 @@
             "null"
           ]
         },
+        "dictation": {
+          "default": false,
+          "description": "Dictation: transcribe (and clean up if enabled) to be typed, never asked.",
+          "type": "boolean"
+        },
         "includeFocus": {
           "default": false,
           "description": "Ask about the current focus region too.",
@@ -7218,11 +7283,20 @@
       "type": "object"
     },
     "VoicePurpose": {
-      "enum": [
-        "ask",
-        "test"
-      ],
-      "type": "string"
+      "oneOf": [
+        {
+          "enum": [
+            "ask",
+            "test"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "dictate",
+          "description": "Type what's said where the cursor is.",
+          "type": "string"
+        }
+      ]
     },
     "VoiceSettings": {
       "additionalProperties": false,

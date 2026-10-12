@@ -290,6 +290,26 @@ export const CursorSettings = z.strictObject({
 });
 export type CursorSettings = z.output<typeof CursorSettings>;
 
+/** Modifier keys, in canonical display order (⌃ ⌥ ⇧ ⌘ fn). */
+export const Modifier = z.enum(["control","option","shift","command","function"]);
+export type Modifier = z.output<typeof Modifier>;
+
+/** A global shortcut: modifiers plus an optional key. No key means a modifier-only chord (⌘⌥). */
+export const Shortcut = z.strictObject({
+  "keyCode": z.number().int().nonnegative().nullable().optional(),
+  "keyLabel": z.string().nullable().optional(),
+  "modifiers": z.array(Modifier),
+});
+export type Shortcut = z.output<typeof Shortcut>;
+
+/** Hold a shortcut to dictate: what you say is typed where your cursor is. */
+export const DictationSettings = z.strictObject({
+  "cleanup": z.boolean().default(false),
+  "enabled": z.boolean().default(true),
+  "shortcut": Shortcut.default(() => Shortcut.parse({"modifiers":["control","shift"]})),
+});
+export type DictationSettings = z.output<typeof DictationSettings>;
+
 /** What a spoken question includes when nothing was drawn. */
 export const AskContext = z.enum(["window","display","off"]);
 export type AskContext = z.output<typeof AskContext>;
@@ -330,18 +350,6 @@ export type InvocationAction = z.output<typeof InvocationAction>;
 /** Mouse buttons macOS reports to event taps. Primary/secondary buttons are never bindable. */
 export const MouseButton = z.enum(["none","middle","back","forward"]);
 export type MouseButton = z.output<typeof MouseButton>;
-
-/** Modifier keys, in canonical display order (⌃ ⌥ ⇧ ⌘ fn). */
-export const Modifier = z.enum(["control","option","shift","command","function"]);
-export type Modifier = z.output<typeof Modifier>;
-
-/** A global shortcut: modifiers plus an optional key. No key means a modifier-only chord (⌘⌥). */
-export const Shortcut = z.strictObject({
-  "keyCode": z.number().int().nonnegative().nullable().optional(),
-  "keyLabel": z.string().nullable().optional(),
-  "modifiers": z.array(Modifier),
-});
-export type Shortcut = z.output<typeof Shortcut>;
 
 export const InvocationSettings = z.strictObject({
   "behavior": InvocationBehavior.default(() => InvocationBehavior.parse("hold")),
@@ -422,6 +430,7 @@ export const AppSettings = z.strictObject({
   "computer": ComputerSettings.default(() => ComputerSettings.parse({"confirmEveryAction":false,"enabled":false})),
   "connections": ConnectionsSettings.default(() => ConnectionsSettings.parse({"servers":[]})),
   "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"glowFrom":"#8B7CF6","glowMode":"gradient","glowTo":"#5EC8F2","label":"Wisp","opacity":0.95,"shape":"wisp","showLabel":false,"size":1,"theme":"default","visibility":"always"})),
+  "dictation": DictationSettings.default(() => DictationSettings.parse({"cleanup":false,"enabled":true,"shortcut":{"modifiers":["control","shift"]}})),
   "focus": FocusSettings.default(() => FocusSettings.parse({"askContext":"window","dimSurroundings":true,"drawStyle":"rectangle","excludedApps":["com.1password.1password","com.agilebits.onepassword7","com.bitwarden.desktop","com.lastpass.LastPass","com.dashlane.dashlanephonefinal","com.apple.keychainaccess","com.apple.Passwords","com.keepassxc.keepassxc"],"margin":24,"pointSize":480,"screenshots":"auto"})),
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
   "invocation": InvocationSettings.default(() => InvocationSettings.parse({"behavior":"hold","holdDelayMs":150,"mouseAction":"focusCursor","mouseButton":"none","shortcut":{"modifiers":["option","command"]}})),
@@ -627,7 +636,7 @@ export const AppsPerformParams = z.strictObject({
 export type AppsPerformParams = z.output<typeof AppsPerformParams>;
 
 /** Everything the assistant can be doing, shown on the buddy and in the panel (spec §28, §92). */
-export const AssistantState = z.enum(["listening","selecting","drawing","analyzing","thinking","speaking","executing","waitingForPermission","success","error","idle","following"]);
+export const AssistantState = z.enum(["listening","selecting","drawing","analyzing","thinking","speaking","executing","waitingForPermission","success","error","idle","following","dictating"]);
 export type AssistantState = z.output<typeof AssistantState>;
 
 export const AssistantStateChanged = z.strictObject({
@@ -1069,7 +1078,7 @@ export const GuidanceShow = z.strictObject({
 });
 export type GuidanceShow = z.output<typeof GuidanceShow>;
 
-export const VoicePurpose = z.enum(["ask","test"]);
+export const VoicePurpose = z.enum(["ask","test","dictate"]);
 export type VoicePurpose = z.output<typeof VoicePurpose>;
 
 export const HostVoiceStartParams = z.strictObject({
@@ -1492,7 +1501,7 @@ export const SessionParams = z.strictObject({
 export type SessionParams = z.output<typeof SessionParams>;
 
 /** One section replaced atomically. */
-export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings }), z.strictObject({ "section": z.literal("voice"), "value": VoiceSettings }), z.strictObject({ "section": z.literal("computer"), "value": ComputerSettings }), z.strictObject({ "section": z.literal("memory"), "value": MemorySettings }), z.strictObject({ "section": z.literal("connections"), "value": ConnectionsSettings })]);
+export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings }), z.strictObject({ "section": z.literal("voice"), "value": VoiceSettings }), z.strictObject({ "section": z.literal("computer"), "value": ComputerSettings }), z.strictObject({ "section": z.literal("memory"), "value": MemorySettings }), z.strictObject({ "section": z.literal("connections"), "value": ConnectionsSettings }), z.strictObject({ "section": z.literal("dictation"), "value": DictationSettings })]);
 export type SettingsSection = z.output<typeof SettingsSection>;
 
 export const SettingsUpdateParams = z.strictObject({
@@ -1774,6 +1783,7 @@ export type VoiceAsked = z.output<typeof VoiceAsked>;
 
 export const VoiceFinishParams = z.strictObject({
   "conversationId": z.string().nullable().optional(),
+  "dictation": z.boolean().default(false),
   "includeFocus": z.boolean().default(false),
   "sessionId": z.string(),
   "transcribeOnly": z.boolean().default(false),

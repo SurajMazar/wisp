@@ -104,6 +104,9 @@ pub struct VoiceFinishParams {
     /// Transcribe only (microphone test) — don't ask anything.
     #[serde(default)]
     pub transcribe_only: bool,
+    /// Dictation: transcribe (and clean up if enabled) to be typed, never asked.
+    #[serde(default)]
+    pub dictation: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -215,6 +218,8 @@ pub struct VoiceAsked {
 pub enum VoicePurpose {
     Ask,
     Test,
+    /// Type what's said where the cursor is.
+    Dictate,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

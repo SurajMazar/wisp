@@ -25,6 +25,7 @@ pub struct AppSettings {
     pub computer: ComputerSettings,
     pub memory: super::memory::MemorySettings,
     pub connections: super::connections::ConnectionsSettings,
+    pub dictation: super::invocation::DictationSettings,
 }
 
 /// Computer control (spec §55–58). Off until the user turns it on.
@@ -131,6 +132,7 @@ pub enum SettingsSection {
     Computer(ComputerSettings),
     Memory(super::memory::MemorySettings),
     Connections(super::connections::ConnectionsSettings),
+    Dictation(super::invocation::DictationSettings),
 }
 
 impl SettingsSection {
@@ -149,6 +151,7 @@ impl SettingsSection {
             Self::Computer(_) => "computer",
             Self::Memory(_) => "memory",
             Self::Connections(_) => "connections",
+            Self::Dictation(_) => "dictation",
         }
     }
 
@@ -161,6 +164,7 @@ impl SettingsSection {
             Self::Models(m) => m.validate(),
             Self::Voice(v) => v.validate(),
             Self::Connections(c) => c.validate(),
+            Self::Dictation(d) => d.validate(),
             Self::Appearance(AppearanceSettings {
                 custom_color: Some(c),
                 ..

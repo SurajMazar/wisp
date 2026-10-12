@@ -6,6 +6,7 @@ import { accents } from "./accents";
 import { CursorSettingsGroup } from "./CursorSettingsGroup";
 import { ComputerSettingsGroup } from "./ComputerSettingsGroup";
 import { DataSettingsGroup } from "./DataSettingsGroup";
+import { DictationSettingsGroup } from "./DictationSettingsGroup";
 import { FocusSettingsGroup } from "./FocusSettingsGroup";
 import { InvocationSettingsGroup } from "./InvocationSettingsGroup";
 
@@ -42,7 +43,7 @@ export function SettingsPage() {
     );
   }
 
-  const { general, appearance, privacy, invocation, cursor, focus, computer } = settings;
+  const { general, appearance, privacy, invocation, cursor, focus, computer, dictation } = settings;
 
   return (
     <>
@@ -72,6 +73,8 @@ export function SettingsPage() {
       </SettingsGroup>
 
       <InvocationSettingsGroup invocation={invocation} />
+
+      <DictationSettingsGroup dictation={dictation} invocation={invocation} />
 
       <CursorSettingsGroup cursor={cursor} />
 

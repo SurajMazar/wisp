@@ -11,6 +11,15 @@ public protocol InvocationDelegate: AnyObject {
     /// Quick tap of the shortcut in hold mode.
     func invocationTapped()
     func invocationStatusChanged(_ status: InvocationStatus)
+    /// The dictation chord was held: start recording to type.
+    func dictationStarted()
+    /// The dictation chord ended; `commit` is false when it was cancelled (another key pressed).
+    func dictationEnded(commit: Bool)
+}
+
+public extension InvocationDelegate {
+    func dictationStarted() {}
+    func dictationEnded(commit _: Bool) {}
 }
 
 /// Owns every global invocation channel and turns raw input into start/end decisions.
@@ -28,6 +37,12 @@ public final class InvocationController {
         shortcut: Shortcut(keyCode: nil, keyLabel: nil, modifiers: [.option, .command])
     )
     private var chord = ChordStateMachine(target: [.option, .command], behavior: .hold, holdDelay: .milliseconds(150))
+    /// Dictation: its own hold chord (default ⌃⇧), independent of the assistant's.
+    private var dictation = DictationSettings(
+        cleanup: false, enabled: true, shortcut: Shortcut(keyCode: nil, keyLabel: nil, modifiers: [.control, .shift])
+    )
+    private var dictationChord = ChordStateMachine(target: [.control, .shift], behavior: .hold, holdDelay: .milliseconds(150))
+    private(set) public var isDictating = false
     private lazy var tap = EventTapMonitor { [weak self] event in self?.handle(event) }
     private lazy var hotKey = CarbonHotKey(
         onPress: { [weak self] in self?.keyChordPressed() },
@@ -82,10 +97,17 @@ public final class InvocationController {
         refresh()
     }
 
+    public func applyDictation(_ d: DictationSettings) {
+        if isDictating { endDictation(commit: false) }
+        dictation = d
+        dictationChord = ChordStateMachine(target: Set(d.shortcut.modifiers), behavior: .hold, holdDelay: .milliseconds(150))
+        refresh()
+    }
+
     /// Re-evaluate permissions and channel states; start the event tap when it becomes possible.
     public func refresh() {
         let permitted = EventTapMonitor.isPermitted
-        let needsTap = settings.shortcut.keyCode == nil || settings.mouseButton != .none
+        let needsTap = settings.shortcut.keyCode == nil || settings.mouseButton != .none || dictation.enabled
         if needsTap && permitted && !tap.isRunning { tap.start() }
         if (!needsTap || !permitted) && tap.isRunning { tap.stop() }
         let tapRunning = tap.isRunning
@@ -145,10 +167,14 @@ public final class InvocationController {
         guard !suspended else { return }
         switch event {
         case .flagsChanged(let flags):
+            let held = KeyNames.modifiers(from: flags)
+            if dictation.enabled { performDictation(dictationChord.flagsChanged(held)) }
             guard settings.shortcut.keyCode == nil else { return }
-            perform(chord.flagsChanged(KeyNames.modifiers(from: flags)), source: .keyboard)
+            perform(chord.flagsChanged(held), source: .keyboard)
         case .keyDown(_, let isRepeat):
-            guard settings.shortcut.keyCode == nil, !isRepeat else { return }
+            guard !isRepeat else { return }
+            if dictation.enabled { performDictation(dictationChord.keyDown()) }
+            guard settings.shortcut.keyCode == nil else { return }
             perform(chord.keyDown(), source: .keyboard)
         case .otherMouseDown(let button):
             guard button == mouseButtonNumber, settings.mouseAction != .disabled else { return }
@@ -190,6 +216,33 @@ public final class InvocationController {
         }
     }
 
+    private func performDictation(_ output: ChordStateMachine.Output) {
+        switch output {
+        case .scheduleHoldTimer(let token, let delay):
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: delay)
+                guard let self else { return }
+                self.performDictation(self.dictationChord.holdTimerFired(token: token))
+            }
+        case .activate:
+            // Not while the assistant is listening (and vice versa).
+            guard active == nil else { dictationChord.dismissed(); return }
+            isDictating = true
+            delegate?.dictationStarted()
+        case .deactivate(let reason):
+            endDictation(commit: reason == .released)
+        case .none, .tap:
+            break
+        }
+    }
+
+    private func endDictation(commit: Bool) {
+        guard isDictating else { return }
+        isDictating = false
+        dictationChord.dismissed()
+        delegate?.dictationEnded(commit: commit)
+    }
+
     private func keyChordPressed() {
         guard !suspended else { return }
         switch settings.behavior {
@@ -206,7 +259,7 @@ public final class InvocationController {
     }
 
     private func start(source: InvocationSource, behavior: InvocationBehavior) {
-        guard active == nil else { return }
+        guard active == nil, !isDictating else { return }
         active = (source, behavior, .now)
         delegate?.invocationStarted(source: source, behavior: behavior)
     }

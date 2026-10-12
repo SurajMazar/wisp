@@ -15,6 +15,8 @@ pub enum AssistantState {
     /// Summoned and attentive; tracks the pointer closely.
     Following,
     Listening,
+    /// Recording speech to type it where the cursor is.
+    Dictating,
     Selecting,
     Drawing,
     Analyzing,

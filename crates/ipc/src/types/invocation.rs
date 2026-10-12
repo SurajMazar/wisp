@@ -128,6 +128,43 @@ impl InvocationSettings {
     }
 }
 
+/// Hold a shortcut to dictate: what you say is typed where your cursor is.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+pub struct DictationSettings {
+    pub enabled: bool,
+    /// A modifier-only chord held while speaking (default ⌃⇧).
+    pub shortcut: Shortcut,
+    /// Fix punctuation and drop filler words with the language model before typing (slower).
+    pub cleanup: bool,
+}
+
+impl Default for DictationSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            shortcut: Shortcut {
+                modifiers: vec![Modifier::Control, Modifier::Shift],
+                key_code: None,
+                key_label: None,
+            },
+            cleanup: false,
+        }
+    }
+}
+
+impl DictationSettings {
+    pub fn validate(&self) -> Result<(), String> {
+        self.shortcut.validate()?;
+        if self.shortcut.key_code.is_some() || self.shortcut.modifiers.len() < 2 {
+            return Err(
+                "dictation uses a chord of two or more modifier keys, held while speaking".into(),
+            );
+        }
+        Ok(())
+    }
+}
+
 /// Where an invocation came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
