@@ -204,11 +204,13 @@ public struct AgentRunList: Codable, Sendable, Equatable {
 
 public struct AgentRunParams: Codable, Sendable, Equatable {
     public var agentId: String?
+    public var background: Bool
     public var conversationId: String?
     public var goal: String
 
-    public init(agentId: String? = nil, conversationId: String? = nil, goal: String) {
+    public init(agentId: String? = nil, background: Bool, conversationId: String? = nil, goal: String) {
         self.agentId = agentId
+        self.background = background
         self.conversationId = conversationId
         self.goal = goal
     }
@@ -864,6 +866,359 @@ public struct ApprovalResponse: Codable, Sendable, Equatable {
     }
 }
 
+/// Parameters for methods that take none. Accepts `{}` or an absent/`null` params field.
+public struct Empty: Codable, Sendable, Equatable {
+
+
+    public init() {
+
+    }
+}
+
+public struct FindArgs: Codable, Sendable, Equatable {
+    public var label: String
+
+    public init(label: String) {
+        self.label = label
+    }
+}
+
+public struct PointerArgs: Codable, Sendable, Equatable {
+    public var label: String?
+    public var x: Double
+    public var y: Double
+
+    public init(label: String? = nil, x: Double, y: Double) {
+        self.label = label
+        self.x = x
+        self.y = y
+    }
+}
+
+public struct DragArgs: Codable, Sendable, Equatable {
+    public var from: Point
+    public var to: Point
+
+    public init(from: Point, to: Point) {
+        self.from = from
+        self.to = to
+    }
+}
+
+public struct ScrollArgs: Codable, Sendable, Equatable {
+    public var dx: Int
+    public var dy: Int
+    public var x: Double
+    public var y: Double
+
+    public init(dx: Int, dy: Int, x: Double, y: Double) {
+        self.dx = dx
+        self.dy = dy
+        self.x = x
+        self.y = y
+    }
+}
+
+public struct TextArgs: Codable, Sendable, Equatable {
+    public var text: String
+
+    public init(text: String) {
+        self.text = text
+    }
+}
+
+public struct KeyArgs: Codable, Sendable, Equatable {
+    public var key: String
+
+    public init(key: String) {
+        self.key = key
+    }
+}
+
+public enum KeyModifier: String, Codable, Sendable, Equatable, CaseIterable {
+    case command = "command"
+    case option = "option"
+    case control = "control"
+    case shift = "shift"
+}
+
+public struct HotkeyArgs: Codable, Sendable, Equatable {
+    public var key: String
+    public var modifiers: [KeyModifier]
+
+    public init(key: String, modifiers: [KeyModifier]) {
+        self.key = key
+        self.modifiers = modifiers
+    }
+}
+
+public struct UrlArgs: Codable, Sendable, Equatable {
+    public var url: String
+
+    public init(url: String) {
+        self.url = url
+    }
+}
+
+/// A reminder in Reminders. Dates are local time, "YYYY-MM-DD HH:MM".
+public struct ReminderArgs: Codable, Sendable, Equatable {
+    public var due: String?
+    public var title: String
+
+    public init(due: String? = nil, title: String) {
+        self.due = due
+        self.title = title
+    }
+}
+
+/// An event in Calendar (local time, "YYYY-MM-DD HH:MM").
+public struct EventArgs: Codable, Sendable, Equatable {
+    public var minutes: UInt32
+    public var start: String
+    public var title: String
+
+    public init(minutes: UInt32, start: String, title: String) {
+        self.minutes = minutes
+        self.start = start
+        self.title = title
+    }
+}
+
+/// A day, "YYYY-MM-DD".
+public struct DayArgs: Codable, Sendable, Equatable {
+    public var day: String
+
+    public init(day: String) {
+        self.day = day
+    }
+}
+
+/// A note in Notes.
+public struct NoteArgs: Codable, Sendable, Equatable {
+    public var body: String
+    public var title: String
+
+    public init(body: String, title: String) {
+        self.body = body
+        self.title = title
+    }
+}
+
+public enum MusicCommand: String, Codable, Sendable, Equatable, CaseIterable {
+    case play = "play"
+    case pause = "pause"
+    case next = "next"
+    case previous = "previous"
+}
+
+/// Control music playback (Music, or Spotify when it's the one playing).
+public struct MusicArgs: Codable, Sendable, Equatable {
+    public var command: MusicCommand
+
+    public init(command: MusicCommand) {
+        self.command = command
+    }
+}
+
+/// A file or folder in the user's home ("~/Desktop/report.pdf").
+public struct PathArgs: Codable, Sendable, Equatable {
+    public var path: String
+
+    public init(path: String) {
+        self.path = path
+    }
+}
+
+/// Move a file or folder into a folder (both in the user's home).
+public struct MoveArgs: Codable, Sendable, Equatable {
+    public var from: String
+    public var to: String
+
+    public init(from: String, to: String) {
+        self.from = from
+        self.to = to
+    }
+}
+
+/// Every action Wisp can take on the computer.
+public enum ToolCall: Codable, Sendable, Equatable {
+    case readScreen(Empty)
+    case findElement(FindArgs)
+    case click(PointerArgs)
+    case doubleClick(PointerArgs)
+    case rightClick(PointerArgs)
+    case moveMouse(PointerArgs)
+    case drag(DragArgs)
+    case scroll(ScrollArgs)
+    case typeText(TextArgs)
+    case keypress(KeyArgs)
+    case hotkey(HotkeyArgs)
+    case copy(Empty)
+    case paste(Empty)
+    case openApplication(AppArgs)
+    case switchApplication(AppArgs)
+    case closeApplication(AppArgs)
+    case openUrl(UrlArgs)
+    case readClipboard(Empty)
+    case writeClipboard(TextArgs)
+    case createReminder(ReminderArgs)
+    case listReminders(Empty)
+    case createEvent(EventArgs)
+    case listEvents(DayArgs)
+    case createNote(NoteArgs)
+    case music(MusicArgs)
+    case listFiles(PathArgs)
+    case moveFile(MoveArgs)
+    case trashFile(PathArgs)
+    case fetchPage(UrlArgs)
+
+    private enum CodingKeys: String, CodingKey {
+        case tag = "tool"
+        case content = "args"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let tag = try c.decode(String.self, forKey: .tag)
+        switch tag {
+        case "readScreen": self = .readScreen(try c.decode(Empty.self, forKey: .content))
+        case "findElement": self = .findElement(try c.decode(FindArgs.self, forKey: .content))
+        case "click": self = .click(try c.decode(PointerArgs.self, forKey: .content))
+        case "doubleClick": self = .doubleClick(try c.decode(PointerArgs.self, forKey: .content))
+        case "rightClick": self = .rightClick(try c.decode(PointerArgs.self, forKey: .content))
+        case "moveMouse": self = .moveMouse(try c.decode(PointerArgs.self, forKey: .content))
+        case "drag": self = .drag(try c.decode(DragArgs.self, forKey: .content))
+        case "scroll": self = .scroll(try c.decode(ScrollArgs.self, forKey: .content))
+        case "typeText": self = .typeText(try c.decode(TextArgs.self, forKey: .content))
+        case "keypress": self = .keypress(try c.decode(KeyArgs.self, forKey: .content))
+        case "hotkey": self = .hotkey(try c.decode(HotkeyArgs.self, forKey: .content))
+        case "copy": self = .copy(try c.decode(Empty.self, forKey: .content))
+        case "paste": self = .paste(try c.decode(Empty.self, forKey: .content))
+        case "openApplication": self = .openApplication(try c.decode(AppArgs.self, forKey: .content))
+        case "switchApplication": self = .switchApplication(try c.decode(AppArgs.self, forKey: .content))
+        case "closeApplication": self = .closeApplication(try c.decode(AppArgs.self, forKey: .content))
+        case "openUrl": self = .openUrl(try c.decode(UrlArgs.self, forKey: .content))
+        case "readClipboard": self = .readClipboard(try c.decode(Empty.self, forKey: .content))
+        case "writeClipboard": self = .writeClipboard(try c.decode(TextArgs.self, forKey: .content))
+        case "createReminder": self = .createReminder(try c.decode(ReminderArgs.self, forKey: .content))
+        case "listReminders": self = .listReminders(try c.decode(Empty.self, forKey: .content))
+        case "createEvent": self = .createEvent(try c.decode(EventArgs.self, forKey: .content))
+        case "listEvents": self = .listEvents(try c.decode(DayArgs.self, forKey: .content))
+        case "createNote": self = .createNote(try c.decode(NoteArgs.self, forKey: .content))
+        case "music": self = .music(try c.decode(MusicArgs.self, forKey: .content))
+        case "listFiles": self = .listFiles(try c.decode(PathArgs.self, forKey: .content))
+        case "moveFile": self = .moveFile(try c.decode(MoveArgs.self, forKey: .content))
+        case "trashFile": self = .trashFile(try c.decode(PathArgs.self, forKey: .content))
+        case "fetchPage": self = .fetchPage(try c.decode(UrlArgs.self, forKey: .content))
+        default:
+            throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown ToolCall variant \(tag)")
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .readScreen(let v):
+            try c.encode("readScreen", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .findElement(let v):
+            try c.encode("findElement", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .click(let v):
+            try c.encode("click", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .doubleClick(let v):
+            try c.encode("doubleClick", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .rightClick(let v):
+            try c.encode("rightClick", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .moveMouse(let v):
+            try c.encode("moveMouse", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .drag(let v):
+            try c.encode("drag", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .scroll(let v):
+            try c.encode("scroll", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .typeText(let v):
+            try c.encode("typeText", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .keypress(let v):
+            try c.encode("keypress", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .hotkey(let v):
+            try c.encode("hotkey", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .copy(let v):
+            try c.encode("copy", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .paste(let v):
+            try c.encode("paste", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .openApplication(let v):
+            try c.encode("openApplication", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .switchApplication(let v):
+            try c.encode("switchApplication", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .closeApplication(let v):
+            try c.encode("closeApplication", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .openUrl(let v):
+            try c.encode("openUrl", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .readClipboard(let v):
+            try c.encode("readClipboard", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .writeClipboard(let v):
+            try c.encode("writeClipboard", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .createReminder(let v):
+            try c.encode("createReminder", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .listReminders(let v):
+            try c.encode("listReminders", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .createEvent(let v):
+            try c.encode("createEvent", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .listEvents(let v):
+            try c.encode("listEvents", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .createNote(let v):
+            try c.encode("createNote", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .music(let v):
+            try c.encode("music", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .listFiles(let v):
+            try c.encode("listFiles", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .moveFile(let v):
+            try c.encode("moveFile", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .trashFile(let v):
+            try c.encode("trashFile", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .fetchPage(let v):
+            try c.encode("fetchPage", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        }
+    }
+}
+
+/// A background action for the host to perform through an app (Reminders, Calendar, Notes,
+/// Music) or the Trash — after the same policy and approval as every tool.
+public struct AppsPerformParams: Codable, Sendable, Equatable {
+    public var call: ToolCall
+
+    public init(call: ToolCall) {
+        self.call = call
+    }
+}
+
 /// Everything the assistant can be doing, shown on the buddy and in the panel (spec §28, §92).
 public enum AssistantState: String, Codable, Sendable, Equatable, CaseIterable {
     case listening = "listening"
@@ -1397,16 +1752,6 @@ public struct DisplayInfo: Codable, Sendable, Equatable {
     }
 }
 
-public struct DragArgs: Codable, Sendable, Equatable {
-    public var from: Point
-    public var to: Point
-
-    public init(from: Point, to: Point) {
-        self.from = from
-        self.to = to
-    }
-}
-
 public struct EmbedParams: Codable, Sendable, Equatable {
     public var texts: [String]
 
@@ -1424,15 +1769,6 @@ public struct Embeddings: Codable, Sendable, Equatable {
         self.dims = dims
         self.model = model
         self.vectors = vectors
-    }
-}
-
-/// Parameters for methods that take none. Accepts `{}` or an absent/`null` params field.
-public struct Empty: Codable, Sendable, Equatable {
-
-
-    public init() {
-
     }
 }
 
@@ -1569,14 +1905,6 @@ public struct FileSearchResults: Codable, Sendable, Equatable {
     }
 }
 
-public struct FindArgs: Codable, Sendable, Equatable {
-    public var label: String
-
-    public init(label: String) {
-        self.label = label
-    }
-}
-
 public enum FocusEndReason: String, Codable, Sendable, Equatable, CaseIterable {
     case cancelled = "cancelled"
     case nothingSelected = "nothingSelected"
@@ -1707,197 +2035,11 @@ public struct HostVoiceStartParams: Codable, Sendable, Equatable {
     }
 }
 
-public enum KeyModifier: String, Codable, Sendable, Equatable, CaseIterable {
-    case command = "command"
-    case option = "option"
-    case control = "control"
-    case shift = "shift"
-}
-
-public struct HotkeyArgs: Codable, Sendable, Equatable {
-    public var key: String
-    public var modifiers: [KeyModifier]
-
-    public init(key: String, modifiers: [KeyModifier]) {
-        self.key = key
-        self.modifiers = modifiers
-    }
-}
-
 public struct IdParams: Codable, Sendable, Equatable {
     public var id: String
 
     public init(id: String) {
         self.id = id
-    }
-}
-
-public struct PointerArgs: Codable, Sendable, Equatable {
-    public var label: String?
-    public var x: Double
-    public var y: Double
-
-    public init(label: String? = nil, x: Double, y: Double) {
-        self.label = label
-        self.x = x
-        self.y = y
-    }
-}
-
-public struct ScrollArgs: Codable, Sendable, Equatable {
-    public var dx: Int
-    public var dy: Int
-    public var x: Double
-    public var y: Double
-
-    public init(dx: Int, dy: Int, x: Double, y: Double) {
-        self.dx = dx
-        self.dy = dy
-        self.x = x
-        self.y = y
-    }
-}
-
-public struct TextArgs: Codable, Sendable, Equatable {
-    public var text: String
-
-    public init(text: String) {
-        self.text = text
-    }
-}
-
-public struct KeyArgs: Codable, Sendable, Equatable {
-    public var key: String
-
-    public init(key: String) {
-        self.key = key
-    }
-}
-
-public struct UrlArgs: Codable, Sendable, Equatable {
-    public var url: String
-
-    public init(url: String) {
-        self.url = url
-    }
-}
-
-/// Every action Wisp can take on the computer.
-public enum ToolCall: Codable, Sendable, Equatable {
-    case readScreen(Empty)
-    case findElement(FindArgs)
-    case click(PointerArgs)
-    case doubleClick(PointerArgs)
-    case rightClick(PointerArgs)
-    case moveMouse(PointerArgs)
-    case drag(DragArgs)
-    case scroll(ScrollArgs)
-    case typeText(TextArgs)
-    case keypress(KeyArgs)
-    case hotkey(HotkeyArgs)
-    case copy(Empty)
-    case paste(Empty)
-    case openApplication(AppArgs)
-    case switchApplication(AppArgs)
-    case closeApplication(AppArgs)
-    case openUrl(UrlArgs)
-    case readClipboard(Empty)
-    case writeClipboard(TextArgs)
-
-    private enum CodingKeys: String, CodingKey {
-        case tag = "tool"
-        case content = "args"
-    }
-
-    public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        let tag = try c.decode(String.self, forKey: .tag)
-        switch tag {
-        case "readScreen": self = .readScreen(try c.decode(Empty.self, forKey: .content))
-        case "findElement": self = .findElement(try c.decode(FindArgs.self, forKey: .content))
-        case "click": self = .click(try c.decode(PointerArgs.self, forKey: .content))
-        case "doubleClick": self = .doubleClick(try c.decode(PointerArgs.self, forKey: .content))
-        case "rightClick": self = .rightClick(try c.decode(PointerArgs.self, forKey: .content))
-        case "moveMouse": self = .moveMouse(try c.decode(PointerArgs.self, forKey: .content))
-        case "drag": self = .drag(try c.decode(DragArgs.self, forKey: .content))
-        case "scroll": self = .scroll(try c.decode(ScrollArgs.self, forKey: .content))
-        case "typeText": self = .typeText(try c.decode(TextArgs.self, forKey: .content))
-        case "keypress": self = .keypress(try c.decode(KeyArgs.self, forKey: .content))
-        case "hotkey": self = .hotkey(try c.decode(HotkeyArgs.self, forKey: .content))
-        case "copy": self = .copy(try c.decode(Empty.self, forKey: .content))
-        case "paste": self = .paste(try c.decode(Empty.self, forKey: .content))
-        case "openApplication": self = .openApplication(try c.decode(AppArgs.self, forKey: .content))
-        case "switchApplication": self = .switchApplication(try c.decode(AppArgs.self, forKey: .content))
-        case "closeApplication": self = .closeApplication(try c.decode(AppArgs.self, forKey: .content))
-        case "openUrl": self = .openUrl(try c.decode(UrlArgs.self, forKey: .content))
-        case "readClipboard": self = .readClipboard(try c.decode(Empty.self, forKey: .content))
-        case "writeClipboard": self = .writeClipboard(try c.decode(TextArgs.self, forKey: .content))
-        default:
-            throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown ToolCall variant \(tag)")
-        }
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        switch self {
-        case .readScreen(let v):
-            try c.encode("readScreen", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .findElement(let v):
-            try c.encode("findElement", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .click(let v):
-            try c.encode("click", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .doubleClick(let v):
-            try c.encode("doubleClick", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .rightClick(let v):
-            try c.encode("rightClick", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .moveMouse(let v):
-            try c.encode("moveMouse", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .drag(let v):
-            try c.encode("drag", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .scroll(let v):
-            try c.encode("scroll", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .typeText(let v):
-            try c.encode("typeText", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .keypress(let v):
-            try c.encode("keypress", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .hotkey(let v):
-            try c.encode("hotkey", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .copy(let v):
-            try c.encode("copy", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .paste(let v):
-            try c.encode("paste", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .openApplication(let v):
-            try c.encode("openApplication", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .switchApplication(let v):
-            try c.encode("switchApplication", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .closeApplication(let v):
-            try c.encode("closeApplication", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .openUrl(let v):
-            try c.encode("openUrl", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .readClipboard(let v):
-            try c.encode("readClipboard", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        case .writeClipboard(let v):
-            try c.encode("writeClipboard", forKey: .tag)
-            try c.encode(v, forKey: .content)
-        }
     }
 }
 
@@ -2540,15 +2682,17 @@ public struct ScreenPermissionStatus: Codable, Sendable, Equatable {
 public struct SendParams: Codable, Sendable, Equatable {
     public var act: Bool
     public var allowCloud: Bool
+    public var background: Bool
     public var conversationId: String?
     public var includeFocus: Bool
     public var model: ModelRef?
     public var teach: Bool
     public var text: String
 
-    public init(act: Bool, allowCloud: Bool, conversationId: String? = nil, includeFocus: Bool, model: ModelRef? = nil, teach: Bool, text: String) {
+    public init(act: Bool, allowCloud: Bool, background: Bool, conversationId: String? = nil, includeFocus: Bool, model: ModelRef? = nil, teach: Bool, text: String) {
         self.act = act
         self.allowCloud = allowCloud
+        self.background = background
         self.conversationId = conversationId
         self.includeFocus = includeFocus
         self.model = model
@@ -3280,6 +3424,7 @@ public enum IPCMethods {
     public static let hostVoiceStart = IPCMethod<HostVoiceStartParams, Empty>(name: "host.voice.start", target: .host)
     public static let hostVoiceStop = IPCMethod<Empty, VoiceFinishResult>(name: "host.voice.stop", target: .host)
     public static let hostVoiceStopSpeaking = IPCMethod<Empty, Empty>(name: "host.voice.stopSpeaking", target: .host)
+    public static let hostAppsPerform = IPCMethod<AppsPerformParams, ToolExecution>(name: "host.apps.perform", target: .host)
     public static let hostSpeechVoices = IPCMethod<Empty, SystemVoices>(name: "host.speech.voices", target: .host)
     public static let hostSpeechSynthesize = IPCMethod<SpeechSynthesizeParams, Empty>(name: "host.speech.synthesize", target: .host)
     public static let voiceStatus = IPCMethod<Empty, VoiceStatus>(name: "voice.status", target: .core)
@@ -3393,6 +3538,7 @@ public enum IPCMethods {
         "host.voice.start": .host,
         "host.voice.stop": .host,
         "host.voice.stopSpeaking": .host,
+        "host.apps.perform": .host,
         "host.speech.voices": .host,
         "host.speech.synthesize": .host,
         "voice.status": .core,

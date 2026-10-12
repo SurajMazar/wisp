@@ -99,7 +99,7 @@ it work on every answer, and extends it:
   - Median time from release to first spoken word under 2 s with a local instruct model.
   - Under 1.5 s with a cloud model.
 
-### Step 3 — Voice-triggered background agents (≈2 weeks)
+### Step 3 — Voice-triggered background agents (≈2 weeks) ✅ done 2026-10-12 (see D-043; web search not included — reading a given page is)
 
 - **Trigger:**
   - Saying "agent, …" or "Wisp agent, …" at the start of a spoken question, or holding ⌃⌥⇧, starts an agent run

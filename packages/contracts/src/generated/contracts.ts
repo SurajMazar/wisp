@@ -106,6 +106,7 @@ export type AgentRunList = z.output<typeof AgentRunList>;
 
 export const AgentRunParams = z.strictObject({
   "agentId": z.string().nullable().optional(),
+  "background": z.boolean().default(false),
   "conversationId": z.string().nullable().optional(),
   "goal": z.string(),
 });
@@ -450,6 +451,123 @@ export const ApprovalResponse = z.strictObject({
 });
 export type ApprovalResponse = z.output<typeof ApprovalResponse>;
 
+/** Parameters for methods that take none. Accepts `{}` or an absent/`null` params field. */
+export const Empty = z.strictObject({
+
+});
+export type Empty = z.output<typeof Empty>;
+
+export const FindArgs = z.strictObject({
+  "label": z.string(),
+});
+export type FindArgs = z.output<typeof FindArgs>;
+
+export const PointerArgs = z.strictObject({
+  "label": z.string().nullable().optional(),
+  "x": z.number(),
+  "y": z.number(),
+});
+export type PointerArgs = z.output<typeof PointerArgs>;
+
+export const DragArgs = z.strictObject({
+  "from": Point,
+  "to": Point,
+});
+export type DragArgs = z.output<typeof DragArgs>;
+
+export const ScrollArgs = z.strictObject({
+  "dx": z.number().int().default(0),
+  "dy": z.number().int(),
+  "x": z.number(),
+  "y": z.number(),
+});
+export type ScrollArgs = z.output<typeof ScrollArgs>;
+
+export const TextArgs = z.strictObject({
+  "text": z.string(),
+});
+export type TextArgs = z.output<typeof TextArgs>;
+
+export const KeyArgs = z.strictObject({
+  "key": z.string(),
+});
+export type KeyArgs = z.output<typeof KeyArgs>;
+
+export const KeyModifier = z.enum(["command","option","control","shift"]);
+export type KeyModifier = z.output<typeof KeyModifier>;
+
+export const HotkeyArgs = z.strictObject({
+  "key": z.string(),
+  "modifiers": z.array(KeyModifier),
+});
+export type HotkeyArgs = z.output<typeof HotkeyArgs>;
+
+export const UrlArgs = z.strictObject({
+  "url": z.string(),
+});
+export type UrlArgs = z.output<typeof UrlArgs>;
+
+/** A reminder in Reminders. Dates are local time, "YYYY-MM-DD HH:MM". */
+export const ReminderArgs = z.strictObject({
+  "due": z.string().nullable().optional(),
+  "title": z.string(),
+});
+export type ReminderArgs = z.output<typeof ReminderArgs>;
+
+/** An event in Calendar (local time, "YYYY-MM-DD HH:MM"). */
+export const EventArgs = z.strictObject({
+  "minutes": z.number().int().nonnegative(),
+  "start": z.string(),
+  "title": z.string(),
+});
+export type EventArgs = z.output<typeof EventArgs>;
+
+/** A day, "YYYY-MM-DD". */
+export const DayArgs = z.strictObject({
+  "day": z.string(),
+});
+export type DayArgs = z.output<typeof DayArgs>;
+
+/** A note in Notes. */
+export const NoteArgs = z.strictObject({
+  "body": z.string(),
+  "title": z.string(),
+});
+export type NoteArgs = z.output<typeof NoteArgs>;
+
+export const MusicCommand = z.enum(["play","pause","next","previous"]);
+export type MusicCommand = z.output<typeof MusicCommand>;
+
+/** Control music playback (Music, or Spotify when it's the one playing). */
+export const MusicArgs = z.strictObject({
+  "command": MusicCommand,
+});
+export type MusicArgs = z.output<typeof MusicArgs>;
+
+/** A file or folder in the user's home ("~/Desktop/report.pdf"). */
+export const PathArgs = z.strictObject({
+  "path": z.string(),
+});
+export type PathArgs = z.output<typeof PathArgs>;
+
+/** Move a file or folder into a folder (both in the user's home). */
+export const MoveArgs = z.strictObject({
+  "from": z.string(),
+  "to": z.string(),
+});
+export type MoveArgs = z.output<typeof MoveArgs>;
+
+/** Every action Wisp can take on the computer. */
+export const ToolCall = z.discriminatedUnion("tool", [z.strictObject({ "tool": z.literal("readScreen"), "args": Empty }), z.strictObject({ "tool": z.literal("findElement"), "args": FindArgs }), z.strictObject({ "tool": z.literal("click"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("doubleClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("rightClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("moveMouse"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("drag"), "args": DragArgs }), z.strictObject({ "tool": z.literal("scroll"), "args": ScrollArgs }), z.strictObject({ "tool": z.literal("typeText"), "args": TextArgs }), z.strictObject({ "tool": z.literal("keypress"), "args": KeyArgs }), z.strictObject({ "tool": z.literal("hotkey"), "args": HotkeyArgs }), z.strictObject({ "tool": z.literal("copy"), "args": Empty }), z.strictObject({ "tool": z.literal("paste"), "args": Empty }), z.strictObject({ "tool": z.literal("openApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("switchApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("closeApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("openUrl"), "args": UrlArgs }), z.strictObject({ "tool": z.literal("readClipboard"), "args": Empty }), z.strictObject({ "tool": z.literal("writeClipboard"), "args": TextArgs }), z.strictObject({ "tool": z.literal("createReminder"), "args": ReminderArgs }), z.strictObject({ "tool": z.literal("listReminders"), "args": Empty }), z.strictObject({ "tool": z.literal("createEvent"), "args": EventArgs }), z.strictObject({ "tool": z.literal("listEvents"), "args": DayArgs }), z.strictObject({ "tool": z.literal("createNote"), "args": NoteArgs }), z.strictObject({ "tool": z.literal("music"), "args": MusicArgs }), z.strictObject({ "tool": z.literal("listFiles"), "args": PathArgs }), z.strictObject({ "tool": z.literal("moveFile"), "args": MoveArgs }), z.strictObject({ "tool": z.literal("trashFile"), "args": PathArgs }), z.strictObject({ "tool": z.literal("fetchPage"), "args": UrlArgs })]);
+export type ToolCall = z.output<typeof ToolCall>;
+
+/** A background action for the host to perform through an app (Reminders, Calendar, Notes,
+Music) or the Trash — after the same policy and approval as every tool. */
+export const AppsPerformParams = z.strictObject({
+  "call": ToolCall,
+});
+export type AppsPerformParams = z.output<typeof AppsPerformParams>;
+
 /** Everything the assistant can be doing, shown on the buddy and in the panel (spec §28, §92). */
 export const AssistantState = z.enum(["listening","selecting","drawing","analyzing","thinking","speaking","executing","waitingForPermission","success","error","idle","following"]);
 export type AssistantState = z.output<typeof AssistantState>;
@@ -740,12 +858,6 @@ export const DisplayInfo = z.strictObject({
 });
 export type DisplayInfo = z.output<typeof DisplayInfo>;
 
-export const DragArgs = z.strictObject({
-  "from": Point,
-  "to": Point,
-});
-export type DragArgs = z.output<typeof DragArgs>;
-
 export const EmbedParams = z.strictObject({
   "texts": z.array(z.string()),
 });
@@ -757,12 +869,6 @@ export const Embeddings = z.strictObject({
   "vectors": z.array(z.array(z.number())),
 });
 export type Embeddings = z.output<typeof Embeddings>;
-
-/** Parameters for methods that take none. Accepts `{}` or an absent/`null` params field. */
-export const Empty = z.strictObject({
-
-});
-export type Empty = z.output<typeof Empty>;
 
 export const ErrorCode = z.enum(["invalidRequest","methodNotFound","invalidParams","internal","unavailable","permissionDenied","cancelled","timeout","notFound"]);
 export type ErrorCode = z.output<typeof ErrorCode>;
@@ -836,11 +942,6 @@ export const FileSearchResults = z.strictObject({
   "hits": z.array(FileHit),
 });
 export type FileSearchResults = z.output<typeof FileSearchResults>;
-
-export const FindArgs = z.strictObject({
-  "label": z.string(),
-});
-export type FindArgs = z.output<typeof FindArgs>;
 
 export const FocusEndReason = z.enum(["cancelled","nothingSelected","permissionDenied","captureFailed"]);
 export type FocusEndReason = z.output<typeof FocusEndReason>;
@@ -918,53 +1019,10 @@ export const HostVoiceStartParams = z.strictObject({
 });
 export type HostVoiceStartParams = z.output<typeof HostVoiceStartParams>;
 
-export const KeyModifier = z.enum(["command","option","control","shift"]);
-export type KeyModifier = z.output<typeof KeyModifier>;
-
-export const HotkeyArgs = z.strictObject({
-  "key": z.string(),
-  "modifiers": z.array(KeyModifier),
-});
-export type HotkeyArgs = z.output<typeof HotkeyArgs>;
-
 export const IdParams = z.strictObject({
   "id": z.string(),
 });
 export type IdParams = z.output<typeof IdParams>;
-
-export const PointerArgs = z.strictObject({
-  "label": z.string().nullable().optional(),
-  "x": z.number(),
-  "y": z.number(),
-});
-export type PointerArgs = z.output<typeof PointerArgs>;
-
-export const ScrollArgs = z.strictObject({
-  "dx": z.number().int().default(0),
-  "dy": z.number().int(),
-  "x": z.number(),
-  "y": z.number(),
-});
-export type ScrollArgs = z.output<typeof ScrollArgs>;
-
-export const TextArgs = z.strictObject({
-  "text": z.string(),
-});
-export type TextArgs = z.output<typeof TextArgs>;
-
-export const KeyArgs = z.strictObject({
-  "key": z.string(),
-});
-export type KeyArgs = z.output<typeof KeyArgs>;
-
-export const UrlArgs = z.strictObject({
-  "url": z.string(),
-});
-export type UrlArgs = z.output<typeof UrlArgs>;
-
-/** Every action Wisp can take on the computer. */
-export const ToolCall = z.discriminatedUnion("tool", [z.strictObject({ "tool": z.literal("readScreen"), "args": Empty }), z.strictObject({ "tool": z.literal("findElement"), "args": FindArgs }), z.strictObject({ "tool": z.literal("click"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("doubleClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("rightClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("moveMouse"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("drag"), "args": DragArgs }), z.strictObject({ "tool": z.literal("scroll"), "args": ScrollArgs }), z.strictObject({ "tool": z.literal("typeText"), "args": TextArgs }), z.strictObject({ "tool": z.literal("keypress"), "args": KeyArgs }), z.strictObject({ "tool": z.literal("hotkey"), "args": HotkeyArgs }), z.strictObject({ "tool": z.literal("copy"), "args": Empty }), z.strictObject({ "tool": z.literal("paste"), "args": Empty }), z.strictObject({ "tool": z.literal("openApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("switchApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("closeApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("openUrl"), "args": UrlArgs }), z.strictObject({ "tool": z.literal("readClipboard"), "args": Empty }), z.strictObject({ "tool": z.literal("writeClipboard"), "args": TextArgs })]);
-export type ToolCall = z.output<typeof ToolCall>;
 
 /** An approved action for the host, bound to what the user approved. */
 export const InputPerformParams = z.strictObject({
@@ -1323,6 +1381,7 @@ export type ScreenPermissionStatus = z.output<typeof ScreenPermissionStatus>;
 export const SendParams = z.strictObject({
   "act": z.boolean().default(false),
   "allowCloud": z.boolean().default(false),
+  "background": z.boolean().default(false),
   "conversationId": z.string().nullable().optional(),
   "includeFocus": z.boolean().default(false),
   "model": ModelRef.nullable().optional(),
@@ -1755,6 +1814,7 @@ export const methods = {
   "host.voice.start": { target: "host", params: HostVoiceStartParams, result: Empty },
   "host.voice.stop": { target: "host", params: Empty, result: VoiceFinishResult },
   "host.voice.stopSpeaking": { target: "host", params: Empty, result: Empty },
+  "host.apps.perform": { target: "host", params: AppsPerformParams, result: ToolExecution },
   "host.speech.voices": { target: "host", params: Empty, result: SystemVoices },
   "host.speech.synthesize": { target: "host", params: SpeechSynthesizeParams, result: Empty },
   "voice.status": { target: "core", params: Empty, result: VoiceStatus },

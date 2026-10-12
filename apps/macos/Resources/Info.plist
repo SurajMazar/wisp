@@ -38,5 +38,13 @@
     <string>Wisp listens only while you're talking to it, so it can hear your questions.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>Wisp asks before controlling other apps on your behalf.</string>
+    <key>NSRemindersFullAccessUsageDescription</key>
+    <string>When you ask Wisp to remind you of something, it adds it to Reminders — always after you approve.</string>
+    <key>NSRemindersUsageDescription</key>
+    <string>When you ask Wisp to remind you of something, it adds it to Reminders — always after you approve.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>When you ask Wisp about your day or to schedule something, it reads or adds events — adding always after you approve.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>When you ask Wisp about your day or to schedule something, it reads or adds events — adding always after you approve.</string>
 </dict>
 </plist>

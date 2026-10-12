@@ -201,6 +201,10 @@ pub struct AgentRunParams {
     pub goal: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conversation_id: Option<String>,
+    /// Work through apps and files directly (reminders, calendar, notes, music, files, web
+    /// pages) without looking at or touching the screen — e.g. "Wisp agent, …" by voice.
+    #[serde(default)]
+    pub background: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

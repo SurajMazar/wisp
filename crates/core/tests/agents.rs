@@ -241,3 +241,82 @@ async fn agents_are_validated_and_limited_to_their_tools() {
     );
     assert!(host.performed.lock().expect("lock").is_empty());
 }
+
+#[derive(Default)]
+struct AppsHost {
+    calls: Mutex<Vec<(String, Value)>>,
+}
+
+#[async_trait]
+impl wisp_providers::HostBridge for AppsHost {
+    async fn call(&self, method: &str, params: Value) -> Result<Value, IpcError> {
+        self.calls
+            .lock()
+            .expect("lock")
+            .push((method.to_owned(), params.clone()));
+        Ok(match method {
+            "host.apps.perform" => {
+                json!({"verification": {"status": "verified", "detail": "Added to Reminders"}})
+            }
+            _ => json!({}),
+        })
+    }
+}
+
+#[tokio::test]
+async fn a_spoken_background_task_works_through_apps_without_the_screen() {
+    let dir = tempfile::tempdir().expect("tmp");
+    let paths = DataPaths::new(dir.path());
+    paths.ensure().expect("dirs");
+    let db = Database::open(&paths.database_file()).expect("db");
+    let core = Core::new(db, &paths, EventBus::new()).expect("core");
+    core.ai().set_overrides(vec![Arc::new(MockProvider {
+        id: "mock-local".into(),
+        locality: Locality::Local,
+        vision: false,
+        reply: "1. Add the reminder|||THOUGHT: Add it.\nSTEP: 1\nACTION: remind \"Call Sam\" at tomorrow 9:00|||ACTION: done \"I'll remind you tomorrow at 9 to call Sam.\"".into(),
+        calls: Default::default(),
+        requests: Default::default(),
+    }) as Arc<dyn wisp_ai::AiProvider>]);
+    let host = Arc::new(AppsHost::default());
+    core.attach_host(host.clone());
+    // "Control this Mac" stays off: background tools don't need it.
+    approve_all(&core, "allowOnce");
+    let mut rx = core.events().subscribe();
+    core.dispatch(
+        "agent.run",
+        json!({"goal": "remind me tomorrow at 9 to call Sam", "background": true}),
+    )
+    .await
+    .expect("run");
+    let done = wait_run(&mut rx, |r| {
+        ["completed", "failed", "cancelled", "stuck"].contains(&r["status"].as_str().unwrap_or(""))
+    })
+    .await;
+    assert_eq!(done["status"], "completed", "{done}");
+    assert_eq!(done["note"], "I'll remind you tomorrow at 9 to call Sam.");
+
+    let calls = host.calls.lock().expect("lock").clone();
+    assert!(
+        !calls
+            .iter()
+            .any(|(m, _)| m == "host.screen.observe" || m == "host.input.perform"),
+        "never looked at or touched the screen: {calls:?}"
+    );
+    let tomorrow = (chrono::Local::now().date_naive() + chrono::Days::new(1))
+        .format("%Y-%m-%d")
+        .to_string();
+    let perform = calls
+        .iter()
+        .find(|(m, _)| m == "host.apps.perform")
+        .expect("added through Reminders");
+    assert_eq!(
+        perform.1["call"],
+        json!({"tool": "createReminder", "args": {"title": "Call Sam", "due": format!("{tomorrow} 09:00")}})
+    );
+    let note = calls
+        .iter()
+        .find(|(m, _)| m == "host.notify")
+        .expect("tells the user when it's done");
+    assert_eq!(note.1["title"], "Wisp · Done");
+}

@@ -404,12 +404,18 @@ impl Core {
             Some(id) => Some(id),
             None => self.voice_conversation().await,
         };
+        // "Agent, remind me tomorrow at 9 to call Sam" starts a background task instead.
+        let goal = agent_goal(&text);
+        if goal.is_some() {
+            let _ = self.speak_text("On it.").await;
+        }
         let sent = self
             .send(SendParams {
                 teach: false,
-                act: false,
+                act: goal.is_some(),
+                background: goal.is_some(),
                 conversation_id,
-                text: text.clone(),
+                text: goal.clone().unwrap_or_else(|| text.clone()),
                 include_focus: p.include_focus,
                 allow_cloud: false,
                 model: None,
@@ -622,8 +628,13 @@ impl Core {
                 let complete = serde_json::from_value::<MessageStatus>(payload["status"].clone())
                     .ok()
                     == Some(MessageStatus::Complete);
+                // An answer that arrived all at once (an agent's summary) is spoken whole.
+                let whole = (seq == 0)
+                    .then(|| payload["content"].as_str().map(str::to_owned))
+                    .flatten();
                 let rest = splitter
                     .finish()
+                    .or(whole)
                     .map(|t| wisp_audio::text::speakable(&t))
                     .filter(|t| !t.is_empty() && complete);
                 // Always send a final chunk so the host knows the utterance ended.
@@ -716,5 +727,53 @@ impl Core {
             *t = None;
         }
         models::remove(&models_root(self), id).map_err(|e| IpcError::internal(e.to_string()))
+    }
+}
+
+/// The task in "Agent, …" / "Wisp agent, …" / "Hey Wisp, agent …" (a spoken request for a
+/// background task), or None for an ordinary question.
+pub(crate) fn agent_goal(transcript: &str) -> Option<String> {
+    let words: Vec<&str> = transcript.split_whitespace().collect();
+    let bare = |w: &str| {
+        w.trim_matches(|c: char| !c.is_alphanumeric())
+            .to_lowercase()
+    };
+    // "agent" as the first word, or after up to two wake words ("hey", "wisp", "okay", …).
+    let at = words.iter().take(3).position(|w| bare(w) == "agent")?;
+    let wake = [
+        "hey", "hi", "ok", "okay", "wisp", "whisp", "wisk", "whisk", "wish",
+    ];
+    if !words[..at].iter().all(|w| wake.contains(&bare(w).as_str())) {
+        return None;
+    }
+    let goal = words[at + 1..]
+        .join(" ")
+        .trim_start_matches([',', ':', '.', '-', ' '])
+        .trim()
+        .to_owned();
+    (goal.chars().count() >= 3).then_some(goal)
+}
+
+#[cfg(test)]
+mod agent_phrase_tests {
+    use super::agent_goal;
+
+    #[test]
+    fn recognizes_spoken_agent_requests() {
+        assert_eq!(
+            agent_goal("Agent, remind me tomorrow at 9 to call Sam.").as_deref(),
+            Some("remind me tomorrow at 9 to call Sam.")
+        );
+        assert_eq!(
+            agent_goal("Wisp agent clean up my desktop").as_deref(),
+            Some("clean up my desktop")
+        );
+        assert_eq!(
+            agent_goal("Hey Wisp, agent: play some music").as_deref(),
+            Some("play some music")
+        );
+        assert_eq!(agent_goal("What does this agent setting do?"), None);
+        assert_eq!(agent_goal("The agent said hi"), None);
+        assert_eq!(agent_goal("Agent."), None);
     }
 }

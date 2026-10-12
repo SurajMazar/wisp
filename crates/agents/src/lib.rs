@@ -20,8 +20,9 @@ use wisp_ipc::types::{
     app::Empty,
     focus::FocusRegion,
     tools::{
-        AppArgs, HotkeyArgs, KeyArgs, KeyModifier, PointerArgs, ScrollArgs, TextArgs, ToolCall,
-        UrlArgs,
+        AppArgs, DayArgs, EventArgs, HotkeyArgs, KeyArgs, KeyModifier, MoveArgs, MusicArgs,
+        MusicCommand, NoteArgs, PathArgs, PointerArgs, ReminderArgs, ScrollArgs, TextArgs,
+        ToolCall, UrlArgs,
     },
 };
 use wisp_screen::guide::{self, TargetRef};
@@ -60,6 +61,8 @@ pub enum Action {
     Ask(String),
     /// Save something worth knowing next time (agent memory).
     Remember(String),
+    /// A background tool (reminders, calendar, notes, music, files, web pages).
+    Background(ToolCall),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -87,6 +90,86 @@ wait 2                   wait seconds for something to load
 done "summary"           the goal is complete; say what you did
 ask "question"           you need the user to answer something
 remember "fact"          save something useful for next time (not secrets)"#;
+
+/// Commands for background work: through apps and files directly, never the screen.
+pub const BACKGROUND_ACTION_HELP: &str = r#"remind "title" at 2026-10-13 09:00   add a reminder (the time is optional)
+reminders                            list open reminders
+event "title" at 2026-10-13 15:00 for 30   add a calendar event lasting 30 minutes
+events 2026-10-13                    list a day's events (today and tomorrow work too)
+note "title" "text"                  write a note in Notes
+music play                           music: play, pause, next or previous
+files "~/Desktop"                    list a folder in the home folder
+move "~/Desktop/a.png" to "~/Pictures/Screenshots"   move into a folder (created if missing)
+trash "~/Desktop/old.zip"            move to the Trash (the user is asked first)
+read_page "https://…"                read a web page's text
+wait 2                               wait seconds
+done "summary"                       the goal is complete; say briefly what you did
+ask "question"                       you need the user to answer something
+remember "fact"                      save something useful for next time (not secrets)"#;
+
+/// "Monday, 2026-10-12 18:40" in local time, for prompts that need to know when "tomorrow" is.
+pub fn now_for_prompt() -> String {
+    chrono::Local::now()
+        .format("%A, %Y-%m-%d %H:%M")
+        .to_string()
+}
+
+/// Every "quoted" string in order, and the words outside quotes.
+fn quoted(s: &str) -> (Vec<String>, Vec<String>) {
+    let (mut q, mut words, mut cur, mut inside) = (vec![], vec![], String::new(), None::<char>);
+    for c in s.chars() {
+        match inside {
+            Some(close) if c == close => {
+                q.push(std::mem::take(&mut cur));
+                inside = None;
+            }
+            Some(_) => cur.push(c),
+            None if c == '"' || c == '“' => {
+                if !cur.trim().is_empty() {
+                    words.extend(cur.split_whitespace().map(str::to_owned));
+                }
+                cur.clear();
+                inside = Some(if c == '“' { '”' } else { '"' });
+            }
+            None => cur.push(c),
+        }
+    }
+    words.extend(cur.split_whitespace().map(str::to_owned));
+    (q, words)
+}
+
+/// "2026-10-13" / "today" / "tomorrow" → "YYYY-MM-DD".
+fn day(w: &str) -> Option<String> {
+    let today = chrono::Local::now().date_naive();
+    match w.to_lowercase().as_str() {
+        "today" => Some(today.format("%Y-%m-%d").to_string()),
+        "tomorrow" => Some(
+            (today + chrono::Days::new(1))
+                .format("%Y-%m-%d")
+                .to_string(),
+        ),
+        other => chrono::NaiveDate::parse_from_str(other, "%Y-%m-%d")
+            .ok()
+            .map(|d| d.format("%Y-%m-%d").to_string()),
+    }
+}
+
+/// Words after "at": a day and a time ("9:00", "09:00", "9am", "3:30pm") → "YYYY-MM-DD HH:MM".
+fn when(words: &[String]) -> Option<String> {
+    let i = words.iter().position(|w| w.eq_ignore_ascii_case("at"))?;
+    let d = day(words.get(i + 1)?)?;
+    let t = words.get(i + 2)?.to_lowercase();
+    let (t, pm) = match t.strip_suffix("pm") {
+        Some(t) => (t.to_owned(), true),
+        None => (t.trim_end_matches("am").to_owned(), false),
+    };
+    let (h, m) = t.split_once(':').unwrap_or((&t, "00"));
+    let (mut h, m) = (h.parse::<u32>().ok()?, m.parse::<u32>().ok()?);
+    if pm && h < 12 {
+        h += 12;
+    }
+    (h < 24 && m < 60).then(|| format!("{d} {h:02}:{m:02}"))
+}
 
 fn unquote(s: &str) -> Option<String> {
     let s = s.trim();
@@ -228,6 +311,81 @@ pub fn parse_action(line: &str) -> Result<Action, String> {
         "done" | "finish" => Action::Done(unquote(rest).unwrap_or_else(|| "Done.".into())),
         "ask" => Action::Ask(unquote(rest).ok_or_else(|| need("a question"))?),
         "remember" => Action::Remember(unquote(rest).ok_or_else(|| need("what to remember"))?),
+        "remind" | "reminder" => {
+            let (q, words) = quoted(rest);
+            let title = q
+                .first()
+                .cloned()
+                .ok_or_else(|| need("a title in quotes"))?;
+            let due = if words.iter().any(|w| w.eq_ignore_ascii_case("at")) {
+                Some(when(&words).ok_or_else(|| need("a time like at 2026-10-13 09:00"))?)
+            } else {
+                None
+            };
+            Action::Background(ToolCall::CreateReminder(ReminderArgs { title, due }))
+        }
+        "reminders" => Action::Background(ToolCall::ListReminders(Empty {})),
+        "event" => {
+            let (q, words) = quoted(rest);
+            let title = q
+                .first()
+                .cloned()
+                .ok_or_else(|| need("a title in quotes"))?;
+            let start = when(&words).ok_or_else(|| need("a start like at 2026-10-13 15:00"))?;
+            let minutes = words
+                .iter()
+                .position(|w| w.eq_ignore_ascii_case("for"))
+                .and_then(|i| words.get(i + 1))
+                .and_then(|m| m.trim_end_matches("min").parse::<u32>().ok())
+                .unwrap_or(30)
+                .clamp(5, 1440);
+            Action::Background(ToolCall::CreateEvent(EventArgs {
+                title,
+                start,
+                minutes,
+            }))
+        }
+        "events" | "calendar" => Action::Background(ToolCall::ListEvents(DayArgs {
+            day: day(if rest.is_empty() { "today" } else { rest })
+                .ok_or_else(|| need("a day like 2026-10-13"))?,
+        })),
+        "note" => {
+            let (q, _) = quoted(rest);
+            let mut q = q.into_iter();
+            let title = q.next().ok_or_else(|| need("a title in quotes"))?;
+            Action::Background(ToolCall::CreateNote(NoteArgs {
+                title,
+                body: q.next().unwrap_or_default(),
+            }))
+        }
+        "music" => Action::Background(ToolCall::Music(MusicArgs {
+            command: match rest.to_lowercase().as_str() {
+                "play" | "resume" => MusicCommand::Play,
+                "pause" | "stop" => MusicCommand::Pause,
+                "next" | "skip" => MusicCommand::Next,
+                "previous" | "back" => MusicCommand::Previous,
+                _ => return Err(need("play, pause, next or previous")),
+            },
+        })),
+        "files" | "list" => Action::Background(ToolCall::ListFiles(PathArgs {
+            path: unquote(rest).unwrap_or_else(|| "~".into()),
+        })),
+        "move" => {
+            let (q, _) = quoted(rest);
+            match &q[..] {
+                [from, to] => Action::Background(ToolCall::MoveFile(MoveArgs {
+                    from: from.clone(),
+                    to: to.clone(),
+                })),
+                _ => return Err(need(r#""from" to "folder""#)),
+            }
+        }
+        "trash" => Action::Background(ToolCall::TrashFile(PathArgs {
+            path: unquote(rest).ok_or_else(|| need("a path in quotes"))?,
+        })),
+        "read_page" | "fetch" | "read" => Action::Background(ToolCall::FetchPage(UrlArgs {
+            url: unquote(rest).ok_or_else(|| need("an address"))?,
+        })),
         other => return Err(format!("unknown action {other:?}")),
     })
 }
@@ -343,6 +501,7 @@ pub fn to_tool_call(
         Action::OpenUrl(u) => ToolCall::OpenUrl(UrlArgs { url: u.clone() }),
         Action::Copy => ToolCall::Copy(Empty {}),
         Action::Paste => ToolCall::Paste(Empty {}),
+        Action::Background(call) => call.clone(),
         Action::Wait(_) | Action::Done(_) | Action::Ask(_) | Action::Remember(_) => {
             return Ok(None);
         }
@@ -553,5 +712,65 @@ mod tests {
         assert!(!d.record(&a, 3));
         assert!(d.record(&a, 3));
         assert!(!d.record(&Action::Copy, 3));
+    }
+
+    #[test]
+    fn parses_background_actions() {
+        let today = chrono::Local::now().date_naive();
+        let tomorrow = (today + chrono::Days::new(1))
+            .format("%Y-%m-%d")
+            .to_string();
+        assert_eq!(
+            parse_action(r#"remind "Call Sam" at tomorrow 9:00"#).expect("remind"),
+            Action::Background(ToolCall::CreateReminder(ReminderArgs {
+                title: "Call Sam".into(),
+                due: Some(format!("{tomorrow} 09:00")),
+            }))
+        );
+        assert_eq!(
+            parse_action(r#"remind "Buy milk""#).expect("no time"),
+            Action::Background(ToolCall::CreateReminder(ReminderArgs {
+                title: "Buy milk".into(),
+                due: None,
+            }))
+        );
+        assert_eq!(
+            parse_action(r#"event "Standup" at 2026-10-13 3:30pm for 15"#).expect("event"),
+            Action::Background(ToolCall::CreateEvent(EventArgs {
+                title: "Standup".into(),
+                start: "2026-10-13 15:30".into(),
+                minutes: 15,
+            }))
+        );
+        assert_eq!(
+            parse_action(r#"note "Ideas" "One\nTwo""#).expect("note"),
+            Action::Background(ToolCall::CreateNote(NoteArgs {
+                title: "Ideas".into(),
+                body: "One\\nTwo".into(),
+            }))
+        );
+        assert_eq!(
+            parse_action(r#"move "~/Desktop/a.png" to "~/Pictures/Shots""#).expect("move"),
+            Action::Background(ToolCall::MoveFile(MoveArgs {
+                from: "~/Desktop/a.png".into(),
+                to: "~/Pictures/Shots".into(),
+            }))
+        );
+        assert!(matches!(
+            parse_action("events today").expect("events"),
+            Action::Background(ToolCall::ListEvents(DayArgs { day })) if day == today.format("%Y-%m-%d").to_string()
+        ));
+        assert!(matches!(
+            parse_action("music next"),
+            Ok(Action::Background(ToolCall::Music(_)))
+        ));
+        assert!(parse_action(r#"remind "x" at someday"#).is_err());
+        assert!(parse_action("music louder").is_err());
+        // Background actions become tool calls without any screen.
+        let a = parse_action(r#"read_page "https://example.com""#).expect("read");
+        assert!(matches!(
+            to_tool_call(&a, None),
+            Ok(Some(ToolCall::FetchPage(_)))
+        ));
     }
 }

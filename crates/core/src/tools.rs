@@ -159,7 +159,9 @@ impl Core {
         };
         let args = wisp_computer::redacted_args(&p.call);
         let outcome = wisp_permissions::evaluate(&Context {
-            enabled: settings.computer.enabled,
+            // Background tools (reminders, files, …) never touch the mouse or keyboard, so they
+            // don't need "control this Mac"; anything that changes something still asks.
+            enabled: settings.computer.enabled || p.call.is_background(),
             always_grantable: wisp_computer::always_grantable(tool),
             confirm_every_action: settings.computer.confirm_every_action,
             tool,
@@ -376,6 +378,20 @@ impl Core {
             .host()
             .ok_or_else(|| unavailable("The app isn't connected."))?;
         match call {
+            ToolCall::ListFiles(a) => self.list_files(a).await,
+            ToolCall::MoveFile(a) => self.move_file(a).await,
+            ToolCall::FetchPage(a) => self.fetch_page(a).await,
+            c if c.is_background() => serde_json::from_value(
+                host.call(
+                    "host.apps.perform",
+                    serde_json::to_value(wisp_ipc::types::tools::AppsPerformParams {
+                        call: c.clone(),
+                    })
+                    .unwrap_or_default(),
+                )
+                .await?,
+            )
+            .map_err(|e| IpcError::internal(e.to_string())),
             ToolCall::ReadScreen(_) | ToolCall::FindElement(_) => {
                 let snap: AxSnapshot = serde_json::from_value(
                     host.call(

@@ -276,6 +276,9 @@ define_methods! {
     HostVoiceStop = "host.voice.stop", Host, Empty => VoiceFinishResult;
     /// Stop speaking immediately.
     HostVoiceStopSpeaking = "host.voice.stopSpeaking", Host, Empty => Empty;
+    /// Perform a background action through an app (Reminders, Calendar, Notes, Music) or the
+    /// Trash. Core only; the call has already passed policy and approval.
+    HostAppsPerform = "host.apps.perform", Host, AppsPerformParams => ToolExecution;
     /// The voices built into macOS.
     HostSpeechVoices = "host.speech.voices", Host, Empty => SystemVoices;
     /// Speak text with a macOS voice into a WAV file (core only; confined to `cache/tts`).

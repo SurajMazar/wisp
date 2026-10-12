@@ -46,3 +46,4 @@ path = "src/main.rs"
 
 [dev-dependencies]
 tempfile.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

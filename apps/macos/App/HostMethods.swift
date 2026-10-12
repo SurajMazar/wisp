@@ -185,6 +185,12 @@ enum HostMethods {
             return Empty()
         }
 
+        router.register(IPCMethods.hostAppsPerform) { params in
+            guard params.call.isBackground else {
+                throw IpcError(code: .invalidParams, message: "host.apps.perform only performs background actions")
+            }
+            return try await AppsController.perform(params.call)
+        }
         router.register(IPCMethods.hostSpeechVoices) { _ in
             SystemVoices(voices: SystemSpeech.voices())
         }

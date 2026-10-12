@@ -366,3 +366,17 @@ With `qwen3-vl:4b-instruct` for both text and screen questions plus full-precisi
 word was 1.4–1.7 s for text questions and 8.8 s for a question that needs the picture (4B reads an image in ~6 s
 vs ~11–13 s for 8B; using one model for both avoids reloading). Answers stayed on topic. We recommend 4B on 16 GB
 Macs; the choice stays the user's.
+
+## D-043 — Voice-started background agents work through apps and files, never the screen
+**Status** accepted (2026-10-12)
+Saying "Agent, …" (or "Wisp agent, …", "Hey Wisp, agent …") starts a background run instead of a question: Wisp
+says "On it.", the island shows "Working", and when it ends Wisp speaks the summary and posts a notification. A
+background run never observes or touches the screen; its commands map to typed tools in the same pipeline (policy,
+approval, audit): Reminders and Calendar via EventKit, Notes and Music via Apple Events (host `host.apps.perform`),
+files in the home folder (list, move into a folder, move to Trash — `~/` paths only, symlinks resolved, never
+`~/Library` or hidden folders, never overwrite) and reading https pages (refused in Local Only). Reading reminders,
+events and folders is Safe; creating things is Medium; Trash is High (approved every time); `fetchPage`/`moveFile`
+can't be "always" allowed. These tools don't need "control this Mac" (no mouse or keyboard) but still ask.
+Small local models over-acted with a planning step and rule lists ("pause the music" added reminders); a single
+goal-as-plan and worked examples per request type fixed it. Measured with `scripts/validation/agent-check.ts`
+(stand-in host): both qwen3-vl 8B and 4B did exactly the asked action for six requests in 4–10 s.

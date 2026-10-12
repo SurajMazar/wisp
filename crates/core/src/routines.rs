@@ -292,6 +292,7 @@ impl Core {
                 model: None,
                 teach: false,
                 act: false,
+                background: false,
             })
             .await
             .map_err(|e| e.message)?;
@@ -348,6 +349,7 @@ impl Core {
                     agent_id: Some(agent.to_owned()),
                     goal: goal.to_owned(),
                     conversation_id: None,
+                    background: false,
                 },
                 None,
             )

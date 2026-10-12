@@ -122,6 +122,72 @@ pub struct FindArgs {
     pub label: String,
 }
 
+/// A reminder in Reminders. Dates are local time, "YYYY-MM-DD HH:MM".
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ReminderArgs {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub due: Option<String>,
+}
+
+/// An event in Calendar (local time, "YYYY-MM-DD HH:MM").
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EventArgs {
+    pub title: String,
+    pub start: String,
+    /// Length, 5–1440.
+    pub minutes: u32,
+}
+
+/// A day, "YYYY-MM-DD".
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DayArgs {
+    pub day: String,
+}
+
+/// A note in Notes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NoteArgs {
+    pub title: String,
+    pub body: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum MusicCommand {
+    Play,
+    Pause,
+    Next,
+    Previous,
+}
+
+/// Control music playback (Music, or Spotify when it's the one playing).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MusicArgs {
+    pub command: MusicCommand,
+}
+
+/// A file or folder in the user's home ("~/Desktop/report.pdf").
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PathArgs {
+    pub path: String,
+}
+
+/// Move a file or folder into a folder (both in the user's home).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MoveArgs {
+    pub from: String,
+    /// Destination folder (created if missing).
+    pub to: String,
+}
+
 /// Every action Wisp can take on the computer.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "tool", content = "args", rename_all = "camelCase")]
@@ -147,6 +213,37 @@ pub enum ToolCall {
     OpenUrl(UrlArgs),
     ReadClipboard(Empty),
     WriteClipboard(TextArgs),
+    // Background tools: they act through apps and files directly, never the mouse or keyboard.
+    CreateReminder(ReminderArgs),
+    ListReminders(Empty),
+    CreateEvent(EventArgs),
+    ListEvents(DayArgs),
+    CreateNote(NoteArgs),
+    Music(MusicArgs),
+    ListFiles(PathArgs),
+    MoveFile(MoveArgs),
+    TrashFile(PathArgs),
+    /// Read a web page as text.
+    FetchPage(UrlArgs),
+}
+
+impl ToolCall {
+    /// Acts through apps and files directly (no screen, mouse or keyboard).
+    pub fn is_background(&self) -> bool {
+        matches!(
+            self,
+            Self::CreateReminder(_)
+                | Self::ListReminders(_)
+                | Self::CreateEvent(_)
+                | Self::ListEvents(_)
+                | Self::CreateNote(_)
+                | Self::Music(_)
+                | Self::ListFiles(_)
+                | Self::MoveFile(_)
+                | Self::TrashFile(_)
+                | Self::FetchPage(_)
+        )
+    }
 }
 
 /// What a tool is and how risky it is by default (for UIs and agents).
@@ -223,6 +320,14 @@ pub enum VerificationStatus {
 pub struct Verification {
     pub status: VerificationStatus,
     pub detail: String,
+}
+
+/// A background action for the host to perform through an app (Reminders, Calendar, Notes,
+/// Music) or the Trash — after the same policy and approval as every tool.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AppsPerformParams {
+    pub call: ToolCall,
 }
 
 /// An approved action for the host, bound to what the user approved.

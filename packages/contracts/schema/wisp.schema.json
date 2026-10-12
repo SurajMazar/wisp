@@ -278,6 +278,11 @@
             "null"
           ]
         },
+        "background": {
+          "default": false,
+          "description": "Work through apps and files directly (reminders, calendar, notes, music, files, web\npages) without looking at or touching the screen — e.g. \"Wisp agent, …\" by voice.",
+          "type": "boolean"
+        },
         "conversationId": {
           "type": [
             "string",
@@ -895,6 +900,19 @@
       "required": [
         "id",
         "decision"
+      ],
+      "type": "object"
+    },
+    "AppsPerformParams": {
+      "additionalProperties": false,
+      "description": "A background action for the host to perform through an app (Reminders, Calendar, Notes,\nMusic) or the Trash — after the same policy and approval as every tool.",
+      "properties": {
+        "call": {
+          "$ref": "#/definitions/ToolCall"
+        }
+      },
+      "required": [
+        "call"
       ],
       "type": "object"
     },
@@ -1807,6 +1825,19 @@
         }
       ]
     },
+    "DayArgs": {
+      "additionalProperties": false,
+      "description": "A day, \"YYYY-MM-DD\".",
+      "properties": {
+        "day": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "day"
+      ],
+      "type": "object"
+    },
     "DisplayInfo": {
       "additionalProperties": false,
       "properties": {
@@ -1965,6 +1996,30 @@
         "notFound"
       ],
       "type": "string"
+    },
+    "EventArgs": {
+      "additionalProperties": false,
+      "description": "An event in Calendar (local time, \"YYYY-MM-DD HH:MM\").",
+      "properties": {
+        "minutes": {
+          "description": "Length, 5–1440.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "start",
+        "minutes"
+      ],
+      "type": "object"
     },
     "ExportResult": {
       "additionalProperties": false,
@@ -3912,12 +3967,69 @@
       ],
       "type": "string"
     },
+    "MoveArgs": {
+      "additionalProperties": false,
+      "description": "Move a file or folder into a folder (both in the user's home).",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "description": "Destination folder (created if missing).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "type": "object"
+    },
+    "MusicArgs": {
+      "additionalProperties": false,
+      "description": "Control music playback (Music, or Spotify when it's the one playing).",
+      "properties": {
+        "command": {
+          "$ref": "#/definitions/MusicCommand"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "type": "object"
+    },
+    "MusicCommand": {
+      "enum": [
+        "play",
+        "pause",
+        "next",
+        "previous"
+      ],
+      "type": "string"
+    },
     "NoSpeechReason": {
       "enum": [
         "silence",
         "tooShort"
       ],
       "type": "string"
+    },
+    "NoteArgs": {
+      "additionalProperties": false,
+      "description": "A note in Notes.",
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "body"
+      ],
+      "type": "object"
     },
     "NotifyParams": {
       "additionalProperties": false,
@@ -3975,6 +4087,19 @@
       },
       "required": [
         "pane"
+      ],
+      "type": "object"
+    },
+    "PathArgs": {
+      "additionalProperties": false,
+      "description": "A file or folder in the user's home (\"~/Desktop/report.pdf\").",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
       ],
       "type": "object"
     },
@@ -4279,6 +4404,25 @@
       },
       "required": [
         "messageId"
+      ],
+      "type": "object"
+    },
+    "ReminderArgs": {
+      "additionalProperties": false,
+      "description": "A reminder in Reminders. Dates are local time, \"YYYY-MM-DD HH:MM\".",
+      "properties": {
+        "due": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
       ],
       "type": "object"
     },
@@ -4850,6 +4994,11 @@
         "allowCloud": {
           "default": false,
           "description": "The user approved cloud for this message (Local Preferred).",
+          "type": "boolean"
+        },
+        "background": {
+          "default": false,
+          "description": "With `act`: a background run (apps and files, no screen).",
           "type": "boolean"
         },
         "conversationId": {
@@ -6118,6 +6267,167 @@
             },
             "tool": {
               "const": "writeClipboard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/ReminderArgs"
+            },
+            "tool": {
+              "const": "createReminder",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/Empty"
+            },
+            "tool": {
+              "const": "listReminders",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/EventArgs"
+            },
+            "tool": {
+              "const": "createEvent",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/DayArgs"
+            },
+            "tool": {
+              "const": "listEvents",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/NoteArgs"
+            },
+            "tool": {
+              "const": "createNote",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/MusicArgs"
+            },
+            "tool": {
+              "const": "music",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/PathArgs"
+            },
+            "tool": {
+              "const": "listFiles",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/MoveArgs"
+            },
+            "tool": {
+              "const": "moveFile",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/PathArgs"
+            },
+            "tool": {
+              "const": "trashFile",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Read a web page as text.",
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/UrlArgs"
+            },
+            "tool": {
+              "const": "fetchPage",
               "type": "string"
             }
           },
@@ -7812,6 +8122,16 @@
       },
       "result": {
         "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.apps.perform",
+      "params": {
+        "$ref": "#/definitions/AppsPerformParams"
+      },
+      "result": {
+        "$ref": "#/definitions/ToolExecution"
       },
       "target": "host"
     },

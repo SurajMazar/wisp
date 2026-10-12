@@ -43,6 +43,9 @@ final class VoiceCoordinator {
             guard let self, d.conversationId == self.captionFor else { return }
             self.assistant.island.appendCaption(d.delta)
         }
+        router.subscribe(IPCEvents.agentRunUpdated) { [weak self] run in
+            self?.runUpdated(run)
+        }
         router.subscribe(IPCEvents.conversationMessageUpdated) { [weak self] message in
             self?.replyUpdated(message)
         }
@@ -128,10 +131,25 @@ final class VoiceCoordinator {
         case .complete where settings.speakAnswers != .never && !m.content.isEmpty:
             Task {
                 try? await Task.sleep(for: .seconds(8))
-                if self.assistant.state == .thinking { self.assistant.set(state: .idle) }
+                if [.thinking, .executing].contains(self.assistant.state) { self.assistant.set(state: .idle) }
             }
         default:
-            if assistant.state == .thinking { assistant.set(state: .idle) }
+            if [.thinking, .executing].contains(assistant.state) { assistant.set(state: .idle) }
+        }
+    }
+
+    /// A background task started by voice ("Agent, …"): "Working" in the island while it runs; if
+    /// it needs an answer, open the panel so the user can reply.
+    private func runUpdated(_ r: AgentRun) {
+        guard let conversation = r.conversationId, conversation == awaiting else { return }
+        switch r.status {
+        case .planning, .running, .waitingPermission:
+            if assistant.state != .speaking { assistant.set(state: .executing) }
+        case .needsInput, .stuck, .paused:
+            assistant.set(state: .idle)
+            assistant.expand()
+        default:
+            break
         }
     }
 

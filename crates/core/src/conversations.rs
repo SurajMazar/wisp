@@ -254,6 +254,7 @@ impl Core {
                 agent_id: None,
                 goal: text.clone(),
                 conversation_id: Some(conversation_id.clone()),
+                background: p.background,
             };
             self.agent_start(params, Some(assistant.clone())).await?;
         } else if let Some(goal) = goal {
@@ -343,6 +344,7 @@ impl Core {
         let send = SendParams {
             teach: false,
             act: false,
+            background: false,
             conversation_id: Some(old.conversation_id.clone()),
             text: question.content.clone(),
             include_focus: focus.is_some(),
@@ -537,6 +539,7 @@ impl Core {
         let p = SendParams {
             teach: false,
             act: false,
+            background: false,
             conversation_id: None,
             text: String::new(),
             include_focus: true,

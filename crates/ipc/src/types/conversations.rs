@@ -216,6 +216,9 @@ pub struct SendParams {
     /// Carry out this goal on the computer as an agent run instead of answering (spec §60).
     #[serde(default)]
     pub act: bool,
+    /// With `act`: a background run (apps and files, no screen).
+    #[serde(default)]
+    pub background: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

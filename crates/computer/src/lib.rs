@@ -68,6 +68,16 @@ pub fn name(call: &ToolCall) -> &'static str {
         ToolCall::OpenUrl(_) => "openUrl",
         ToolCall::ReadClipboard(_) => "readClipboard",
         ToolCall::WriteClipboard(_) => "writeClipboard",
+        ToolCall::CreateReminder(_) => "createReminder",
+        ToolCall::ListReminders(_) => "listReminders",
+        ToolCall::CreateEvent(_) => "createEvent",
+        ToolCall::ListEvents(_) => "listEvents",
+        ToolCall::CreateNote(_) => "createNote",
+        ToolCall::Music(_) => "music",
+        ToolCall::ListFiles(_) => "listFiles",
+        ToolCall::MoveFile(_) => "moveFile",
+        ToolCall::TrashFile(_) => "trashFile",
+        ToolCall::FetchPage(_) => "fetchPage",
     }
 }
 
@@ -171,6 +181,66 @@ const DEFINITIONS: &[(&str, &str, &str, RiskLevel)] = &[
         "Read the clipboard",
         "Read text on the clipboard",
         RiskLevel::Medium,
+    ),
+    (
+        "listReminders",
+        "Read reminders",
+        "List your open reminders",
+        RiskLevel::Safe,
+    ),
+    (
+        "listEvents",
+        "Read your calendar",
+        "List a day's events",
+        RiskLevel::Safe,
+    ),
+    (
+        "listFiles",
+        "List files",
+        "List what's in a folder in your home",
+        RiskLevel::Safe,
+    ),
+    (
+        "music",
+        "Control music",
+        "Play, pause or skip in Music or Spotify",
+        RiskLevel::Low,
+    ),
+    (
+        "createReminder",
+        "Add a reminder",
+        "Add a reminder to Reminders",
+        RiskLevel::Medium,
+    ),
+    (
+        "createEvent",
+        "Add an event",
+        "Add an event to Calendar",
+        RiskLevel::Medium,
+    ),
+    (
+        "createNote",
+        "Write a note",
+        "Create a note in Notes",
+        RiskLevel::Medium,
+    ),
+    (
+        "moveFile",
+        "Move a file",
+        "Move a file or folder into another folder",
+        RiskLevel::Medium,
+    ),
+    (
+        "fetchPage",
+        "Read a web page",
+        "Download a web page's text",
+        RiskLevel::Medium,
+    ),
+    (
+        "trashFile",
+        "Move to Trash",
+        "Move a file or folder to the Trash (recoverable)",
+        RiskLevel::High,
     ),
 ];
 
@@ -312,6 +382,52 @@ pub fn validate(call: &ToolCall) -> Result<(), ToolError> {
                 ))
             }
         }
+        ToolCall::CreateReminder(r) => {
+            short_text(&r.title, "title", 300)?;
+            if let Some(d) = &r.due {
+                local_datetime(d)?;
+            }
+            Ok(())
+        }
+        ToolCall::ListReminders(_) => Ok(()),
+        ToolCall::CreateEvent(e) => {
+            short_text(&e.title, "title", 300)?;
+            local_datetime(&e.start)?;
+            if !(5..=1440).contains(&e.minutes) {
+                return Err(invalid("an event lasts 5–1440 minutes"));
+            }
+            Ok(())
+        }
+        ToolCall::ListEvents(d) => {
+            if is_day(&d.day) {
+                Ok(())
+            } else {
+                Err(invalid("day must be YYYY-MM-DD"))
+            }
+        }
+        ToolCall::CreateNote(n) => {
+            short_text(&n.title, "title", 300)?;
+            if n.body.chars().count() > 20_000 {
+                return Err(invalid("a note is at most 20,000 characters"));
+            }
+            Ok(())
+        }
+        ToolCall::Music(_) => Ok(()),
+        ToolCall::ListFiles(p) | ToolCall::TrashFile(p) => home_path(&p.path),
+        ToolCall::MoveFile(m) => {
+            home_path(&m.from)?;
+            home_path(&m.to)
+        }
+        ToolCall::FetchPage(u) => {
+            let ok = u.url.to_ascii_lowercase().starts_with("https://")
+                && u.url.len() <= 2048
+                && !u.url.chars().any(|c| c.is_whitespace() || c.is_control());
+            if ok {
+                Ok(())
+            } else {
+                Err(invalid("only https web pages can be read"))
+            }
+        }
         ToolCall::OpenUrl(u) => {
             let lower = u.url.to_ascii_lowercase();
             let ok = (lower.starts_with("https://") || lower.starts_with("http://"))
@@ -324,6 +440,60 @@ pub fn validate(call: &ToolCall) -> Result<(), ToolError> {
             }
         }
     }
+}
+
+fn short_text(s: &str, what: &str, max: usize) -> Result<(), ToolError> {
+    if s.trim().is_empty() || s.chars().count() > max || s.chars().any(char::is_control) {
+        Err(invalid(format!(
+            "{what} must be 1–{max} characters on one line"
+        )))
+    } else {
+        Ok(())
+    }
+}
+
+/// "YYYY-MM-DD"
+fn is_day(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.len() == 10
+        && b[4] == b'-'
+        && b[7] == b'-'
+        && b.iter()
+            .enumerate()
+            .all(|(i, c)| i == 4 || i == 7 || c.is_ascii_digit())
+}
+
+/// "YYYY-MM-DD HH:MM" (local time)
+fn local_datetime(s: &str) -> Result<(), ToolError> {
+    let ok = s.len() == 16 && is_day(&s[..10]) && s.as_bytes()[10] == b' ' && {
+        let (h, m) = (&s[11..13], &s[14..16]);
+        s.as_bytes()[13] == b':'
+            && h.parse::<u8>().is_ok_and(|h| h < 24)
+            && m.parse::<u8>().is_ok_and(|m| m < 60)
+    };
+    if ok {
+        Ok(())
+    } else {
+        Err(invalid(format!("{s:?} isn't a time like 2026-10-13 09:00")))
+    }
+}
+
+/// A path in the user's home: `~/…`, no `..`, nothing hidden, not inside ~/Library.
+pub fn home_path(p: &str) -> Result<(), ToolError> {
+    let Some(rest) = p.strip_prefix("~/").or_else(|| (p == "~").then_some("")) else {
+        return Err(invalid("paths start with ~/ (your home folder)"));
+    };
+    let parts: Vec<&str> = rest.split('/').filter(|s| !s.is_empty()).collect();
+    if p.len() > 1024
+        || p.chars().any(char::is_control)
+        || parts.iter().any(|s| *s == ".." || s.starts_with('.'))
+        || parts.first() == Some(&"Library")
+    {
+        return Err(invalid(
+            "that location isn't allowed (hidden files and ~/Library are off limits)",
+        ));
+    }
+    Ok(())
 }
 
 const CRITICAL_PHRASES: &[&str] = &[
@@ -482,7 +652,15 @@ fn keys(h: &wisp_ipc::types::tools::HotkeyArgs) -> String {
 pub fn always_grantable(tool: &str) -> bool {
     !matches!(
         tool,
-        "typeText" | "paste" | "hotkey" | "openUrl" | "keypress" | "writeClipboard"
+        "typeText"
+            | "paste"
+            | "hotkey"
+            | "openUrl"
+            | "keypress"
+            | "writeClipboard"
+            // A page address can carry data out; moving files is too consequential to pre-approve.
+            | "fetchPage"
+            | "moveFile"
     )
 }
 
@@ -524,17 +702,46 @@ pub fn title(call: &ToolCall) -> String {
         ToolCall::OpenUrl(u) => format!("Open {}", u.url.chars().take(80).collect::<String>()),
         ToolCall::ReadClipboard(_) => "Read the clipboard".into(),
         ToolCall::WriteClipboard(t) => format!("Copy {} to the clipboard", quote(&t.text)),
+        ToolCall::CreateReminder(r) => match &r.due {
+            Some(d) => format!("Remind you {} at {d}", quote(&r.title)),
+            None => format!("Add the reminder {}", quote(&r.title)),
+        },
+        ToolCall::ListReminders(_) => "Read your reminders".into(),
+        ToolCall::CreateEvent(e) => format!(
+            "Add {} to your calendar at {} ({} min)",
+            quote(&e.title),
+            e.start,
+            e.minutes
+        ),
+        ToolCall::ListEvents(d) => format!("Read your calendar for {}", d.day),
+        ToolCall::CreateNote(n) => format!("Write the note {}", quote(&n.title)),
+        ToolCall::Music(m) => format!(
+            "{} music",
+            match m.command {
+                wisp_ipc::types::tools::MusicCommand::Play => "Play",
+                wisp_ipc::types::tools::MusicCommand::Pause => "Pause",
+                wisp_ipc::types::tools::MusicCommand::Next => "Skip to the next song in",
+                wisp_ipc::types::tools::MusicCommand::Previous => "Go back a song in",
+            }
+        ),
+        ToolCall::ListFiles(p) => format!("List {}", p.path),
+        ToolCall::MoveFile(m) => format!("Move {} into {}", m.from, m.to),
+        ToolCall::TrashFile(p) => format!("Move {} to the Trash", p.path),
+        ToolCall::FetchPage(u) => format!("Read {}", u.url.chars().take(80).collect::<String>()),
     }
 }
 
 /// Audit-safe argument summary (spec §105: no private content by default).
 pub fn redacted_args(call: &ToolCall) -> serde_json::Value {
     let mut v = serde_json::to_value(call).unwrap_or_default();
-    if let Some(args) = v.get_mut("args").and_then(|a| a.as_object_mut())
-        && let Some(text) = args.get("text").and_then(|t| t.as_str())
-    {
-        let n = text.chars().count();
-        args.insert("text".into(), format!("[{n} characters]").into());
+    if let Some(args) = v.get_mut("args").and_then(|a| a.as_object_mut()) {
+        // Typed text and note bodies are private; keep only their length.
+        for key in ["text", "body"] {
+            if let Some(text) = args.get(key).and_then(|t| t.as_str()) {
+                let n = text.chars().count();
+                args.insert(key.into(), format!("[{n} characters]").into());
+            }
+        }
     }
     v
 }
@@ -574,7 +781,7 @@ mod tests {
                 name(&call)
             );
         }
-        assert_eq!(defs.len(), 19);
+        assert_eq!(defs.len(), 29);
         assert!(
             defs.iter()
                 .filter(|d| d.risk == RiskLevel::Safe)
