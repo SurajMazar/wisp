@@ -1,0 +1,10 @@
+01-intro	Meet Wisp: an AI companion that lives beside your cursor on your Mac. It sees what you point at, talks with you, and gets things done, privately, on your Mac.
+02-ask	Hold Control and Option, and just ask. Wisp looks at the window you're in, answers out loud, and points right at what you need.
+03-draw	While you hold the keys, your pointer becomes a pen. Circle anything, and Wisp knows exactly what you mean.
+04-chat	Answers start in about half a second, because Wisp reads your screen while you're still talking. Prefer typing? It's the same assistant, with your whole conversation.
+05-agent	Say "Agent" to hand off a task. Reminders, calendar, notes, music and files. Wisp does it in the background, and tells you when it's done. Anything that changes something asks first.
+06-connect	Connect services like Notion or GitHub through MCP. You decide which tools Wisp may use, and which it should never touch.
+07-dictate	Hold Control and Shift to dictate into any app. Your words appear where your cursor is, in under half a second.
+08-talk	Tap twice for a hands-free conversation. Wisp listens, answers, and listens again, and never while it's speaking.
+09-models	Run everything locally with open models, or bring your own OpenAI, Anthropic or Gemini key. Choose the voice you like.
+10-outro	Local Only is the default: nothing leaves your Mac unless you say so. Wisp. A companion for your Mac.

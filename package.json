@@ -22,6 +22,7 @@
     "format": "prettier --write . && cargo fmt --all",
     "prepare": "git config core.hooksPath .githooks || true",
     "demo": "tsx scripts/demo/record-demo.ts",
+    "demo:product": "tsx scripts/demo/product-demo.ts",
     "smoke:chat": "tsx scripts/validation/chat-smoke.ts",
     "ui:test": "tsx scripts/validation/ui-test.ts"
   },
