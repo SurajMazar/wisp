@@ -1,4 +1,4 @@
-import type { SpeakAnswers, SpeechModelInfo, VoiceSettings } from "@wisp/contracts";
+import type { SpeakAnswers, SpeechModelInfo, SystemVoice, VoiceSettings } from "@wisp/contracts";
 import {
   Button,
   ErrorNotice,
@@ -10,6 +10,7 @@ import {
   Switch,
 } from "@wisp/ui";
 import { useEffect, useState } from "react";
+import { ipc } from "../../services/ipc";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useVoiceStore } from "../../stores/voiceStore";
 
@@ -21,6 +22,25 @@ const voices: { id: string; label: string }[] = [
   { id: "am_adam", label: "Adam (US)" },
   { id: "bf_emma", label: "Emma (UK)" },
 ];
+
+const SYSTEM = "system";
+const modelNote: Record<string, string> = {
+  "kokoro-82m-full": "Fastest natural voice (about 2.5× faster than compressed)",
+  "kokoro-82m": "Smaller download, slower to start speaking",
+};
+
+/** The voices built into macOS (from the app; empty in a browser). */
+function useSystemVoices(enabled: boolean) {
+  const [voices, setVoices] = useState<SystemVoice[]>([]);
+  useEffect(() => {
+    if (!enabled) return;
+    void ipc()
+      .call("host.speech.voices")
+      .then((r) => setVoices(r.voices))
+      .catch(() => setVoices([]));
+  }, [enabled]);
+  return voices;
+}
 
 const mb = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.round(b / 1e6)} MB`);
 const presetLabel: Record<string, string> = {
@@ -53,6 +73,7 @@ function ModelRow({
             )}
           </p>
           <p className="text-xs text-text-muted">
+            {modelNote[m.id] && `${modelNote[m.id]} · `}
             {mb(m.sizeBytes)} · {m.languages.join(", ")} · {m.license} ·{" "}
             {m.installed ? "On this Mac" : "Not downloaded"}
           </p>
@@ -158,6 +179,7 @@ export function VoicePage() {
     void load();
   }, [load]);
 
+  const systemVoices = useSystemVoices(settings?.ttsModel === SYSTEM);
   if (!draft || !status) {
     return (
       <div className="flex items-center gap-2 pt-16 text-text-muted">
@@ -173,6 +195,7 @@ export function VoicePage() {
   };
   const stt = status.models.filter((m) => m.kind === "stt");
   const tts = status.models.filter((m) => m.kind === "tts");
+  const system = draft.ttsModel === SYSTEM;
 
   return (
     <>
@@ -230,7 +253,46 @@ export function VoicePage() {
         ))}
       </SettingsGroup>
 
-      <SettingsGroup title="Spoken answers" description="Kokoro, running on this Mac.">
+      <SettingsGroup
+        title="Voice engine"
+        description="What speaks Wisp's answers. Everything runs on this Mac."
+      >
+        {tts.map((m) => (
+          <ModelRow
+            key={m.id}
+            m={m}
+            selected={draft.ttsModel === m.id}
+            onSelect={() => save({ ttsModel: m.id, voice: system ? "af_heart" : draft.voice })}
+          />
+        ))}
+        <SettingsRow
+          label="macOS voices"
+          hint="Built into your Mac: instant and nothing to download, but less natural. Get better voices in System Settings → Accessibility → Spoken Content."
+          control={
+            <Button
+              size="sm"
+              variant={system ? "primary" : "secondary"}
+              disabled={system}
+              onClick={() =>
+                void ipc()
+                  .call("host.speech.voices")
+                  .then((r) => {
+                    const best =
+                      r.voices.find((v) => v.language.startsWith("en") && v.quality !== "default") ??
+                      r.voices.find((v) => v.language.startsWith("en")) ??
+                      r.voices[0];
+                    if (best) save({ ttsModel: SYSTEM, voice: best.id });
+                  })
+                  .catch(() => {})
+              }
+            >
+              {system ? "In use" : "Use"}
+            </Button>
+          }
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title="Spoken answers">
         <SettingsRow
           label="Speak answers"
           control={
@@ -255,11 +317,18 @@ export function VoicePage() {
               value={draft.voice}
               onChange={(e) => save({ voice: e.target.value })}
             >
-              {voices.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.label}
-                </option>
-              ))}
+              {system
+                ? systemVoices.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name} ({v.language}
+                      {v.quality !== "default" ? `, ${v.quality}` : ""})
+                    </option>
+                  ))
+                : voices.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.label}
+                    </option>
+                  ))}
             </select>
           }
         />
@@ -294,7 +363,7 @@ export function VoicePage() {
         />
         <SettingsRow
           label="Test voice"
-          hint={error ?? (status.ttsReady ? undefined : "Download Kokoro below first.")}
+          hint={error ?? (status.ttsReady ? undefined : "Download a voice engine above first.")}
           control={
             <div className="flex gap-1.5">
               <Button
@@ -310,9 +379,6 @@ export function VoicePage() {
             </div>
           }
         />
-        {tts.map((m) => (
-          <ModelRow key={m.id} m={m} selected={true} />
-        ))}
       </SettingsGroup>
     </>
   );

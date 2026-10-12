@@ -26,6 +26,10 @@ pub struct VoiceSettings {
     /// 0 (least) – 1 (most sensitive).
     pub vad_sensitivity: f64,
     pub speak_answers: SpeakAnswers,
+    /// What speaks: a downloaded voice model (e.g. "kokoro-82m") or "system" (the voices built into
+    /// macOS: instant, nothing to download).
+    pub tts_model: String,
+    /// A voice of `tts_model` (Kokoro: "af_heart"; macOS: a voice identifier).
     pub voice: String,
     /// 0.5–2.0.
     pub speed: f64,
@@ -41,6 +45,7 @@ impl Default for VoiceSettings {
             language: "auto".into(),
             vad_sensitivity: 0.5,
             speak_answers: SpeakAnswers::VoiceQuestions,
+            tts_model: "kokoro-82m".into(),
             voice: "af_heart".into(),
             speed: 1.0,
             volume: 1.0,
@@ -56,7 +61,7 @@ impl VoiceSettings {
                 && s.chars()
                     .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
         };
-        if !ident(&self.stt_model) || !ident(&self.voice) {
+        if !ident(&self.stt_model) || !ident(&self.voice) || !ident(&self.tts_model) {
             return Err("invalid model or voice name".into());
         }
         if !(self.language == "auto"
@@ -216,4 +221,37 @@ pub enum VoicePurpose {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct HostVoiceStartParams {
     pub purpose: VoicePurpose,
+}
+
+/// The voice engine built into macOS.
+pub const SYSTEM_TTS: &str = "system";
+
+/// A voice installed in macOS.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SystemVoice {
+    pub id: String,
+    pub name: String,
+    /// BCP-47, e.g. "en-US".
+    pub language: String,
+    /// "default", "enhanced" or "premium" (download more in System Settings → Accessibility →
+    /// Spoken Content).
+    pub quality: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SystemVoices {
+    pub voices: Vec<SystemVoice>,
+}
+
+/// Speak `text` with a macOS voice into a WAV file under the data folder's `cache/tts`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SpeechSynthesizeParams {
+    pub text: String,
+    pub voice: String,
+    /// 0.5–2.0 (1 = normal).
+    pub speed: f64,
+    pub path: String,
 }

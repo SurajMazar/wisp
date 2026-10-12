@@ -46,7 +46,7 @@ enum SpeakJob {
 pub struct VoiceService {
     sessions: Mutex<HashMap<String, Session>>,
     stt: Mutex<Option<(String, Arc<WhisperStt>)>>,
-    tts: Mutex<Option<Arc<KokoroTts>>>,
+    tts: Mutex<Option<(String, Arc<KokoroTts>)>>,
     downloads: Mutex<HashMap<String, CancellationToken>>,
     /// Assistant message ids whose answers should be spoken, with their sentence splitters.
     speaking: Mutex<HashMap<String, (SentenceSplitter, u32)>>,
@@ -217,13 +217,27 @@ impl Core {
         Ok(stt)
     }
 
-    fn kokoro(&self) -> Result<Arc<KokoroTts>, IpcError> {
+    /// The downloaded voice model `id` (loaded once; switching models reloads).
+    fn kokoro(&self, id: &str) -> Result<Arc<KokoroTts>, IpcError> {
         self.touch_voice();
-        if let Some(t) = self.voice().tts.lock().ok().and_then(|g| g.clone()) {
+        if let Some((_, t)) = self
+            .voice()
+            .tts
+            .lock()
+            .ok()
+            .and_then(|g| g.clone())
+            .filter(|(m, _)| m == id)
+        {
             return Ok(t);
         }
-        let m = models::find("kokoro-82m")
-            .ok_or_else(|| IpcError::internal("kokoro missing from manifest"))?;
+        let m = models::find(id)
+            .filter(|m| m.kind == "tts")
+            .ok_or_else(|| {
+                IpcError::new(
+                    wisp_ipc::ErrorCode::NotFound,
+                    "That voice model isn't available.",
+                )
+            })?;
         let root = models_root(self);
         if !models::installed(&root, &m) {
             return Err(IpcError::new(
@@ -236,7 +250,7 @@ impl Core {
                 .map_err(|e| IpcError::new(wisp_ipc::ErrorCode::Unavailable, e.to_string()))?,
         );
         if let Ok(mut g) = self.voice().tts.lock() {
-            *g = Some(t.clone());
+            *g = Some((id.to_owned(), t.clone()));
         }
         Ok(t)
     }
@@ -261,7 +275,8 @@ impl Core {
                     );
                 }
                 if settings.voice.speak_answers != wisp_ipc::types::voice::SpeakAnswers::Never
-                    && c.kokoro().is_ok()
+                    && settings.voice.tts_model != wisp_ipc::types::voice::SYSTEM_TTS
+                    && c.kokoro(&settings.voice.tts_model).is_ok()
                 {
                     tracing::info!("voice ready");
                 }
@@ -291,8 +306,13 @@ impl Core {
             .iter()
             .any(|m| m.id == settings.stt_model && m.installed);
         let phonemizer = wisp_audio::tts::find_espeak().is_some();
-        let tts_ready = phonemizer && list.iter().any(|m| m.kind == "tts" && m.installed);
-        let detail = if !phonemizer {
+        let system = settings.tts_model == wisp_ipc::types::voice::SYSTEM_TTS;
+        let tts_ready = system
+            || phonemizer
+                && list
+                    .iter()
+                    .any(|m| m.id == settings.tts_model && m.installed);
+        let detail = if !phonemizer && !system {
             Some("Kokoro needs espeak-ng for pronunciation. Install it with Homebrew: brew install espeak-ng".into())
         } else if !stt_ready {
             Some("Download a speech recognition model to talk to Wisp.".into())
@@ -417,12 +437,16 @@ impl Core {
         }
     }
 
-    pub(crate) fn speak_text(&self, text: &str) -> Result<(), IpcError> {
+    pub(crate) async fn speak_text(&self, text: &str) -> Result<(), IpcError> {
         let text = wisp_audio::text::speakable(text);
         if text.is_empty() || text.chars().count() > 2000 {
             return Err(IpcError::invalid_params("text must be 1–2000 characters"));
         }
-        self.kokoro()?;
+        let voice = self.blocking(|db| db.load_settings()).await?.voice;
+        if voice.tts_model != wisp_ipc::types::voice::SYSTEM_TTS {
+            // Fail now (e.g. "not downloaded") rather than silently in the background.
+            self.kokoro(&voice.tts_model)?;
+        }
         self.enqueue(SpeakJob::Sentence {
             utterance: wisp_common::ids::new_id(),
             seq: 0,
@@ -473,15 +497,41 @@ impl Core {
                 Ok(s) => s.voice,
                 Err(_) => continue,
             };
-            let Ok(tts) = self.kokoro() else { continue };
             let path = dir.join(format!("{utterance}-{seq}.wav"));
-            let p2 = path.clone();
-            let speak = text.clone();
-            let ok = tokio::task::spawn_blocking(move || {
-                let audio = tts.synthesize(&speak, &settings.voice, settings.speed as f32)?;
-                wisp_audio::tts::write_wav(&p2, &audio, wisp_audio::tts::SAMPLE_RATE)
-            })
-            .await;
+            let ok: Result<Result<(), String>, String> = if settings.tts_model
+                == wisp_ipc::types::voice::SYSTEM_TTS
+            {
+                // macOS's own voices: synthesized by the host, near-instant.
+                match self.ai().host() {
+                    Some(host) => Ok(host
+                        .call(
+                            "host.speech.synthesize",
+                            serde_json::json!({
+                                "text": wisp_audio::text::speakable(&text),
+                                "voice": settings.voice,
+                                "speed": settings.speed,
+                                "path": path.display().to_string(),
+                            }),
+                        )
+                        .await
+                        .map(|_| ())
+                        .map_err(|e| e.message)),
+                    None => Err("the app isn't connected".into()),
+                }
+            } else {
+                let Ok(tts) = self.kokoro(&settings.tts_model) else {
+                    continue;
+                };
+                let p2 = path.clone();
+                let speak = text.clone();
+                tokio::task::spawn_blocking(move || {
+                    let audio = tts.synthesize(&speak, &settings.voice, settings.speed as f32)?;
+                    wisp_audio::tts::write_wav(&p2, &audio, wisp_audio::tts::SAMPLE_RATE)
+                })
+                .await
+                .map(|r| r.map_err(|e| e.to_string()))
+                .map_err(|e| e.to_string())
+            };
             // Stopped while synthesizing → drop it.
             if self.voice().generation.lock().map(|g| *g).unwrap_or(0) != generation {
                 let _ = std::fs::remove_file(&path);
@@ -495,9 +545,7 @@ impl Core {
                     text,
                     last,
                 }),
-                other => {
-                    tracing::warn!(result = ?other.map(|r| r.map_err(|e| e.to_string())), "speech synthesis failed")
-                }
+                other => tracing::warn!(result = ?other, "speech synthesis failed"),
             }
             // Keep the cache small: remove speech older than ten minutes.
             if let Ok(entries) = std::fs::read_dir(&dir) {
@@ -662,8 +710,8 @@ impl Core {
         {
             *s = None;
         }
-        if id == "kokoro-82m"
-            && let Ok(mut t) = self.voice().tts.lock()
+        if let Ok(mut t) = self.voice().tts.lock()
+            && t.as_ref().is_some_and(|(m, _)| m == id)
         {
             *t = None;
         }

@@ -1,6 +1,6 @@
 import { IpcClient, type AppSettings, type VoiceStatus } from "@wisp/contracts";
 import { MockTransport } from "@wisp/test-utils";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MicButton } from "../src/components/chat/MicButton";
@@ -69,7 +69,24 @@ describe("Voice", () => {
       .handle("voice.speak", () => ({}))
       .handle("host.voice.start", () => ({}))
       .handle("host.voice.stop", () => ({ transcript: "testing one two three", audioMs: 4000, sttMs: 180 }))
-      .handle("host.voice.stopSpeaking", () => ({}));
+      .handle("host.voice.stopSpeaking", () => ({}))
+      .handle("host.speech.voices", () => ({
+        voices: [
+          {
+            id: "com.apple.voice.compact.fr-FR.Thomas",
+            name: "Thomas",
+            language: "fr-FR",
+            quality: "default",
+          },
+          {
+            id: "com.apple.voice.compact.en-US.Samantha",
+            name: "Samantha",
+            language: "en-US",
+            quality: "default",
+          },
+          { id: "com.apple.voice.premium.en-US.Zoe", name: "Zoe", language: "en-US", quality: "premium" },
+        ],
+      }));
     setIpcClient(new IpcClient(transport));
     useVoiceStore.setState({
       status: null,
@@ -86,8 +103,9 @@ describe("Voice", () => {
 
   it("lists speech models with real install state and downloads with progress", async () => {
     render(<VoicePage />);
-    expect(await screen.findByText("In use")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+    // One in use for recognition, one for speaking.
+    expect(await screen.findAllByText("In use")).toHaveLength(2);
+    await userEvent.click(screen.getAllByRole("button", { name: "Download" })[0]!);
     act(() =>
       useVoiceStore
         .getState()
@@ -130,5 +148,20 @@ describe("Voice", () => {
     expect(useVoiceStore.getState().listening).toBe(true);
     await userEvent.click(screen.getByRole("button", { name: "Stop listening and ask" }));
     await waitFor(() => expect(sent("host.voice.stop")).toHaveLength(1));
+  });
+
+  it("switches the voice engine to macOS voices with a good English voice", async () => {
+    render(<VoicePage />);
+    await screen.findAllByText("In use");
+    const row = screen.getByText("macOS voices").closest("div")!.parentElement!;
+    await userEvent.click(within(row).getByRole("button", { name: "Use" }));
+    await waitFor(() => expect(sent("settings.update").length).toBeGreaterThan(0));
+    const value = (
+      (sent("settings.update").at(-1) as { params: unknown }).params as {
+        update: { value: { ttsModel: string; voice: string } };
+      }
+    ).update.value;
+    expect(value.ttsModel).toBe("system");
+    expect(value.voice).toBe("com.apple.voice.premium.en-US.Zoe");
   });
 });

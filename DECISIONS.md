@@ -354,3 +354,15 @@ was 13.4 s. Changes:
 Result: release → first word 13.4 s → ~0.6 s (text questions); → first spoken word ~2.7–3.3 s. Questions that need
 the picture still take ~13–15 s. Live transcription was not added: speech-to-text is already ~0.35 s, and running
 it continuously would compete with the prefill for the GPU.
+
+## D-042 — Choosable voice engine; full-precision Kokoro; 4B model recommended on 16 GB Macs
+**Status** accepted (2026-10-12)
+Voice → Voice engine offers Kokoro 82M full precision (326 MB), Kokoro 82M compressed (92 MB) and the voices built
+into macOS (AVSpeechSynthesizer, written to WAV by the host into `cache/tts`, then played through the same queue).
+Measured on an M1 Pro: for 2.6 s of speech, compressed Kokoro took 1.8 s, full precision 0.65 s (the int8 model is
+slow on Apple Silicon CPUs; Core ML was slower still), macOS voices ~0.6 s for 2.1 s. Full precision is the fastest
+natural voice and is listed first; both Kokoro files are pinned and checksum-verified like every model.
+With `qwen3-vl:4b-instruct` for both text and screen questions plus full-precision Kokoro, release → first spoken
+word was 1.4–1.7 s for text questions and 8.8 s for a question that needs the picture (4B reads an image in ~6 s
+vs ~11–13 s for 8B; using one model for both avoids reloading). Answers stayed on topic. We recommend 4B on 16 GB
+Macs; the choice stays the user's.

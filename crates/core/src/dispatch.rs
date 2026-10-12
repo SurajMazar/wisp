@@ -605,7 +605,7 @@ impl Core {
             }
             VoiceSpeak::NAME => {
                 self.call::<VoiceSpeak, _, _>(params, |c, p| async move {
-                    c.speak_text(&p.text)?;
+                    c.speak_text(&p.text).await?;
                     Ok(Empty {})
                 })
                 .await

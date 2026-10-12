@@ -276,6 +276,10 @@ define_methods! {
     HostVoiceStop = "host.voice.stop", Host, Empty => VoiceFinishResult;
     /// Stop speaking immediately.
     HostVoiceStopSpeaking = "host.voice.stopSpeaking", Host, Empty => Empty;
+    /// The voices built into macOS.
+    HostSpeechVoices = "host.speech.voices", Host, Empty => SystemVoices;
+    /// Speak text with a macOS voice into a WAV file (core only; confined to `cache/tts`).
+    HostSpeechSynthesize = "host.speech.synthesize", Host, SpeechSynthesizeParams => Empty;
 
     /// Speech model status and readiness of recognition and voices.
     VoiceStatusMethod = "voice.status", Core, Empty => VoiceStatus;

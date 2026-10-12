@@ -418,7 +418,9 @@ impl Core {
                     Some(LessonAction::Next) => return Wait::Advanced("You said you did it".into()),
                     Some(LessonAction::Repeat) => {
                         let _ = self.show_guidance(&step.id).await;
-                        let _ = self.speak_text(&wisp_screen::guide::strip_markers(instruction));
+                        let _ = self
+                            .speak_text(&wisp_screen::guide::strip_markers(instruction))
+                            .await;
                     }
                     Some(LessonAction::Stop) | None => return Wait::Stop,
                 },

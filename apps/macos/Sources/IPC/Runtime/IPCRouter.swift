@@ -86,7 +86,7 @@ public final class IPCRouter {
         "host.invocation.status", "host.keychain.delete", "host.keychain.set", "host.mic.permission",
         "host.mic.requestPermission", "host.ollama.start", "host.screen.permission", "host.screen.requestPermission",
         "host.shortcut.check", "host.shortcut.record", "host.system.openSettingsPane", "host.voice.start",
-        "host.voice.stop", "host.voice.stopSpeaking", "host.app.relaunch",
+        "host.voice.stop", "host.voice.stopSpeaking", "host.app.relaunch", "host.speech.voices",
     ]
 
     /// Dispatch a request by target. Unknown methods are rejected here, never forwarded.

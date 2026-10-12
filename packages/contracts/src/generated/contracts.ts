@@ -360,6 +360,7 @@ export const VoiceSettings = z.strictObject({
   "speakAnswers": SpeakAnswers.default(() => SpeakAnswers.parse("voiceQuestions")),
   "speed": z.number().default(1),
   "sttModel": z.string().default("whisper-base.en"),
+  "ttsModel": z.string().default("kokoro-82m"),
   "vadSensitivity": z.number().default(0.5),
   "voice": z.string().default("af_heart"),
   "volume": z.number().default(1),
@@ -377,7 +378,7 @@ export const AppSettings = z.strictObject({
   "models": ModelSettings.default(() => ModelSettings.parse({"contextLength":8192,"deepThinking":false,"endpoints":[],"maxTokens":1024,"ollamaUrl":"http://127.0.0.1:11434","temperature":0.4})),
   "onboarding": OnboardingSettings.default(() => OnboardingSettings.parse({"completed":false})),
   "privacy": PrivacySettings.default(() => PrivacySettings.parse({"mode":"localOnly"})),
-  "voice": VoiceSettings.default(() => VoiceSettings.parse({"enabled":true,"language":"auto","speakAnswers":"voiceQuestions","speed":1,"sttModel":"whisper-base.en","vadSensitivity":0.5,"voice":"af_heart","volume":1})),
+  "voice": VoiceSettings.default(() => VoiceSettings.parse({"enabled":true,"language":"auto","speakAnswers":"voiceQuestions","speed":1,"sttModel":"whisper-base.en","ttsModel":"kokoro-82m","vadSensitivity":0.5,"voice":"af_heart","volume":1})),
 });
 export type AppSettings = z.output<typeof AppSettings>;
 
@@ -1484,6 +1485,15 @@ export const SpeechModelProgress = z.strictObject({
 });
 export type SpeechModelProgress = z.output<typeof SpeechModelProgress>;
 
+/** Speak `text` with a macOS voice into a WAV file under the data folder's `cache/tts`. */
+export const SpeechSynthesizeParams = z.strictObject({
+  "path": z.string(),
+  "speed": z.number(),
+  "text": z.string(),
+  "voice": z.string(),
+});
+export type SpeechSynthesizeParams = z.output<typeof SpeechSynthesizeParams>;
+
 /** Files the host copied into Wisp's data folder after the user picked them. */
 export const StagedFile = z.strictObject({
   "name": z.string(),
@@ -1496,6 +1506,20 @@ export const StagedFiles = z.strictObject({
   "files": z.array(StagedFile),
 });
 export type StagedFiles = z.output<typeof StagedFiles>;
+
+/** A voice installed in macOS. */
+export const SystemVoice = z.strictObject({
+  "id": z.string(),
+  "language": z.string(),
+  "name": z.string(),
+  "quality": z.string(),
+});
+export type SystemVoice = z.output<typeof SystemVoice>;
+
+export const SystemVoices = z.strictObject({
+  "voices": z.array(SystemVoice),
+});
+export type SystemVoices = z.output<typeof SystemVoices>;
 
 export const ToolCallStatus = z.enum(["waitingForApproval","running","succeeded","failed","denied"]);
 export type ToolCallStatus = z.output<typeof ToolCallStatus>;
@@ -1731,6 +1755,8 @@ export const methods = {
   "host.voice.start": { target: "host", params: HostVoiceStartParams, result: Empty },
   "host.voice.stop": { target: "host", params: Empty, result: VoiceFinishResult },
   "host.voice.stopSpeaking": { target: "host", params: Empty, result: Empty },
+  "host.speech.voices": { target: "host", params: Empty, result: SystemVoices },
+  "host.speech.synthesize": { target: "host", params: SpeechSynthesizeParams, result: Empty },
   "voice.status": { target: "core", params: Empty, result: VoiceStatus },
   "voice.finish": { target: "core", params: VoiceFinishParams, result: VoiceFinishResult },
   "voice.cancel": { target: "core", params: SessionParams, result: Empty },

@@ -696,16 +696,18 @@ public struct VoiceSettings: Codable, Sendable, Equatable {
     public var speakAnswers: SpeakAnswers
     public var speed: Double
     public var sttModel: String
+    public var ttsModel: String
     public var vadSensitivity: Double
     public var voice: String
     public var volume: Double
 
-    public init(enabled: Bool, language: String, speakAnswers: SpeakAnswers, speed: Double, sttModel: String, vadSensitivity: Double, voice: String, volume: Double) {
+    public init(enabled: Bool, language: String, speakAnswers: SpeakAnswers, speed: Double, sttModel: String, ttsModel: String, vadSensitivity: Double, voice: String, volume: Double) {
         self.enabled = enabled
         self.language = language
         self.speakAnswers = speakAnswers
         self.speed = speed
         self.sttModel = sttModel
+        self.ttsModel = ttsModel
         self.vadSensitivity = vadSensitivity
         self.voice = voice
         self.volume = volume
@@ -2889,6 +2891,21 @@ public struct SpeechModelProgress: Codable, Sendable, Equatable {
     }
 }
 
+/// Speak `text` with a macOS voice into a WAV file under the data folder's `cache/tts`.
+public struct SpeechSynthesizeParams: Codable, Sendable, Equatable {
+    public var path: String
+    public var speed: Double
+    public var text: String
+    public var voice: String
+
+    public init(path: String, speed: Double, text: String, voice: String) {
+        self.path = path
+        self.speed = speed
+        self.text = text
+        self.voice = voice
+    }
+}
+
 /// Files the host copied into Wisp's data folder after the user picked them.
 public struct StagedFile: Codable, Sendable, Equatable {
     public var name: String
@@ -2907,6 +2924,29 @@ public struct StagedFiles: Codable, Sendable, Equatable {
 
     public init(files: [StagedFile]) {
         self.files = files
+    }
+}
+
+/// A voice installed in macOS.
+public struct SystemVoice: Codable, Sendable, Equatable {
+    public var id: String
+    public var language: String
+    public var name: String
+    public var quality: String
+
+    public init(id: String, language: String, name: String, quality: String) {
+        self.id = id
+        self.language = language
+        self.name = name
+        self.quality = quality
+    }
+}
+
+public struct SystemVoices: Codable, Sendable, Equatable {
+    public var voices: [SystemVoice]
+
+    public init(voices: [SystemVoice]) {
+        self.voices = voices
     }
 }
 
@@ -3240,6 +3280,8 @@ public enum IPCMethods {
     public static let hostVoiceStart = IPCMethod<HostVoiceStartParams, Empty>(name: "host.voice.start", target: .host)
     public static let hostVoiceStop = IPCMethod<Empty, VoiceFinishResult>(name: "host.voice.stop", target: .host)
     public static let hostVoiceStopSpeaking = IPCMethod<Empty, Empty>(name: "host.voice.stopSpeaking", target: .host)
+    public static let hostSpeechVoices = IPCMethod<Empty, SystemVoices>(name: "host.speech.voices", target: .host)
+    public static let hostSpeechSynthesize = IPCMethod<SpeechSynthesizeParams, Empty>(name: "host.speech.synthesize", target: .host)
     public static let voiceStatus = IPCMethod<Empty, VoiceStatus>(name: "voice.status", target: .core)
     public static let voiceFinish = IPCMethod<VoiceFinishParams, VoiceFinishResult>(name: "voice.finish", target: .core)
     public static let voiceCancel = IPCMethod<SessionParams, Empty>(name: "voice.cancel", target: .core)
@@ -3351,6 +3393,8 @@ public enum IPCMethods {
         "host.voice.start": .host,
         "host.voice.stop": .host,
         "host.voice.stopSpeaking": .host,
+        "host.speech.voices": .host,
+        "host.speech.synthesize": .host,
         "voice.status": .core,
         "voice.finish": .core,
         "voice.cancel": .core,

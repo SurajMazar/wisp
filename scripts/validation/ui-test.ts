@@ -153,6 +153,18 @@ async function main() {
     check(await page.getByRole("button", { name: "Add Key" }).first().isVisible(), "Cancel closes the field");
     check((await settings()).privacy.mode === "localOnly", "nothing about privacy changed");
 
+    console.log("Voice → Voice engine");
+    await page.goto(`http://127.0.0.1:${PORT}/#/voice`);
+    await page.getByRole("heading", { name: "Voice engine" }).waitFor();
+    for (const name of ["Kokoro 82M (full precision)", "Kokoro 82M (compressed)", "macOS voices"])
+      check(await page.getByText(name, { exact: true }).isVisible(), `lists “${name}”`);
+    check(
+      await page.getByText(/Fastest natural voice/).isVisible(),
+      "explains which voice engine is fastest",
+    );
+    await page.getByRole("heading", { name: "Voice engine" }).scrollIntoViewIfNeeded();
+    await shot("4-voice-engine");
+
     console.log(`\n✓ UI test passed (${passed} checks)`);
   } finally {
     await app.close();

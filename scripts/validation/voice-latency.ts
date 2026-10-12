@@ -98,6 +98,10 @@ async function main() {
   const emit = (event: string, payload: unknown) =>
     core.stdin!.write(JSON.stringify({ v: 1, kind: "event", event, payload }) + "\n");
   await ready;
+  const vision = arg("--vision");
+  if (userSettings && vision) userSettings.vision = { providerId: "ollama", model: vision };
+  const general = arg("--general");
+  if (userSettings && general) userSettings.general = { providerId: "ollama", model: general };
   if (userSettings) await call("settings.update", { update: { section: "models", value: userSettings } });
   if (voice) {
     // Use the speech models already downloaded (linked, not copied).
@@ -105,8 +109,10 @@ async function main() {
     mkdirSync(join(data, "models"), { recursive: true });
     for (const m of readdirSync(models))
       execFileSync("ln", ["-sfn", join(models, m), join(data, "models", m)]);
-    const v = userSetting("voice");
-    if (v) await call("settings.update", { update: { section: "voice", value: v } });
+    const v = userSetting("voice") ?? {};
+    const tts = arg("--tts");
+    if (tts) v.ttsModel = tts;
+    if (Object.keys(v).length) await call("settings.update", { update: { section: "voice", value: v } });
   }
   await call("settings.update", { update: { section: "onboarding", value: { completed: true } } });
 

@@ -674,6 +674,7 @@
             "speakAnswers": "voiceQuestions",
             "speed": 1,
             "sttModel": "whisper-base.en",
+            "ttsModel": "kokoro-82m",
             "vadSensitivity": 0.5,
             "voice": "af_heart",
             "volume": 1
@@ -5600,6 +5601,33 @@
       ],
       "type": "object"
     },
+    "SpeechSynthesizeParams": {
+      "additionalProperties": false,
+      "description": "Speak `text` with a macOS voice into a WAV file under the data folder's `cache/tts`.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "speed": {
+          "description": "0.5–2.0 (1 = normal).",
+          "format": "double",
+          "type": "number"
+        },
+        "text": {
+          "type": "string"
+        },
+        "voice": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "voice",
+        "speed",
+        "path"
+      ],
+      "type": "object"
+    },
     "StagedFile": {
       "additionalProperties": false,
       "description": "Files the host copied into Wisp's data folder after the user picked them.",
@@ -5655,6 +5683,48 @@
         "done"
       ],
       "type": "string"
+    },
+    "SystemVoice": {
+      "additionalProperties": false,
+      "description": "A voice installed in macOS.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "language": {
+          "description": "BCP-47, e.g. \"en-US\".",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "quality": {
+          "description": "\"default\", \"enhanced\" or \"premium\" (download more in System Settings → Accessibility →\nSpoken Content).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "language",
+        "quality"
+      ],
+      "type": "object"
+    },
+    "SystemVoices": {
+      "additionalProperties": false,
+      "properties": {
+        "voices": {
+          "items": {
+            "$ref": "#/definitions/SystemVoice"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "voices"
+      ],
+      "type": "object"
     },
     "TargetSource": {
       "oneOf": [
@@ -6501,6 +6571,11 @@
           "default": "whisper-base.en",
           "type": "string"
         },
+        "ttsModel": {
+          "default": "kokoro-82m",
+          "description": "What speaks: a downloaded voice model (e.g. \"kokoro-82m\") or \"system\" (the voices built into\nmacOS: instant, nothing to download).",
+          "type": "string"
+        },
         "vadSensitivity": {
           "default": 0.5,
           "description": "0 (least) – 1 (most sensitive).",
@@ -6509,6 +6584,7 @@
         },
         "voice": {
           "default": "af_heart",
+          "description": "A voice of `tts_model` (Kokoro: \"af_heart\"; macOS: a voice identifier).",
           "type": "string"
         },
         "volume": {
@@ -7733,6 +7809,26 @@
       "name": "host.voice.stopSpeaking",
       "params": {
         "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/Empty"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.speech.voices",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/SystemVoices"
+      },
+      "target": "host"
+    },
+    {
+      "name": "host.speech.synthesize",
+      "params": {
+        "$ref": "#/definitions/SpeechSynthesizeParams"
       },
       "result": {
         "$ref": "#/definitions/Empty"

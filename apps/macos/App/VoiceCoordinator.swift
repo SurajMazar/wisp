@@ -12,7 +12,7 @@ final class VoiceCoordinator {
     private let assistant: AssistantCoordinator
     private let capture = AudioCapture()
     private let player: SpeechPlayer
-    private var settings = VoiceSettings(enabled: true, language: "auto", speakAnswers: .voiceQuestions, speed: 1, sttModel: "whisper-base.en", vadSensitivity: 0.5, voice: "af_heart", volume: 1)
+    private var settings = VoiceSettings(enabled: true, language: "auto", speakAnswers: .voiceQuestions, speed: 1, sttModel: "whisper-base.en", ttsModel: "kokoro-82m", vadSensitivity: 0.5, voice: "af_heart", volume: 1)
     private var purpose: VoicePurpose = .ask
     private var startedAt = Date.distantPast
     /// When a focus region completed (to attach it if it happened during this hold).

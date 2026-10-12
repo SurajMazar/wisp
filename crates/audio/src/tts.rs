@@ -40,6 +40,14 @@ pub fn find_espeak() -> Option<PathBuf> {
     .find(|p| p.exists())
 }
 
+/// The voice model in `dir`: full precision (`model.onnx`) if present, else the compressed one.
+fn model_file(dir: &Path) -> Option<PathBuf> {
+    ["model.onnx", "model_quantized.onnx"]
+        .iter()
+        .map(|f| dir.join(f))
+        .find(|p| p.exists())
+}
+
 /// Performance cores on Apple Silicon (falls back to 4).
 fn performance_cores() -> usize {
     std::process::Command::new("/usr/sbin/sysctl")
@@ -82,7 +90,9 @@ impl KokoroTts {
             .with_intra_threads(performance_cores())
             .map_err(|e| load(&e))?;
         let session = builder
-            .commit_from_file(dir.join("model_quantized.onnx"))
+            .commit_from_file(
+                model_file(dir).ok_or_else(|| TtsError::Load("no model file".into()))?,
+            )
             .map_err(|e| load(&e))?;
         Ok(Self {
             session: Mutex::new(session),

@@ -1,5 +1,6 @@
 import AppKit
 import WispIPC
+import WispUtilities
 import WispPlatform
 import WispUI
 
@@ -184,6 +185,20 @@ enum HostMethods {
             return Empty()
         }
 
+        router.register(IPCMethods.hostSpeechVoices) { _ in
+            SystemVoices(voices: SystemSpeech.voices())
+        }
+        router.register(IPCMethods.hostSpeechSynthesize) { params in
+            // Only into Wisp's speech cache, and only reasonable amounts of text.
+            let dir = AppPaths.dataDirectory.appendingPathComponent("cache/tts", isDirectory: true).standardizedFileURL.path
+            let url = URL(fileURLWithPath: params.path).standardizedFileURL
+            guard url.path.hasPrefix(dir + "/"), url.pathExtension == "wav",
+                  !params.text.isEmpty, params.text.count <= 4000 else {
+                throw IpcError(code: .invalidParams, details: nil, message: "speech must be 1–4000 characters into cache/tts/*.wav")
+            }
+            try await SystemSpeech.synthesize(text: params.text, voice: params.voice, speed: params.speed, to: url)
+            return Empty()
+        }
         router.register(IPCMethods.hostNotify) { params in
             await Notifier.post(title: params.title, body: params.body)
             return Empty()
