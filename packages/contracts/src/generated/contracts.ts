@@ -240,13 +240,19 @@ export const CursorSettings = z.strictObject({
 });
 export type CursorSettings = z.output<typeof CursorSettings>;
 
+/** What a spoken question includes when nothing was drawn. */
+export const AskContext = z.enum(["window","display","off"]);
+export type AskContext = z.output<typeof AskContext>;
+
 /** Default shape when dragging (spec §81 "Focus Style"). */
 export const DrawStyle = z.enum(["rectangle","lasso","circle"]);
 export type DrawStyle = z.output<typeof DrawStyle>;
 
 export const FocusSettings = z.strictObject({
+  "askContext": AskContext.default(() => AskContext.parse("window")),
   "dimSurroundings": z.boolean().default(true),
   "drawStyle": DrawStyle.default(() => DrawStyle.parse("rectangle")),
+  "excludedApps": z.array(z.string()).default(["com.1password.1password","com.agilebits.onepassword7","com.bitwarden.desktop","com.lastpass.LastPass","com.dashlane.dashlanephonefinal","com.apple.keychainaccess","com.apple.Passwords","com.keepassxc.keepassxc"]),
   "margin": z.number().int().nonnegative().default(24),
   "pointSize": z.number().int().nonnegative().default(480),
 });
@@ -359,7 +365,7 @@ export const AppSettings = z.strictObject({
   "appearance": AppearanceSettings.default(() => AppearanceSettings.parse({"accent":"default","theme":"system"})),
   "computer": ComputerSettings.default(() => ComputerSettings.parse({"confirmEveryAction":false,"enabled":false})),
   "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"glowFrom":"#8B7CF6","glowMode":"gradient","glowTo":"#5EC8F2","label":"Wisp","opacity":0.95,"shape":"wisp","showLabel":false,"size":1,"theme":"default","visibility":"always"})),
-  "focus": FocusSettings.default(() => FocusSettings.parse({"dimSurroundings":true,"drawStyle":"rectangle","margin":24,"pointSize":480})),
+  "focus": FocusSettings.default(() => FocusSettings.parse({"askContext":"window","dimSurroundings":true,"drawStyle":"rectangle","excludedApps":["com.1password.1password","com.agilebits.onepassword7","com.bitwarden.desktop","com.lastpass.LastPass","com.dashlane.dashlanephonefinal","com.apple.keychainaccess","com.apple.Passwords","com.keepassxc.keepassxc"],"margin":24,"pointSize":480})),
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
   "invocation": InvocationSettings.default(() => InvocationSettings.parse({"behavior":"hold","holdDelayMs":150,"mouseAction":"focusCursor","mouseButton":"none","shortcut":{"modifiers":["option","command"]}})),
   "memory": MemorySettings.default(() => MemorySettings.parse({"enabled":true,"learnFromChats":true})),
@@ -590,12 +596,17 @@ export const FocusAttachment = z.strictObject({
 });
 export type FocusAttachment = z.output<typeof FocusAttachment>;
 
+/** How the model asked for a target to be marked: `[[point: …]]`, `[[circle: …]]`, … */
+export const GuidanceMark = z.enum(["circle","point","arrow","underline","spotlight"]);
+export type GuidanceMark = z.output<typeof GuidanceMark>;
+
 export const TargetSource = z.enum(["element","text","coordinates"]);
 export type TargetSource = z.output<typeof TargetSource>;
 
 /** Something on screen an answer pointed at, resolved to where it is. */
 export const GuidanceTarget = z.strictObject({
   "label": z.string(),
+  "mark": GuidanceMark.default(() => GuidanceMark.parse("point")),
   "rect": Rect,
   "source": TargetSource,
 });

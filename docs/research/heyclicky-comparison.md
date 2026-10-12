@@ -57,7 +57,7 @@ The gaps that matter most, in order:
 
 Effort estimates are for one engineer working with the existing codebase. Each step ships on its own.
 
-### Step 1 — See the screen on every question, and point/draw on it (≈1 week) ★ do first
+### Step 1 — See the screen on every question, and point/draw on it (≈1 week) ✅ done 2026-10-12
 
 Answers can already point: the model marks `[[point: Save]]`, the buddy flies there and a highlight box is drawn.
 But this only works when there's a screenshot, which today means only when the user drew something. This step makes

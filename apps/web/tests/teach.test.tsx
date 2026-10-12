@@ -26,7 +26,12 @@ const lesson = (over: Partial<Lesson> = {}): Lesson => ({
       instruction: "Click Save [[point: Save]].",
       status: "current",
       messageId: "m2",
-      target: { label: "Save", rect: { x: 10, y: 10, width: 20, height: 10 }, source: "element" },
+      target: {
+        label: "Save",
+        rect: { x: 10, y: 10, width: 20, height: 10 },
+        source: "element",
+        mark: "point",
+      },
     },
   ],
   ...over,

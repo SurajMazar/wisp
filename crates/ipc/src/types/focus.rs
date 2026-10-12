@@ -53,7 +53,36 @@ pub struct FocusSettings {
     pub point_size: u32,
     /// Dim everything outside the selection while drawing.
     pub dim_surroundings: bool,
+    /// What Wisp looks at when you ask out loud without drawing.
+    pub ask_context: AskContext,
+    /// Apps never captured unless you draw on them (bundle identifiers).
+    pub excluded_apps: Vec<String>,
 }
+
+/// What a spoken question includes when nothing was drawn.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum AskContext {
+    /// The window under the pointer.
+    #[default]
+    Window,
+    /// The whole display under the pointer.
+    Display,
+    /// Nothing: only what you draw.
+    Off,
+}
+
+/// Password managers: never captured without an explicit drawing.
+pub const DEFAULT_EXCLUDED_APPS: [&str; 8] = [
+    "com.1password.1password",
+    "com.agilebits.onepassword7",
+    "com.bitwarden.desktop",
+    "com.lastpass.LastPass",
+    "com.dashlane.dashlanephonefinal",
+    "com.apple.keychainaccess",
+    "com.apple.Passwords",
+    "com.keepassxc.keepassxc",
+];
 
 impl Default for FocusSettings {
     fn default() -> Self {
@@ -62,6 +91,11 @@ impl Default for FocusSettings {
             margin: 24,
             point_size: 480,
             dim_surroundings: true,
+            ask_context: AskContext::Window,
+            excluded_apps: DEFAULT_EXCLUDED_APPS
+                .iter()
+                .map(|s| (*s).to_owned())
+                .collect(),
         }
     }
 }
@@ -73,6 +107,14 @@ impl FocusSettings {
         }
         if !(120..=1200).contains(&self.point_size) {
             return Err("pointSize must be 120–1200".into());
+        }
+        if self.excluded_apps.len() > 100
+            || self
+                .excluded_apps
+                .iter()
+                .any(|a| a.is_empty() || a.len() > 255)
+        {
+            return Err("excludedApps must be up to 100 bundle identifiers".into());
         }
         Ok(())
     }

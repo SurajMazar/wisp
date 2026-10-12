@@ -14,6 +14,25 @@ pub struct GuidanceTarget {
     pub label: String,
     pub rect: Rect,
     pub source: TargetSource,
+    /// How to mark it on screen.
+    #[serde(default)]
+    pub mark: GuidanceMark,
+}
+
+/// How the model asked for a target to be marked: `[[point: …]]`, `[[circle: …]]`, …
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum GuidanceMark {
+    /// Outlined and tinted.
+    #[default]
+    Point,
+    Circle,
+    /// An arrow pointing at it.
+    Arrow,
+    /// A line under it (for text).
+    Underline,
+    /// Everything else dimmed.
+    Spotlight,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

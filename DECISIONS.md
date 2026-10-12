@@ -320,3 +320,14 @@ display without one): live waveform while listening, a shimmer while thinking, a
 as it streams and is spoken. It folds back into the notch when idle; clicking it opens the panel. The panel still
 opens on its own for approvals and when spoken answers are turned off (otherwise the answer would be invisible).
 The capsule is a transparent, non-activating, capture-excluded window: clicks outside it reach the menu bar.
+
+## D-040 — Every spoken question sees the screen; answers and agents mark it
+**Status** accepted (2026-10-12)
+Holding the shortcut starts a quiet capture of the window under the pointer (setting: window / whole display /
+nothing), run in parallel with listening so it's ready on release; a drawing, if any, replaces it. Nothing is
+captured without the hotkey, and password managers (a default, editable bundle-ID list) are skipped unless the user
+draws on them. Answers may mark targets with `[[point|circle|arrow|underline|spotlight: label]]`, resolved against
+Accessibility and OCR as before and drawn with the existing overlay shapes. Every on-screen action (agents, "Do it")
+first shows a labelled circle on its target with the buddy pointing there: during the approval, or for 650 ms before
+acting when no approval is needed. The preview is cleared before acting so the overlay is never what the action lands
+on.

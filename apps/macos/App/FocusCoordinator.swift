@@ -14,7 +14,7 @@ final class FocusCoordinator {
     private let router: IPCRouter
     private let assistant: AssistantCoordinator
     private let overlay = FocusOverlayController()
-    private var settings = FocusSettings(dimSurroundings: true, drawStyle: .rectangle, margin: 24, pointSize: 480)
+    private var settings = FocusSettings(askContext: .window, dimSurroundings: true, drawStyle: .rectangle, excludedApps: [], margin: 24, pointSize: 480)
     private var accent = BuddyTheme.color(for: .default, custom: nil)
     private(set) var latest: FocusRegion?
     private var holdSession = false
@@ -45,13 +45,21 @@ final class FocusCoordinator {
             return
         }
         holdSession = true
+        // Look at what's under the pointer right away, so a question asked without drawing still
+        // comes with the screen (and the answer can point at things on it). Drawing replaces it.
+        let ambient = startAmbientCapture()
+        pending = ambient
         router.emit(IPCEvents.focusStarted, FocusStarted(kind: .lasso))
         // While the shortcut is held, the pointer is a pen: draw, circle, underline or click as
         // many times as you like while talking. Releasing the keys sends it with what you said.
         overlay.begin(style: .lasso, dim: false, accent: accent, showHint: true, ink: true) { [weak self] result in
             guard let self else { return }
             if let result {
-                self.pending = Task { await self.complete(result, spoken: true) }
+                // After the ambient capture, so the drawing is what the question is about.
+                self.pending = Task {
+                    await ambient?.value
+                    await self.complete(result, spoken: true)
+                }
             } else {
                 self.end(.cancelled)
             }
@@ -123,6 +131,26 @@ final class FocusCoordinator {
         return false
     }
 
+    /// Capture the window (or display) under the pointer for a spoken question, quietly: no state
+    /// changes, no panel, nothing if the setting is off or a password manager is in front.
+    private func startAmbientCapture() -> Task<Void, Never>? {
+        guard settings.askContext != .off else { return nil }
+        let pointer = FocusGeometry.cgPoint(fromAppKit: NSEvent.mouseLocation, primaryHeight: Displays.primaryHeight)
+        guard let screen = Displays.screen(containingCG: pointer) else { return nil }
+        let display = Displays.info(for: screen).frame.cg
+        let found = WindowLocator.window(at: pointer)
+        let apps = [found?.application?.bundleId, WindowLocator.frontmostApplication()?.bundleId].compactMap { $0 }
+        if apps.contains(where: settings.excludedApps.contains) { return nil }
+        let windowRect = found.map { $0.window.frame.cg.intersection(display) } ?? .null
+        let result: FocusOverlayController.Result
+        if settings.askContext == .window, !windowRect.isNull, !windowRect.isEmpty {
+            result = .init(kind: .window, selection: windowRect, path: [], screen: screen)
+        } else {
+            result = .init(kind: .screen, selection: display, path: [], screen: screen)
+        }
+        return Task { await self.complete(result, spoken: true, quiet: true) }
+    }
+
     private func captureImmediate(_ kind: FocusKind) async {
         let pointer = FocusGeometry.cgPoint(fromAppKit: NSEvent.mouseLocation, primaryHeight: Displays.primaryHeight)
         guard let screen = Displays.screen(containingCG: pointer) else { return end(.captureFailed, detail: "No display under the pointer.") }
@@ -141,8 +169,9 @@ final class FocusCoordinator {
 
     /// `spoken`: drawn while asking out loud. The answer comes as speech beside the pointer, so
     /// the panel stays closed (the user opens it when they want it).
-    private func complete(_ r: FocusOverlayController.Result, spoken: Bool = false) async {
-        assistant.set(state: .analyzing)
+    /// `quiet`: a background capture for context; failures are only logged.
+    private func complete(_ r: FocusOverlayController.Result, spoken: Bool = false, quiet: Bool = false) async {
+        if !quiet { assistant.set(state: .analyzing) }
         let display = Displays.info(for: r.screen)
         let displayRect = display.frame.cg
         var selection = r.selection.intersection(displayRect)
@@ -151,7 +180,7 @@ final class FocusCoordinator {
             selection = FocusGeometry.pointRegion(center: p, side: CGFloat(settings.pointSize), display: displayRect)
             path = [p]
         }
-        guard !selection.isEmpty else { return end(.nothingSelected) }
+        guard !selection.isEmpty else { return quiet ? () : end(.nothingSelected) }
         let crop: CGRect = [.point, .window, .screen].contains(r.kind)
             ? selection.integral.intersection(displayRect)
             : FocusGeometry.crop(selection: selection, margin: CGFloat(settings.margin), display: displayRect).integral.intersection(displayRect)
@@ -194,6 +223,8 @@ final class FocusCoordinator {
             assistant.expand()
             try? await Task.sleep(for: .milliseconds(900))
             if assistant.state == .success { assistant.set(state: .idle) }
+        } catch where quiet {
+            Log.app.error("context capture failed: \(error.localizedDescription, privacy: .public)")
         } catch ScreenCapturer.CaptureError.permissionDenied {
             assistant.set(state: .waitingForPermission)
             end(.permissionDenied, detail: "Screen access is disabled.")

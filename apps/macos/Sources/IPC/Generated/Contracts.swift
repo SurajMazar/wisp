@@ -490,6 +490,13 @@ public struct CursorSettings: Codable, Sendable, Equatable {
     }
 }
 
+/// What a spoken question includes when nothing was drawn.
+public enum AskContext: String, Codable, Sendable, Equatable, CaseIterable {
+    case window = "window"
+    case display = "display"
+    case off = "off"
+}
+
 /// Default shape when dragging (spec §81 "Focus Style").
 public enum DrawStyle: String, Codable, Sendable, Equatable, CaseIterable {
     case rectangle = "rectangle"
@@ -498,14 +505,18 @@ public enum DrawStyle: String, Codable, Sendable, Equatable, CaseIterable {
 }
 
 public struct FocusSettings: Codable, Sendable, Equatable {
+    public var askContext: AskContext
     public var dimSurroundings: Bool
     public var drawStyle: DrawStyle
+    public var excludedApps: [String]
     public var margin: UInt32
     public var pointSize: UInt32
 
-    public init(dimSurroundings: Bool, drawStyle: DrawStyle, margin: UInt32, pointSize: UInt32) {
+    public init(askContext: AskContext, dimSurroundings: Bool, drawStyle: DrawStyle, excludedApps: [String], margin: UInt32, pointSize: UInt32) {
+        self.askContext = askContext
         self.dimSurroundings = dimSurroundings
         self.drawStyle = drawStyle
+        self.excludedApps = excludedApps
         self.margin = margin
         self.pointSize = pointSize
     }
@@ -1122,6 +1133,15 @@ public struct FocusAttachment: Codable, Sendable, Equatable {
     }
 }
 
+/// How the model asked for a target to be marked: `[[point: …]]`, `[[circle: …]]`, …
+public enum GuidanceMark: String, Codable, Sendable, Equatable, CaseIterable {
+    case circle = "circle"
+    case point = "point"
+    case arrow = "arrow"
+    case underline = "underline"
+    case spotlight = "spotlight"
+}
+
 public enum TargetSource: String, Codable, Sendable, Equatable, CaseIterable {
     case element = "element"
     case text = "text"
@@ -1131,11 +1151,13 @@ public enum TargetSource: String, Codable, Sendable, Equatable, CaseIterable {
 /// Something on screen an answer pointed at, resolved to where it is.
 public struct GuidanceTarget: Codable, Sendable, Equatable {
     public var label: String
+    public var mark: GuidanceMark
     public var rect: Rect
     public var source: TargetSource
 
-    public init(label: String, rect: Rect, source: TargetSource) {
+    public init(label: String, mark: GuidanceMark, rect: Rect, source: TargetSource) {
         self.label = label
+        self.mark = mark
         self.rect = rect
         self.source = source
     }

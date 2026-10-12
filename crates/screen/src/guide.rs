@@ -8,7 +8,8 @@ use wisp_common::geometry::{Point, Rect};
 use wisp_ipc::types::{
     focus::FocusRegion,
     guidance::{
-        Annotation, GuidanceShow, GuidanceTarget, LabelAnnotation, RectAnnotation, TargetSource,
+        Annotation, ArrowAnnotation, CircleAnnotation, GuidanceMark, GuidanceShow, GuidanceTarget,
+        LabelAnnotation, RectAnnotation, TargetSource,
     },
 };
 
@@ -22,8 +23,27 @@ pub enum TargetRef {
     Coordinates(f64, f64),
 }
 
-/// Find complete `[[point: …]]` markers, in order.
-pub fn parse_targets(text: &str) -> Vec<TargetRef> {
+/// A marker in an answer: what to mark and how.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Marker {
+    pub target: TargetRef,
+    pub mark: GuidanceMark,
+}
+
+fn mark_kind(kind: &str) -> Option<GuidanceMark> {
+    Some(match kind.trim().to_ascii_lowercase().as_str() {
+        "point" | "highlight" => GuidanceMark::Point,
+        "circle" => GuidanceMark::Circle,
+        "arrow" => GuidanceMark::Arrow,
+        "underline" => GuidanceMark::Underline,
+        "spotlight" => GuidanceMark::Spotlight,
+        _ => return None,
+    })
+}
+
+/// Find complete `[[point: …]]`, `[[circle: …]]`, `[[arrow: …]]`, `[[underline: …]]` and
+/// `[[spotlight: …]]` markers, in order.
+pub fn parse_targets(text: &str) -> Vec<Marker> {
     let mut out = vec![];
     let mut rest = text;
     while let Some(start) = rest.find("[[") {
@@ -31,11 +51,10 @@ pub fn parse_targets(text: &str) -> Vec<TargetRef> {
         let Some(end) = after.find("]]") else { break };
         let inner = after[..end].trim();
         rest = &after[end + 2..];
-        let Some(body) = inner
-            .strip_prefix("point:")
-            .or_else(|| inner.strip_prefix("point :"))
-            .or_else(|| inner.strip_prefix("POINT:"))
-        else {
+        let Some((kind, body)) = inner.split_once(':') else {
+            continue;
+        };
+        let Some(mark) = mark_kind(kind) else {
             continue;
         };
         let body = body
@@ -56,8 +75,9 @@ pub fn parse_targets(text: &str) -> Vec<TargetRef> {
             }
             _ => TargetRef::Label(body.to_owned()),
         };
-        if !out.contains(&t) {
-            out.push(t);
+        let m = Marker { target: t, mark };
+        if !out.contains(&m) {
+            out.push(m);
         }
         if out.len() == MAX_TARGETS {
             break;
@@ -170,6 +190,7 @@ pub fn resolve(t: &TargetRef, region: &FocusRegion) -> Option<GuidanceTarget> {
                 label: String::new(),
                 rect: Rect::new(p.x - 14.0, p.y - 14.0, 28.0, 28.0),
                 source: TargetSource::Coordinates,
+                mark: GuidanceMark::Point,
             })
         }
         TargetRef::Label(label) => {
@@ -221,27 +242,80 @@ pub fn resolve(t: &TargetRef, region: &FocusRegion) -> Option<GuidanceTarget> {
                     c.rect
                 },
                 source: c.source,
+                mark: GuidanceMark::Point,
             })
         }
     }
 }
 
-/// What to draw for resolved targets: a labeled highlight on each, the buddy at the last one.
+fn padded(r: &Rect, pad: f64) -> Rect {
+    Rect::new(
+        r.x - pad,
+        r.y - pad,
+        r.width + pad * 2.0,
+        r.height + pad * 2.0,
+    )
+}
+
+/// An arrow coming in diagonally from the upper left (lower right near the screen's top-left),
+/// stopping just short of the target's edge.
+fn arrow_to(r: &Rect) -> (Point, Point) {
+    let c = Point {
+        x: r.x + r.width / 2.0,
+        y: r.y + r.height / 2.0,
+    };
+    let (dx, dy) = if r.x < 140.0 || r.y < 110.0 {
+        (1.0, 1.0)
+    } else {
+        (-1.0, -1.0)
+    };
+    // Where the line from the centre towards the arrow's tail leaves the (padded) target.
+    let (hw, hh) = (r.width / 2.0 + 6.0, r.height / 2.0 + 6.0);
+    let t = (hw / 0.8).min(hh / 0.6);
+    let to = Point {
+        x: c.x + dx * 0.8 * t,
+        y: c.y + dy * 0.6 * t,
+    };
+    let from = Point {
+        x: to.x + dx * 110.0,
+        y: to.y + dy * 82.0,
+    };
+    (from, to)
+}
+
+/// What to draw for resolved targets, each as the model asked; the buddy points at the last one.
 pub fn show(id: &str, targets: &[GuidanceTarget], duration_ms: u32) -> Option<GuidanceShow> {
     let last = targets.last()?;
     let annotations = targets
         .iter()
         .map(|t| {
-            let pad = 4.0;
-            Annotation::Highlight(RectAnnotation {
-                rect: Rect::new(
-                    t.rect.x - pad,
-                    t.rect.y - pad,
-                    t.rect.width + pad * 2.0,
-                    t.rect.height + pad * 2.0,
-                ),
-                label: (!t.label.is_empty()).then(|| t.label.clone()),
-            })
+            let label = (!t.label.is_empty()).then(|| t.label.clone());
+            match t.mark {
+                GuidanceMark::Point => Annotation::Highlight(RectAnnotation {
+                    rect: padded(&t.rect, 4.0),
+                    label,
+                }),
+                GuidanceMark::Circle => Annotation::Circle(CircleAnnotation {
+                    center: Point {
+                        x: t.rect.x + t.rect.width / 2.0,
+                        y: t.rect.y + t.rect.height / 2.0,
+                    },
+                    radius: (t.rect.width.hypot(t.rect.height) / 2.0 + 8.0).max(18.0),
+                    label,
+                }),
+                GuidanceMark::Arrow => {
+                    let (from, to) = arrow_to(&t.rect);
+                    Annotation::Arrow(ArrowAnnotation { from, to, label })
+                }
+                GuidanceMark::Underline => Annotation::Highlight(RectAnnotation {
+                    rect: Rect::new(t.rect.x, t.rect.y + t.rect.height + 1.0, t.rect.width, 3.0),
+                    label: None,
+                }),
+                GuidanceMark::Spotlight => Annotation::Spotlight(RectAnnotation {
+                    rect: padded(&t.rect, 8.0),
+                    label,
+                }),
+            }
         })
         .chain(
             targets
@@ -355,17 +429,80 @@ mod tests {
     #[test]
     fn parses_markers_and_strips_them_for_display() {
         let s = "Click Save [[point: Save]] to keep it, or [[point: \"Don't Save\"]]. Here: [[point: 412, 230]]";
+        let point = |t| Marker {
+            target: t,
+            mark: GuidanceMark::Point,
+        };
         assert_eq!(
             parse_targets(s),
             vec![
-                TargetRef::Label("Save".into()),
-                TargetRef::Label("Don't Save".into()),
-                TargetRef::Coordinates(412.0, 230.0)
+                point(TargetRef::Label("Save".into())),
+                point(TargetRef::Label("Don't Save".into())),
+                point(TargetRef::Coordinates(412.0, 230.0))
             ]
         );
         assert_eq!(strip_markers(s), "Click Save to keep it, or. Here: ");
         assert_eq!(strip_markers("Press Enter [[poi"), "Press Enter ");
         assert!(parse_targets("[[not a point]] [[point: ]]").is_empty());
+    }
+
+    #[test]
+    fn marks_are_drawn_as_asked() {
+        let m = parse_targets(
+            "Use [[circle: Save]], then [[arrow: Export]] and read [[underline: Total]] [[SPOTLIGHT: Panel]] [[wiggle: x]]",
+        );
+        assert_eq!(
+            m.iter().map(|m| m.mark).collect::<Vec<_>>(),
+            [
+                GuidanceMark::Circle,
+                GuidanceMark::Arrow,
+                GuidanceMark::Underline
+            ],
+            "unknown kinds are ignored; at most three"
+        );
+        let target = |mark| GuidanceTarget {
+            label: "Save".into(),
+            rect: Rect::new(400.0, 300.0, 80.0, 24.0),
+            source: TargetSource::Element,
+            mark,
+        };
+        let shown = show(
+            "m",
+            &[
+                target(GuidanceMark::Circle),
+                target(GuidanceMark::Arrow),
+                target(GuidanceMark::Underline),
+                target(GuidanceMark::Spotlight),
+            ],
+            5000,
+        )
+        .expect("show");
+        assert!(
+            matches!(&shown.annotations[0], Annotation::Circle(c) if c.center == Point { x: 440.0, y: 312.0 } && c.radius > 40.0)
+        );
+        match &shown.annotations[1] {
+            Annotation::Arrow(a) => {
+                assert!(
+                    a.from.x < a.to.x && a.from.y < a.to.y,
+                    "comes in from the upper left"
+                );
+                assert!(a.to.x < 400.0 || a.to.y < 300.0, "stops outside the target");
+            }
+            other => panic!("expected an arrow, got {other:?}"),
+        }
+        assert!(
+            matches!(&shown.annotations[2], Annotation::Highlight(r) if r.rect.height == 3.0 && r.rect.y == 325.0)
+        );
+        assert!(matches!(&shown.annotations[3], Annotation::Spotlight(_)));
+        // Near the top-left corner the arrow comes from the lower right instead.
+        let corner = GuidanceTarget {
+            rect: Rect::new(20.0, 30.0, 60.0, 20.0),
+            ..target(GuidanceMark::Arrow)
+        };
+        let s = show("m", &[corner], 5000).expect("show");
+        assert!(
+            matches!(&s.annotations[0], Annotation::Arrow(a) if a.from.x > a.to.x && a.from.y > a.to.y)
+        );
     }
 
     #[test]

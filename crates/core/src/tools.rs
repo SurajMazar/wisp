@@ -13,6 +13,7 @@ use wisp_ipc::{
     types::{
         accessibility::{AxSnapshot, AxSnapshotParams},
         app::Empty,
+        guidance::{Annotation, ArrowAnnotation, CircleAnnotation, GuidanceShow},
         tools::{
             ApprovalDecision, ApprovalRequest, ApprovalResolved, ApprovalResponse,
             InputPerformParams, ToolCall, ToolCallRecord, ToolCallStatus, ToolExecution,
@@ -25,6 +26,51 @@ use wisp_permissions::{Context, Grants, Outcome};
 use crate::Core;
 
 pub const APPROVAL_TIMEOUT: Duration = Duration::from_secs(120);
+/// How long the target of an action is shown before Wisp acts on its own.
+const PREVIEW_PAUSE: Duration = Duration::from_millis(650);
+
+/// Where an on-screen action lands (and, for a drag, where it ends), in global points.
+fn action_target(
+    call: &ToolCall,
+) -> Option<(
+    wisp_common::geometry::Point,
+    Option<wisp_common::geometry::Point>,
+)> {
+    use wisp_common::geometry::Point;
+    match call {
+        ToolCall::Click(a)
+        | ToolCall::DoubleClick(a)
+        | ToolCall::RightClick(a)
+        | ToolCall::MoveMouse(a) => Some((Point { x: a.x, y: a.y }, None)),
+        ToolCall::Scroll(a) => Some((Point { x: a.x, y: a.y }, None)),
+        ToolCall::Drag(d) => Some((d.from, Some(d.to))),
+        _ => None,
+    }
+}
+
+/// What the overlay draws before an action: a labelled circle on the target (an arrow for a
+/// drag), with the buddy flying there.
+fn preview_show(call: &ToolCall, title: &str, duration_ms: u32) -> Option<GuidanceShow> {
+    let (at, to) = action_target(call)?;
+    let mut annotations = vec![Annotation::Circle(CircleAnnotation {
+        center: at,
+        radius: 22.0,
+        label: Some(title.to_owned()),
+    })];
+    if let Some(to) = to {
+        annotations.push(Annotation::Arrow(ArrowAnnotation {
+            from: at,
+            to,
+            label: None,
+        }));
+    }
+    Some(GuidanceShow {
+        id: wisp_common::ids::new_id(),
+        annotations,
+        buddy_target: Some(at),
+        duration_ms,
+    })
+}
 
 struct Pending {
     offered: Vec<ApprovalDecision>,
@@ -137,9 +183,16 @@ impl Core {
             Outcome::Ask(choices) => {
                 self.save_tool(&record, &args, true).await;
                 inserted = true;
+                // Point at the target while asking, so the user sees exactly where it would act.
+                let shown = self
+                    .preview(&p.call, &record.title, APPROVAL_TIMEOUT.as_millis() as u32)
+                    .await;
                 let decision = self
                     .ask(&record, risk_reason, &p.call, choices, app_name.clone())
                     .await;
+                if shown {
+                    self.clear_preview().await;
+                }
                 record.decision = match decision {
                     ApprovalDecision::AllowOnce => "allowOnce",
                     ApprovalDecision::AllowSession => "allowSession",
@@ -182,6 +235,12 @@ impl Core {
 
         record.status = ToolCallStatus::Running;
         self.save_tool(&record, &args, !inserted).await;
+        // Acting without asking: show where first. (Cleared before acting, so the overlay is
+        // never what the action lands on.)
+        if !inserted && self.preview(&p.call, &record.title, 3000).await {
+            tokio::time::sleep(PREVIEW_PAUSE).await;
+            self.clear_preview().await;
+        }
         let approval_id = inserted.then(|| record.id.clone());
         match self.execute(&p.call, approval_id, expected_pid).await {
             Ok(exec) => {
@@ -209,6 +268,27 @@ impl Core {
                     false,
                 )
                 .await),
+        }
+    }
+
+    async fn preview(&self, call: &ToolCall, title: &str, duration_ms: u32) -> bool {
+        let (Some(show), Some(host)) = (preview_show(call, title, duration_ms), self.ai().host())
+        else {
+            return false;
+        };
+        host.call(
+            "host.guidance.show",
+            serde_json::to_value(&show).unwrap_or_default(),
+        )
+        .await
+        .is_ok()
+    }
+
+    async fn clear_preview(&self) {
+        if let Some(host) = self.ai().host() {
+            let _ = host
+                .call("host.guidance.clear", serde_json::json!({}))
+                .await;
         }
     }
 
@@ -452,5 +532,46 @@ fn read_or_find(call: &ToolCall, snap: AxSnapshot) -> ToolExecution {
                 },
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod preview_tests {
+    use wisp_common::geometry::Point;
+    use wisp_ipc::types::tools::{DragArgs, PointerArgs, TextArgs};
+
+    use super::*;
+
+    #[test]
+    fn previews_mark_where_actions_land() {
+        let click = ToolCall::Click(PointerArgs {
+            x: 300.0,
+            y: 200.0,
+            label: Some("Save".into()),
+        });
+        let s = preview_show(&click, "Click “Save”", 3000).expect("click previews");
+        assert_eq!(s.buddy_target, Some(Point { x: 300.0, y: 200.0 }));
+        assert!(
+            matches!(&s.annotations[..], [Annotation::Circle(c)] if c.label.as_deref() == Some("Click “Save”"))
+        );
+
+        let drag = ToolCall::Drag(DragArgs {
+            from: Point { x: 10.0, y: 10.0 },
+            to: Point { x: 90.0, y: 40.0 },
+        });
+        let s = preview_show(&drag, "Drag", 3000).expect("drag previews");
+        assert!(
+            matches!(&s.annotations[..], [Annotation::Circle(_), Annotation::Arrow(a)] if a.to == Point { x: 90.0, y: 40.0 })
+        );
+
+        // Typing has no on-screen target of its own.
+        assert!(
+            preview_show(
+                &ToolCall::TypeText(TextArgs { text: "hi".into() }),
+                "Type",
+                3000
+            )
+            .is_none()
+        );
     }
 }

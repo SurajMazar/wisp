@@ -596,8 +596,19 @@
         "focus": {
           "$ref": "#/definitions/FocusSettings",
           "default": {
+            "askContext": "window",
             "dimSurroundings": true,
             "drawStyle": "rectangle",
+            "excludedApps": [
+              "com.1password.1password",
+              "com.agilebits.onepassword7",
+              "com.bitwarden.desktop",
+              "com.lastpass.LastPass",
+              "com.dashlane.dashlanephonefinal",
+              "com.apple.keychainaccess",
+              "com.apple.Passwords",
+              "com.keepassxc.keepassxc"
+            ],
             "margin": 24,
             "pointSize": 480
           }
@@ -906,6 +917,26 @@
         "to"
       ],
       "type": "object"
+    },
+    "AskContext": {
+      "description": "What a spoken question includes when nothing was drawn.",
+      "oneOf": [
+        {
+          "const": "window",
+          "description": "The window under the pointer.",
+          "type": "string"
+        },
+        {
+          "const": "display",
+          "description": "The whole display under the pointer.",
+          "type": "string"
+        },
+        {
+          "const": "off",
+          "description": "Nothing: only what you draw.",
+          "type": "string"
+        }
+      ]
     },
     "AssistantState": {
       "description": "Everything the assistant can be doing, shown on the buddy and in the panel (spec §28, §92).",
@@ -2395,6 +2426,11 @@
     "FocusSettings": {
       "additionalProperties": false,
       "properties": {
+        "askContext": {
+          "$ref": "#/definitions/AskContext",
+          "default": "window",
+          "description": "What Wisp looks at when you ask out loud without drawing."
+        },
         "dimSurroundings": {
           "default": true,
           "description": "Dim everything outside the selection while drawing.",
@@ -2403,6 +2439,23 @@
         "drawStyle": {
           "$ref": "#/definitions/DrawStyle",
           "default": "rectangle"
+        },
+        "excludedApps": {
+          "default": [
+            "com.1password.1password",
+            "com.agilebits.onepassword7",
+            "com.bitwarden.desktop",
+            "com.lastpass.LastPass",
+            "com.dashlane.dashlanephonefinal",
+            "com.apple.keychainaccess",
+            "com.apple.Passwords",
+            "com.keepassxc.keepassxc"
+          ],
+          "description": "Apps never captured unless you draw on them (bundle identifiers).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "margin": {
           "default": 24,
@@ -2474,6 +2527,37 @@
         }
       ]
     },
+    "GuidanceMark": {
+      "description": "How the model asked for a target to be marked: `[[point: …]]`, `[[circle: …]]`, …",
+      "oneOf": [
+        {
+          "enum": [
+            "circle"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "point",
+          "description": "Outlined and tinted.",
+          "type": "string"
+        },
+        {
+          "const": "arrow",
+          "description": "An arrow pointing at it.",
+          "type": "string"
+        },
+        {
+          "const": "underline",
+          "description": "A line under it (for text).",
+          "type": "string"
+        },
+        {
+          "const": "spotlight",
+          "description": "Everything else dimmed.",
+          "type": "string"
+        }
+      ]
+    },
     "GuidanceShow": {
       "additionalProperties": false,
       "properties": {
@@ -2518,6 +2602,11 @@
         "label": {
           "description": "What the model called it (e.g. \"Save\").",
           "type": "string"
+        },
+        "mark": {
+          "$ref": "#/definitions/GuidanceMark",
+          "default": "point",
+          "description": "How to mark it on screen."
         },
         "rect": {
           "$ref": "#/definitions/Rect"

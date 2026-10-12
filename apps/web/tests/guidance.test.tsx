@@ -25,7 +25,9 @@ describe("Guidance", () => {
       content: "Click Save to keep your changes.",
       status: "complete",
       createdAtMs: 1,
-      guidance: [{ label: "Save", rect: { x: 1, y: 1, width: 10, height: 10 }, source: "element" }],
+      guidance: [
+        { label: "Save", rect: { x: 1, y: 1, width: 10, height: 10 }, source: "element", mark: "point" },
+      ],
     };
     render(
       <MemoryRouter>

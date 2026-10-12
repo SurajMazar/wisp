@@ -64,11 +64,13 @@ If you can't tell how to continue from what's on screen, reply starting with STU
 Never say you clicked or typed anything; the user does every step.";
 
 /// Added to the system prompt when the question is about the screen (spec §54).
-const POINTING_PROMPT: &str = "To show the user where something is on their screen, write [[point: label]] \
+const POINTING_PROMPT: &str = "To show the user where something is on their screen, write a marker \
 right after you mention it, using the control's label exactly as it appears in the screen context \
-(for example: Click Save [[point: Save]] to keep your changes.). If an image is attached you may instead give \
-its position as [[point: x,y]] with x and y from 0 to 1000 across the image. Point at most three things, \
-and only at things that are actually there.";
+(for example: Click Save [[point: Save]] to keep your changes.). Markers: [[point: label]] outlines it (the default), \
+[[circle: label]] circles it, [[arrow: label]] draws an arrow to it, [[underline: label]] underlines text, and \
+[[spotlight: label]] dims everything else. If an image is attached you may instead give its position as \
+[[point: x,y]] with x and y from 0 to 1000 across the image. Mark at most three things, and only things that \
+are actually there.";
 const MAX_TEXT: usize = 8000;
 
 #[derive(Default)]
@@ -564,7 +566,7 @@ impl Core {
         Ok(wisp_ipc::types::app::Empty {})
     }
 
-    /// Show newly completed `[[point: …]]` targets on screen as soon as they stream in.
+    /// Show newly completed `[[point: …]]` (circle, arrow, …) targets on screen as they stream in.
     fn guide(&self, msg: &mut Message, region: &FocusRegion, shown: &mut usize) {
         use wisp_screen::guide;
         let refs = guide::parse_targets(&msg.content);
@@ -574,7 +576,10 @@ impl Core {
         *shown = refs.len();
         let targets: Vec<_> = refs
             .iter()
-            .filter_map(|r| guide::resolve(r, region))
+            .filter_map(|m| {
+                guide::resolve(&m.target, region)
+                    .map(|t| wisp_ipc::types::guidance::GuidanceTarget { mark: m.mark, ..t })
+            })
             .collect();
         if targets.is_empty() || targets == msg.guidance {
             return;

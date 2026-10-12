@@ -1,4 +1,4 @@
-import type { DrawStyle, FocusSettings } from "@wisp/contracts";
+import type { AskContext, DrawStyle, FocusSettings } from "@wisp/contracts";
 import { Segmented, SettingsGroup, SettingsRow, Slider, Switch } from "@wisp/ui";
 import { useState } from "react";
 import { useSettingsStore } from "../../stores/settingsStore";
@@ -24,7 +24,7 @@ export function FocusSettingsGroup({ focus }: { focus: FocusSettings }) {
   return (
     <SettingsGroup
       title="Screen & focus"
-      description="Wisp captures only the area you select, only when you select it — never continuously. Captures stay on this Mac."
+      description="Wisp looks at your screen only while you hold the shortcut or select something — never continuously. Password managers are never captured unless you draw on them. Captures stay on this Mac."
     >
       <SettingsRow
         label="Screen access"
@@ -44,8 +44,24 @@ export function FocusSettingsGroup({ focus }: { focus: FocusSettings }) {
         }
       />
       <SettingsRow
+        label="When you ask out loud"
+        hint="What Wisp looks at if you don't draw anything. Drawing always wins."
+        control={
+          <Segmented<AskContext>
+            label="Screen context for spoken questions"
+            value={draft.askContext}
+            onValueChange={(askContext) => save({ askContext })}
+            options={[
+              { value: "window", label: "Window" },
+              { value: "display", label: "Whole screen" },
+              { value: "off", label: "Nothing" },
+            ]}
+          />
+        }
+      />
+      <SettingsRow
         label="Draw shape"
-        hint="What dragging draws while you hold the shortcut. A click always focuses a point."
+        hint="What dragging draws when you pick Area in the panel. Holding the shortcut always draws freehand."
         control={
           <Segmented<DrawStyle>
             label="Focus draw shape"

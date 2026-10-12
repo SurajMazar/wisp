@@ -109,7 +109,9 @@ describe("Computer control UI", () => {
       content: "Click Save.",
       status: "complete",
       createdAtMs: 1,
-      guidance: [{ label: "Save", rect: { x: 100, y: 200, width: 80, height: 20 }, source: "element" }],
+      guidance: [
+        { label: "Save", rect: { x: 100, y: 200, width: 80, height: 20 }, source: "element", mark: "point" },
+      ],
     };
     render(
       <MemoryRouter>
