@@ -57,7 +57,16 @@ The gaps that matter most, in order:
 
 Effort estimates are for one engineer working with the existing codebase. Each step ships on its own.
 
-### Step 1 — See the screen on every question (≈3 days) ★ do first
+### Step 1 — See the screen on every question, and point/draw on it (≈1 week) ★ do first
+
+Answers can already point: the model marks `[[point: Save]]`, the buddy flies there and a highlight box is drawn.
+But this only works when there's a screenshot, which today means only when the user drew something. This step makes
+it work on every answer, and extends it:
+
+- **Richer marks:** the model can ask for a circle, arrow, underline or spotlight, not just a highlight box. The
+  overlay can already render these.
+- **Agents show what they're doing:** before each click or type, the buddy flies to the target, outlines it and
+  pauses briefly. The approval card points at the same spot.
 
 - On every hold, capture the screen behind the pointer when the user didn't draw:
   - Capture the window under the pointer by default, or the whole display (a setting).
