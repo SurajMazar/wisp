@@ -10,6 +10,7 @@ export {
   CalendarClock as RoutinesIcon,
   Brain as MemoryIcon,
   Lightbulb as ThinkIcon,
+  Plug as ConnectionsIcon,
   FolderOpen as FilesIcon,
   Cpu as ModelsIcon,
   AudioLines as VoiceIcon,

@@ -580,6 +580,12 @@
             "enabled": false
           }
         },
+        "connections": {
+          "$ref": "#/definitions/ConnectionsSettings",
+          "default": {
+            "servers": []
+          }
+        },
         "cursor": {
           "$ref": "#/definitions/CursorSettings",
           "default": {
@@ -1478,6 +1484,19 @@
           "type": "string"
         }
       ]
+    },
+    "ConnectionsSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "servers": {
+          "default": [],
+          "items": {
+            "$ref": "#/definitions/McpServerConfig"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
     },
     "ContextInfo": {
       "additionalProperties": false,
@@ -3208,6 +3227,324 @@
         "cloud"
       ],
       "type": "string"
+    },
+    "McpCallArgs": {
+      "additionalProperties": false,
+      "description": "Call a tool on a connected MCP server.",
+      "properties": {
+        "arguments": {
+          "default": null
+        },
+        "server": {
+          "description": "Connection id.",
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "server",
+        "tool"
+      ],
+      "type": "object"
+    },
+    "McpEnvVar": {
+      "additionalProperties": false,
+      "description": "An environment variable for a local server. Secrets live in the Keychain, never in settings.",
+      "properties": {
+        "keychainAccount": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "McpHttpConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "keychainAccount": {
+          "description": "Keychain account holding a bearer token, if the server needs one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "https (or a local http address).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
+    "McpRule": {
+      "oneOf": [
+        {
+          "const": "ask",
+          "description": "Ask every time (the default).",
+          "type": "string"
+        },
+        {
+          "const": "allow",
+          "description": "Run without asking.",
+          "type": "string"
+        },
+        {
+          "const": "block",
+          "description": "Never run.",
+          "type": "string"
+        }
+      ]
+    },
+    "McpServerConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "description": "Short identifier (letters, digits, dashes), used in tool names (\"notion/search\").",
+          "type": "string"
+        },
+        "localOnly": {
+          "default": false,
+          "description": "The user confirmed this server works only on this Mac (sends nothing elsewhere). Only such\nservers can be used in Local Only.",
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tools": {
+          "default": [],
+          "description": "Per-tool rules; tools without one ask every time.",
+          "items": {
+            "$ref": "#/definitions/McpToolRule"
+          },
+          "type": "array"
+        },
+        "transport": {
+          "$ref": "#/definitions/McpTransport"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "transport"
+      ],
+      "type": "object"
+    },
+    "McpServerId": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "McpServerStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "serverName": {
+          "description": "What the server calls itself.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "$ref": "#/definitions/McpState"
+        },
+        "tools": {
+          "items": {
+            "$ref": "#/definitions/McpToolInfo"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "state",
+        "tools"
+      ],
+      "type": "object"
+    },
+    "McpState": {
+      "oneOf": [
+        {
+          "enum": [
+            "off",
+            "connecting",
+            "ready",
+            "error"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "blockedByPrivacy",
+          "description": "Can't be used while privacy is Local Only.",
+          "type": "string"
+        }
+      ]
+    },
+    "McpStatusList": {
+      "additionalProperties": false,
+      "properties": {
+        "servers": {
+          "items": {
+            "$ref": "#/definitions/McpServerStatus"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "servers"
+      ],
+      "type": "object"
+    },
+    "McpStdioConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "command": {
+          "description": "The program, e.g. \"npx\".",
+          "type": "string"
+        },
+        "env": {
+          "default": [],
+          "items": {
+            "$ref": "#/definitions/McpEnvVar"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "type": "object"
+    },
+    "McpToolInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "destructive": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "readOnly": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "readOnly",
+        "destructive"
+      ],
+      "type": "object"
+    },
+    "McpToolRule": {
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "$ref": "#/definitions/McpRule"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "rule"
+      ],
+      "type": "object"
+    },
+    "McpTransport": {
+      "description": "How to reach a server.",
+      "oneOf": [
+        {
+          "description": "A program on this Mac, started by Wisp.",
+          "properties": {
+            "config": {
+              "$ref": "#/definitions/McpStdioConfig"
+            },
+            "kind": {
+              "const": "stdio",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "config"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A server on the web (Streamable HTTP).",
+          "properties": {
+            "config": {
+              "$ref": "#/definitions/McpHttpConfig"
+            },
+            "kind": {
+              "const": "http",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "config"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "MemoryCategory": {
       "enum": [
@@ -5261,6 +5598,22 @@
             "value"
           ],
           "type": "object"
+        },
+        {
+          "properties": {
+            "section": {
+              "const": "connections",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/ConnectionsSettings"
+            }
+          },
+          "required": [
+            "section",
+            "value"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -6436,6 +6789,23 @@
             "args"
           ],
           "type": "object"
+        },
+        {
+          "description": "A tool from a connected service (MCP).",
+          "properties": {
+            "args": {
+              "$ref": "#/definitions/McpCallArgs"
+            },
+            "tool": {
+              "const": "mcp",
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool",
+            "args"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -6979,6 +7349,12 @@
       "name": "settings.changed",
       "payload": {
         "$ref": "#/definitions/AppSettings"
+      }
+    },
+    {
+      "name": "mcp.statusChanged",
+      "payload": {
+        "$ref": "#/definitions/McpServerStatus"
       }
     },
     {
@@ -7722,6 +8098,26 @@
       },
       "result": {
         "$ref": "#/definitions/MemoryList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "mcp.status",
+      "params": {
+        "$ref": "#/definitions/Empty"
+      },
+      "result": {
+        "$ref": "#/definitions/McpStatusList"
+      },
+      "target": "core"
+    },
+    {
+      "name": "mcp.reconnect",
+      "params": {
+        "$ref": "#/definitions/McpServerId"
+      },
+      "result": {
+        "$ref": "#/definitions/McpServerStatus"
       },
       "target": "core"
     },

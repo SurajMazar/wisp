@@ -4,6 +4,7 @@ pub mod agents;
 pub mod ai;
 pub mod background;
 pub mod config;
+pub mod connections;
 pub mod context;
 pub mod conversations;
 pub mod dispatch;

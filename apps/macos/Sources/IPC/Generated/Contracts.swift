@@ -439,6 +439,117 @@ public struct ComputerSettings: Codable, Sendable, Equatable {
     }
 }
 
+public enum McpRule: String, Codable, Sendable, Equatable, CaseIterable {
+    case ask = "ask"
+    case allow = "allow"
+    case block = "block"
+}
+
+public struct McpToolRule: Codable, Sendable, Equatable {
+    public var rule: McpRule
+    public var tool: String
+
+    public init(rule: McpRule, tool: String) {
+        self.rule = rule
+        self.tool = tool
+    }
+}
+
+/// An environment variable for a local server. Secrets live in the Keychain, never in settings.
+public struct McpEnvVar: Codable, Sendable, Equatable {
+    public var keychainAccount: String?
+    public var name: String
+    public var value: String?
+
+    public init(keychainAccount: String? = nil, name: String, value: String? = nil) {
+        self.keychainAccount = keychainAccount
+        self.name = name
+        self.value = value
+    }
+}
+
+public struct McpStdioConfig: Codable, Sendable, Equatable {
+    public var args: [String]
+    public var command: String
+    public var env: [McpEnvVar]
+
+    public init(args: [String], command: String, env: [McpEnvVar]) {
+        self.args = args
+        self.command = command
+        self.env = env
+    }
+}
+
+public struct McpHttpConfig: Codable, Sendable, Equatable {
+    public var keychainAccount: String?
+    public var url: String
+
+    public init(keychainAccount: String? = nil, url: String) {
+        self.keychainAccount = keychainAccount
+        self.url = url
+    }
+}
+
+/// How to reach a server.
+public enum McpTransport: Codable, Sendable, Equatable {
+    case stdio(McpStdioConfig)
+    case http(McpHttpConfig)
+
+    private enum CodingKeys: String, CodingKey {
+        case tag = "kind"
+        case content = "config"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let tag = try c.decode(String.self, forKey: .tag)
+        switch tag {
+        case "stdio": self = .stdio(try c.decode(McpStdioConfig.self, forKey: .content))
+        case "http": self = .http(try c.decode(McpHttpConfig.self, forKey: .content))
+        default:
+            throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown McpTransport variant \(tag)")
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .stdio(let v):
+            try c.encode("stdio", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .http(let v):
+            try c.encode("http", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        }
+    }
+}
+
+public struct McpServerConfig: Codable, Sendable, Equatable {
+    public var enabled: Bool
+    public var id: String
+    public var localOnly: Bool
+    public var name: String
+    public var tools: [McpToolRule]
+    public var transport: McpTransport
+
+    public init(enabled: Bool, id: String, localOnly: Bool, name: String, tools: [McpToolRule], transport: McpTransport) {
+        self.enabled = enabled
+        self.id = id
+        self.localOnly = localOnly
+        self.name = name
+        self.tools = tools
+        self.transport = transport
+    }
+}
+
+public struct ConnectionsSettings: Codable, Sendable, Equatable {
+    public var servers: [McpServerConfig]
+
+    public init(servers: [McpServerConfig]) {
+        self.servers = servers
+    }
+}
+
 /// How the buddy's glow is colored.
 public enum GlowMode: String, Codable, Sendable, Equatable, CaseIterable {
     case accent = "accent"
@@ -719,6 +830,7 @@ public struct VoiceSettings: Codable, Sendable, Equatable {
 public struct AppSettings: Codable, Sendable, Equatable {
     public var appearance: AppearanceSettings
     public var computer: ComputerSettings
+    public var connections: ConnectionsSettings
     public var cursor: CursorSettings
     public var focus: FocusSettings
     public var general: GeneralSettings
@@ -729,9 +841,10 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var privacy: PrivacySettings
     public var voice: VoiceSettings
 
-    public init(appearance: AppearanceSettings, computer: ComputerSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, memory: MemorySettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings, voice: VoiceSettings) {
+    public init(appearance: AppearanceSettings, computer: ComputerSettings, connections: ConnectionsSettings, cursor: CursorSettings, focus: FocusSettings, general: GeneralSettings, invocation: InvocationSettings, memory: MemorySettings, models: ModelSettings, onboarding: OnboardingSettings, privacy: PrivacySettings, voice: VoiceSettings) {
         self.appearance = appearance
         self.computer = computer
+        self.connections = connections
         self.cursor = cursor
         self.focus = focus
         self.general = general
@@ -1040,6 +1153,19 @@ public struct MoveArgs: Codable, Sendable, Equatable {
     }
 }
 
+/// Call a tool on a connected MCP server.
+public struct McpCallArgs: Codable, Sendable, Equatable {
+    public var arguments: JSONValue
+    public var server: String
+    public var tool: String
+
+    public init(arguments: JSONValue, server: String, tool: String) {
+        self.arguments = arguments
+        self.server = server
+        self.tool = tool
+    }
+}
+
 /// Every action Wisp can take on the computer.
 public enum ToolCall: Codable, Sendable, Equatable {
     case readScreen(Empty)
@@ -1071,6 +1197,7 @@ public enum ToolCall: Codable, Sendable, Equatable {
     case moveFile(MoveArgs)
     case trashFile(PathArgs)
     case fetchPage(UrlArgs)
+    case mcp(McpCallArgs)
 
     private enum CodingKeys: String, CodingKey {
         case tag = "tool"
@@ -1110,6 +1237,7 @@ public enum ToolCall: Codable, Sendable, Equatable {
         case "moveFile": self = .moveFile(try c.decode(MoveArgs.self, forKey: .content))
         case "trashFile": self = .trashFile(try c.decode(PathArgs.self, forKey: .content))
         case "fetchPage": self = .fetchPage(try c.decode(UrlArgs.self, forKey: .content))
+        case "mcp": self = .mcp(try c.decode(McpCallArgs.self, forKey: .content))
         default:
             throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown ToolCall variant \(tag)")
         }
@@ -1204,6 +1332,9 @@ public enum ToolCall: Codable, Sendable, Equatable {
             try c.encode(v, forKey: .content)
         case .fetchPage(let v):
             try c.encode("fetchPage", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .mcp(let v):
+            try c.encode("mcp", forKey: .tag)
             try c.encode(v, forKey: .content)
         }
     }
@@ -2168,6 +2299,62 @@ public struct LessonControl: Codable, Sendable, Equatable {
     }
 }
 
+public struct McpServerId: Codable, Sendable, Equatable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
+public enum McpState: String, Codable, Sendable, Equatable, CaseIterable {
+    case off = "off"
+    case connecting = "connecting"
+    case ready = "ready"
+    case error = "error"
+    case blockedByPrivacy = "blockedByPrivacy"
+}
+
+public struct McpToolInfo: Codable, Sendable, Equatable {
+    public var description: String?
+    public var destructive: Bool
+    public var name: String
+    public var readOnly: Bool
+    public var title: String?
+
+    public init(description: String? = nil, destructive: Bool, name: String, readOnly: Bool, title: String? = nil) {
+        self.description = description
+        self.destructive = destructive
+        self.name = name
+        self.readOnly = readOnly
+        self.title = title
+    }
+}
+
+public struct McpServerStatus: Codable, Sendable, Equatable {
+    public var error: String?
+    public var id: String
+    public var serverName: String?
+    public var state: McpState
+    public var tools: [McpToolInfo]
+
+    public init(error: String? = nil, id: String, serverName: String? = nil, state: McpState, tools: [McpToolInfo]) {
+        self.error = error
+        self.id = id
+        self.serverName = serverName
+        self.state = state
+        self.tools = tools
+    }
+}
+
+public struct McpStatusList: Codable, Sendable, Equatable {
+    public var servers: [McpServerStatus]
+
+    public init(servers: [McpServerStatus]) {
+        self.servers = servers
+    }
+}
+
 public enum MemoryCategory: String, Codable, Sendable, Equatable, CaseIterable {
     case userProfile = "userProfile"
     case preference = "preference"
@@ -2734,6 +2921,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
     case voice(VoiceSettings)
     case computer(ComputerSettings)
     case memory(MemorySettings)
+    case connections(ConnectionsSettings)
 
     private enum CodingKeys: String, CodingKey {
         case tag = "section"
@@ -2755,6 +2943,7 @@ public enum SettingsSection: Codable, Sendable, Equatable {
         case "voice": self = .voice(try c.decode(VoiceSettings.self, forKey: .content))
         case "computer": self = .computer(try c.decode(ComputerSettings.self, forKey: .content))
         case "memory": self = .memory(try c.decode(MemorySettings.self, forKey: .content))
+        case "connections": self = .connections(try c.decode(ConnectionsSettings.self, forKey: .content))
         default:
             throw DecodingError.dataCorruptedError(forKey: .tag, in: c, debugDescription: "unknown SettingsSection variant \(tag)")
         }
@@ -2795,6 +2984,9 @@ public enum SettingsSection: Codable, Sendable, Equatable {
             try c.encode(v, forKey: .content)
         case .memory(let v):
             try c.encode("memory", forKey: .tag)
+            try c.encode(v, forKey: .content)
+        case .connections(let v):
+            try c.encode("connections", forKey: .tag)
             try c.encode(v, forKey: .content)
         }
     }
@@ -3384,6 +3576,8 @@ public enum IPCMethods {
     public static let fileSearch = IPCMethod<FileSearchParams, FileSearchResults>(name: "file.search", target: .core)
     public static let fileOpen = IPCMethod<IdParams, Empty>(name: "file.open", target: .core)
     public static let memoryList = IPCMethod<MemoryListParams, MemoryList>(name: "memory.list", target: .core)
+    public static let mcpStatus = IPCMethod<Empty, McpStatusList>(name: "mcp.status", target: .core)
+    public static let mcpReconnect = IPCMethod<McpServerId, McpServerStatus>(name: "mcp.reconnect", target: .core)
     public static let memorySave = IPCMethod<MemorySaveParams, MemoryItem>(name: "memory.save", target: .core)
     public static let memoryDelete = IPCMethod<IdParams, Empty>(name: "memory.delete", target: .core)
     public static let memoryClear = IPCMethod<Empty, MemoryCleared>(name: "memory.clear", target: .core)
@@ -3498,6 +3692,8 @@ public enum IPCMethods {
         "file.search": .core,
         "file.open": .core,
         "memory.list": .core,
+        "mcp.status": .core,
+        "mcp.reconnect": .core,
         "memory.save": .core,
         "memory.delete": .core,
         "memory.clear": .core,
@@ -3557,6 +3753,7 @@ public enum IPCMethods {
 public enum IPCEvents {
     public static let coreReady = IPCEvent<AppInfo>(name: "core.ready")
     public static let settingsChanged = IPCEvent<AppSettings>(name: "settings.changed")
+    public static let mcpStatusChanged = IPCEvent<McpServerStatus>(name: "mcp.statusChanged")
     public static let invocationStarted = IPCEvent<InvocationStarted>(name: "invocation.started")
     public static let invocationEnded = IPCEvent<InvocationEnded>(name: "invocation.ended")
     public static let invocationStatusChanged = IPCEvent<InvocationStatus>(name: "invocation.statusChanged")

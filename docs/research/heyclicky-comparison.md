@@ -124,7 +124,7 @@ it work on every answer, and extends it:
 - Acceptance: "agent, remind me tomorrow at 9 to call Sam" creates the reminder without touching the screen, then
   says it's done.
 
-### Step 4 — Integrations through MCP (≈2 weeks)
+### Step 4 — Integrations through MCP (≈2 weeks) ✅ done 2026-10-12 (see D-044; OAuth sign-in for remote servers still to do — tokens and local servers work)
 
 - Add an MCP client to the core:
   - Local stdio servers.

@@ -20,9 +20,9 @@ use wisp_ipc::types::{
     app::Empty,
     focus::FocusRegion,
     tools::{
-        AppArgs, DayArgs, EventArgs, HotkeyArgs, KeyArgs, KeyModifier, MoveArgs, MusicArgs,
-        MusicCommand, NoteArgs, PathArgs, PointerArgs, ReminderArgs, ScrollArgs, TextArgs,
-        ToolCall, UrlArgs,
+        AppArgs, DayArgs, EventArgs, HotkeyArgs, KeyArgs, KeyModifier, McpCallArgs, MoveArgs,
+        MusicArgs, MusicCommand, NoteArgs, PathArgs, PointerArgs, ReminderArgs, ScrollArgs,
+        TextArgs, ToolCall, UrlArgs,
     },
 };
 use wisp_screen::guide::{self, TargetRef};
@@ -109,9 +109,14 @@ remember "fact"                      save something useful for next time (not se
 
 /// "Monday, 2026-10-12 18:40" in local time, for prompts that need to know when "tomorrow" is.
 pub fn now_for_prompt() -> String {
-    chrono::Local::now()
-        .format("%A, %Y-%m-%d %H:%M")
-        .to_string()
+    let now = chrono::Local::now();
+    let today = now.date_naive();
+    format!(
+        "{} (today is {}, tomorrow is {}; you can also write today or tomorrow)",
+        now.format("%A, %Y-%m-%d %H:%M"),
+        today.format("%Y-%m-%d"),
+        (today + chrono::Days::new(1)).format("%Y-%m-%d")
+    )
 }
 
 /// Every "quoted" string in order, and the words outside quotes.
@@ -383,6 +388,42 @@ pub fn parse_action(line: &str) -> Result<Action, String> {
         "trash" => Action::Background(ToolCall::TrashFile(PathArgs {
             path: unquote(rest).ok_or_else(|| need("a path in quotes"))?,
         })),
+        "use" => {
+            // use "service/tool" {"argument": "value"}
+            let r = rest.trim_start();
+            let close = |open: char| match open {
+                '“' => '”',
+                c => c,
+            };
+            let open = r
+                .chars()
+                .next()
+                .filter(|c| matches!(c, '"' | '“'))
+                .ok_or_else(|| need(r#""service/tool" and its arguments"#))?;
+            let body = &r[open.len_utf8()..];
+            let end = body
+                .find(close(open))
+                .ok_or_else(|| need("a closing quote"))?;
+            let name = &body[..end];
+            let args = body[end + close(open).len_utf8()..].trim();
+            let (server, tool) = name
+                .split_once('/')
+                .filter(|(s, t)| !s.is_empty() && !t.is_empty())
+                .ok_or_else(|| need(r#"a name like "notion/search""#))?;
+            let arguments = if args.is_empty() {
+                serde_json::json!({})
+            } else {
+                serde_json::from_str::<serde_json::Value>(args)
+                    .ok()
+                    .filter(serde_json::Value::is_object)
+                    .ok_or_else(|| need(r#"arguments as a JSON object, like {"query": "plans"}"#))?
+            };
+            Action::Background(ToolCall::Mcp(McpCallArgs {
+                server: server.trim().to_owned(),
+                tool: tool.trim().to_owned(),
+                arguments,
+            }))
+        }
         "read_page" | "fetch" | "read" => Action::Background(ToolCall::FetchPage(UrlArgs {
             url: unquote(rest).ok_or_else(|| need("an address"))?,
         })),
@@ -772,5 +813,30 @@ mod tests {
             to_tool_call(&a, None),
             Ok(Some(ToolCall::FetchPage(_)))
         ));
+    }
+
+    #[test]
+    fn parses_connected_service_calls() {
+        assert_eq!(
+            parse_action(r#"use "notion/create-page" {"title": "Plan", "tags": ["a", "b"]}"#)
+                .expect("use"),
+            Action::Background(ToolCall::Mcp(McpCallArgs {
+                server: "notion".into(),
+                tool: "create-page".into(),
+                arguments: serde_json::json!({"title": "Plan", "tags": ["a", "b"]}),
+            }))
+        );
+        assert!(matches!(
+            parse_action(r#"use "github/list_issues""#),
+            Ok(Action::Background(ToolCall::Mcp(m))) if m.arguments == serde_json::json!({})
+        ));
+        assert!(
+            parse_action(r#"use "nosuch" {}"#).is_err(),
+            "needs service/tool"
+        );
+        assert!(
+            parse_action(r#"use "a/b" [1, 2]"#).is_err(),
+            "arguments must be an object"
+        );
     }
 }

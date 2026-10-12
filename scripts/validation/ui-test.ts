@@ -4,9 +4,9 @@
  *
  *   pnpm ui:test [--shots <dir>]
  */
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { completeOnboarding, sleep, startApp } from "./harness";
+import { completeOnboarding, root, sleep, startApp } from "./harness";
 
 const PORT = 4182;
 const shotsArg = process.argv.indexOf("--shots");
@@ -164,6 +164,48 @@ async function main() {
     );
     await page.getByRole("heading", { name: "Voice engine" }).scrollIntoViewIfNeeded();
     await shot("4-voice-engine");
+
+    console.log("Connections (a real MCP server, Local Only on)");
+    const node = ["/opt/homebrew/bin/node", "/usr/local/bin/node"].find((p) => existsSync(p));
+    if (node) {
+      await page.goto(`http://127.0.0.1:${PORT}/#/connections`);
+      await page.getByRole("button", { name: "Add Connection…" }).click();
+      await page.getByLabel("Name").fill("Test notes");
+      await page.getByLabel("Command").fill(node);
+      await page.getByLabel("Arguments").fill(join(root, "crates/mcp/tests/fixtures/test-server.mjs"));
+      await page.getByLabel("Runs entirely on this Mac (sends nothing elsewhere)").check();
+      await page.getByRole("button", { name: "Add", exact: true }).click();
+      await page.getByText("Connected", { exact: true }).waitFor({ timeout: 20_000 });
+      check(true, "the server connects (allowed in Local Only because it runs on this Mac)");
+      check(await page.getByText("Echo", { exact: true }).isVisible(), "its tools are listed");
+      check(await page.getByText("reads only").isVisible(), "read-only tools are marked");
+      check(await page.getByText("can delete").isVisible(), "destructive tools are marked");
+      await page
+        .getByRole("radiogroup", { name: "Rule for wipe" })
+        .getByRole("radio", { name: "Block" })
+        .click();
+      await until(
+        async () =>
+          JSON.stringify((await app.call<{ connections: unknown }>("settings.get")).connections).includes(
+            '"rule":"block"',
+          ),
+        "rule saved",
+      );
+      check(true, "blocking a tool saves the rule");
+      const blockRadio = page
+        .getByRole("radiogroup", { name: "Rule for wipe" })
+        .getByRole("radio", { name: "Block" });
+      await sleep(300);
+      check((await blockRadio.getAttribute("aria-checked")) === "true", "the page shows the tool as blocked");
+      const status = await app.call<{ servers: { state: string; tools: unknown[] }[] }>("mcp.status");
+      check(
+        status.servers[0]?.state === "ready" && status.servers[0].tools.length === 4,
+        "the engine sees 4 tools",
+      );
+      await shot("5-connections");
+    } else {
+      console.log("  (skipped: node not installed)");
+    }
 
     console.log(`\n✓ UI test passed (${passed} checks)`);
   } finally {

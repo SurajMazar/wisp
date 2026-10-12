@@ -24,6 +24,7 @@ pub struct AppSettings {
     pub voice: VoiceSettings,
     pub computer: ComputerSettings,
     pub memory: super::memory::MemorySettings,
+    pub connections: super::connections::ConnectionsSettings,
 }
 
 /// Computer control (spec §55–58). Off until the user turns it on.
@@ -129,6 +130,7 @@ pub enum SettingsSection {
     Voice(VoiceSettings),
     Computer(ComputerSettings),
     Memory(super::memory::MemorySettings),
+    Connections(super::connections::ConnectionsSettings),
 }
 
 impl SettingsSection {
@@ -146,6 +148,7 @@ impl SettingsSection {
             Self::Voice(_) => "voice",
             Self::Computer(_) => "computer",
             Self::Memory(_) => "memory",
+            Self::Connections(_) => "connections",
         }
     }
 
@@ -157,6 +160,7 @@ impl SettingsSection {
             Self::Focus(f) => f.validate(),
             Self::Models(m) => m.validate(),
             Self::Voice(v) => v.validate(),
+            Self::Connections(c) => c.validate(),
             Self::Appearance(AppearanceSettings {
                 custom_color: Some(c),
                 ..

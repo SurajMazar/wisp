@@ -1,4 +1,5 @@
 import {
+  ConnectionsIcon,
   ActivityIcon,
   AgentsIcon,
   ConversationsIcon,
@@ -59,6 +60,11 @@ export const sections: Section[] = [
     path: "/models",
     label: "Models",
     icon: ModelsIcon,
+  },
+  {
+    path: "/connections",
+    label: "Connections",
+    icon: ConnectionsIcon,
   },
   {
     path: "/voice",

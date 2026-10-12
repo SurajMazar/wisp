@@ -380,3 +380,22 @@ can't be "always" allowed. These tools don't need "control this Mac" (no mouse o
 Small local models over-acted with a planning step and rule lists ("pause the music" added reminders); a single
 goal-as-plan and worked examples per request type fixed it. Measured with `scripts/validation/agent-check.ts`
 (stand-in host): both qwen3-vl 8B and 4B did exactly the asked action for six requests in 4–10 s.
+
+## D-044 — Connected services through MCP (local stdio and remote Streamable HTTP)
+**Status** accepted (2026-10-12)
+A new `wisp-mcp` crate speaks MCP 2025-06-18: stdio (newline-delimited JSON-RPC to a program the user configured,
+with a Homebrew-aware PATH, stderr kept out of the protocol, server pings answered) and Streamable HTTP (session id,
+JSON or SSE replies, bearer token). Every request is time-limited (60 s) and every reply size-limited; tool lists
+are paged (≤200 tools); results are capped at 8,000 characters and fenced as data.
+Settings → Connections configures servers (`settings.connections`): command/args/env or URL; secret env values and
+tokens go to the Keychain, read by the engine only when connecting. The engine keeps one session per enabled server
+in step with settings, reports state and tools (`mcp.status`, `mcp.statusChanged`), and in Local Only uses only
+servers the user marked "runs entirely on this Mac" (stdio or loopback HTTP) — Wisp can't verify what a program
+sends, so it's the user's assertion, shown in the UI.
+Agents get the tools (minus blocked ones) with compact argument hints and call them as
+`use "service/tool" {json}` → `ToolCall::Mcp`, through the same policy, approval and audit as every tool: risk from
+the server's hints (read-only → Low, destructive → High = ask every time), per-tool Ask / Allow / Block rules,
+"always" only via an Allow rule, argument values never written to the audit log. OAuth sign-in for remote servers
+isn't implemented yet: servers that need it are reached with a token or a local program instead.
+Small local models mixed up "notes service" with the built-in Notes until the prompt said to prefer a service the
+user names; with that, both 8B and 4B called the right tool (scripts/validation/agent-check.ts --mcp).

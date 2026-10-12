@@ -211,6 +211,55 @@ export const ComputerSettings = z.strictObject({
 });
 export type ComputerSettings = z.output<typeof ComputerSettings>;
 
+export const McpRule = z.enum(["ask","allow","block"]);
+export type McpRule = z.output<typeof McpRule>;
+
+export const McpToolRule = z.strictObject({
+  "rule": McpRule,
+  "tool": z.string(),
+});
+export type McpToolRule = z.output<typeof McpToolRule>;
+
+/** An environment variable for a local server. Secrets live in the Keychain, never in settings. */
+export const McpEnvVar = z.strictObject({
+  "keychainAccount": z.string().nullable().optional(),
+  "name": z.string(),
+  "value": z.string().nullable().optional(),
+});
+export type McpEnvVar = z.output<typeof McpEnvVar>;
+
+export const McpStdioConfig = z.strictObject({
+  "args": z.array(z.string()).default([]),
+  "command": z.string(),
+  "env": z.array(McpEnvVar).default([]),
+});
+export type McpStdioConfig = z.output<typeof McpStdioConfig>;
+
+export const McpHttpConfig = z.strictObject({
+  "keychainAccount": z.string().nullable().optional(),
+  "url": z.string(),
+});
+export type McpHttpConfig = z.output<typeof McpHttpConfig>;
+
+/** How to reach a server. */
+export const McpTransport = z.discriminatedUnion("kind", [z.strictObject({ "kind": z.literal("stdio"), "config": McpStdioConfig }), z.strictObject({ "kind": z.literal("http"), "config": McpHttpConfig })]);
+export type McpTransport = z.output<typeof McpTransport>;
+
+export const McpServerConfig = z.strictObject({
+  "enabled": z.boolean(),
+  "id": z.string(),
+  "localOnly": z.boolean().default(false),
+  "name": z.string(),
+  "tools": z.array(McpToolRule).default([]),
+  "transport": McpTransport,
+});
+export type McpServerConfig = z.output<typeof McpServerConfig>;
+
+export const ConnectionsSettings = z.strictObject({
+  "servers": z.array(McpServerConfig).default([]),
+});
+export type ConnectionsSettings = z.output<typeof ConnectionsSettings>;
+
 /** How the buddy's glow is colored. */
 export const GlowMode = z.enum(["accent","gradient"]);
 export type GlowMode = z.output<typeof GlowMode>;
@@ -371,6 +420,7 @@ export type VoiceSettings = z.output<typeof VoiceSettings>;
 export const AppSettings = z.strictObject({
   "appearance": AppearanceSettings.default(() => AppearanceSettings.parse({"accent":"default","theme":"system"})),
   "computer": ComputerSettings.default(() => ComputerSettings.parse({"confirmEveryAction":false,"enabled":false})),
+  "connections": ConnectionsSettings.default(() => ConnectionsSettings.parse({"servers":[]})),
   "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"glowFrom":"#8B7CF6","glowMode":"gradient","glowTo":"#5EC8F2","label":"Wisp","opacity":0.95,"shape":"wisp","showLabel":false,"size":1,"theme":"default","visibility":"always"})),
   "focus": FocusSettings.default(() => FocusSettings.parse({"askContext":"window","dimSurroundings":true,"drawStyle":"rectangle","excludedApps":["com.1password.1password","com.agilebits.onepassword7","com.bitwarden.desktop","com.lastpass.LastPass","com.dashlane.dashlanephonefinal","com.apple.keychainaccess","com.apple.Passwords","com.keepassxc.keepassxc"],"margin":24,"pointSize":480,"screenshots":"auto"})),
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
@@ -557,8 +607,16 @@ export const MoveArgs = z.strictObject({
 });
 export type MoveArgs = z.output<typeof MoveArgs>;
 
+/** Call a tool on a connected MCP server. */
+export const McpCallArgs = z.strictObject({
+  "arguments": z.unknown().default(null),
+  "server": z.string(),
+  "tool": z.string(),
+});
+export type McpCallArgs = z.output<typeof McpCallArgs>;
+
 /** Every action Wisp can take on the computer. */
-export const ToolCall = z.discriminatedUnion("tool", [z.strictObject({ "tool": z.literal("readScreen"), "args": Empty }), z.strictObject({ "tool": z.literal("findElement"), "args": FindArgs }), z.strictObject({ "tool": z.literal("click"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("doubleClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("rightClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("moveMouse"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("drag"), "args": DragArgs }), z.strictObject({ "tool": z.literal("scroll"), "args": ScrollArgs }), z.strictObject({ "tool": z.literal("typeText"), "args": TextArgs }), z.strictObject({ "tool": z.literal("keypress"), "args": KeyArgs }), z.strictObject({ "tool": z.literal("hotkey"), "args": HotkeyArgs }), z.strictObject({ "tool": z.literal("copy"), "args": Empty }), z.strictObject({ "tool": z.literal("paste"), "args": Empty }), z.strictObject({ "tool": z.literal("openApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("switchApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("closeApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("openUrl"), "args": UrlArgs }), z.strictObject({ "tool": z.literal("readClipboard"), "args": Empty }), z.strictObject({ "tool": z.literal("writeClipboard"), "args": TextArgs }), z.strictObject({ "tool": z.literal("createReminder"), "args": ReminderArgs }), z.strictObject({ "tool": z.literal("listReminders"), "args": Empty }), z.strictObject({ "tool": z.literal("createEvent"), "args": EventArgs }), z.strictObject({ "tool": z.literal("listEvents"), "args": DayArgs }), z.strictObject({ "tool": z.literal("createNote"), "args": NoteArgs }), z.strictObject({ "tool": z.literal("music"), "args": MusicArgs }), z.strictObject({ "tool": z.literal("listFiles"), "args": PathArgs }), z.strictObject({ "tool": z.literal("moveFile"), "args": MoveArgs }), z.strictObject({ "tool": z.literal("trashFile"), "args": PathArgs }), z.strictObject({ "tool": z.literal("fetchPage"), "args": UrlArgs })]);
+export const ToolCall = z.discriminatedUnion("tool", [z.strictObject({ "tool": z.literal("readScreen"), "args": Empty }), z.strictObject({ "tool": z.literal("findElement"), "args": FindArgs }), z.strictObject({ "tool": z.literal("click"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("doubleClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("rightClick"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("moveMouse"), "args": PointerArgs }), z.strictObject({ "tool": z.literal("drag"), "args": DragArgs }), z.strictObject({ "tool": z.literal("scroll"), "args": ScrollArgs }), z.strictObject({ "tool": z.literal("typeText"), "args": TextArgs }), z.strictObject({ "tool": z.literal("keypress"), "args": KeyArgs }), z.strictObject({ "tool": z.literal("hotkey"), "args": HotkeyArgs }), z.strictObject({ "tool": z.literal("copy"), "args": Empty }), z.strictObject({ "tool": z.literal("paste"), "args": Empty }), z.strictObject({ "tool": z.literal("openApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("switchApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("closeApplication"), "args": AppArgs }), z.strictObject({ "tool": z.literal("openUrl"), "args": UrlArgs }), z.strictObject({ "tool": z.literal("readClipboard"), "args": Empty }), z.strictObject({ "tool": z.literal("writeClipboard"), "args": TextArgs }), z.strictObject({ "tool": z.literal("createReminder"), "args": ReminderArgs }), z.strictObject({ "tool": z.literal("listReminders"), "args": Empty }), z.strictObject({ "tool": z.literal("createEvent"), "args": EventArgs }), z.strictObject({ "tool": z.literal("listEvents"), "args": DayArgs }), z.strictObject({ "tool": z.literal("createNote"), "args": NoteArgs }), z.strictObject({ "tool": z.literal("music"), "args": MusicArgs }), z.strictObject({ "tool": z.literal("listFiles"), "args": PathArgs }), z.strictObject({ "tool": z.literal("moveFile"), "args": MoveArgs }), z.strictObject({ "tool": z.literal("trashFile"), "args": PathArgs }), z.strictObject({ "tool": z.literal("fetchPage"), "args": UrlArgs }), z.strictObject({ "tool": z.literal("mcp"), "args": McpCallArgs })]);
 export type ToolCall = z.output<typeof ToolCall>;
 
 /** A background action for the host to perform through an app (Reminders, Calendar, Notes,
@@ -1096,6 +1154,37 @@ export const LessonControl = z.strictObject({
 });
 export type LessonControl = z.output<typeof LessonControl>;
 
+export const McpServerId = z.strictObject({
+  "id": z.string(),
+});
+export type McpServerId = z.output<typeof McpServerId>;
+
+export const McpState = z.enum(["off","connecting","ready","error","blockedByPrivacy"]);
+export type McpState = z.output<typeof McpState>;
+
+export const McpToolInfo = z.strictObject({
+  "description": z.string().nullable().optional(),
+  "destructive": z.boolean(),
+  "name": z.string(),
+  "readOnly": z.boolean(),
+  "title": z.string().nullable().optional(),
+});
+export type McpToolInfo = z.output<typeof McpToolInfo>;
+
+export const McpServerStatus = z.strictObject({
+  "error": z.string().nullable().optional(),
+  "id": z.string(),
+  "serverName": z.string().nullable().optional(),
+  "state": McpState,
+  "tools": z.array(McpToolInfo),
+});
+export type McpServerStatus = z.output<typeof McpServerStatus>;
+
+export const McpStatusList = z.strictObject({
+  "servers": z.array(McpServerStatus),
+});
+export type McpStatusList = z.output<typeof McpStatusList>;
+
 export const MemoryCategory = z.enum(["userProfile","preference","project","fact","conversation","agent","skill"]);
 export type MemoryCategory = z.output<typeof MemoryCategory>;
 
@@ -1403,7 +1492,7 @@ export const SessionParams = z.strictObject({
 export type SessionParams = z.output<typeof SessionParams>;
 
 /** One section replaced atomically. */
-export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings }), z.strictObject({ "section": z.literal("voice"), "value": VoiceSettings }), z.strictObject({ "section": z.literal("computer"), "value": ComputerSettings }), z.strictObject({ "section": z.literal("memory"), "value": MemorySettings })]);
+export const SettingsSection = z.discriminatedUnion("section", [z.strictObject({ "section": z.literal("general"), "value": GeneralSettings }), z.strictObject({ "section": z.literal("appearance"), "value": AppearanceSettings }), z.strictObject({ "section": z.literal("privacy"), "value": PrivacySettings }), z.strictObject({ "section": z.literal("onboarding"), "value": OnboardingSettings }), z.strictObject({ "section": z.literal("invocation"), "value": InvocationSettings }), z.strictObject({ "section": z.literal("cursor"), "value": CursorSettings }), z.strictObject({ "section": z.literal("focus"), "value": FocusSettings }), z.strictObject({ "section": z.literal("models"), "value": ModelSettings }), z.strictObject({ "section": z.literal("voice"), "value": VoiceSettings }), z.strictObject({ "section": z.literal("computer"), "value": ComputerSettings }), z.strictObject({ "section": z.literal("memory"), "value": MemorySettings }), z.strictObject({ "section": z.literal("connections"), "value": ConnectionsSettings })]);
 export type SettingsSection = z.output<typeof SettingsSection>;
 
 export const SettingsUpdateParams = z.strictObject({
@@ -1774,6 +1863,8 @@ export const methods = {
   "file.search": { target: "core", params: FileSearchParams, result: FileSearchResults },
   "file.open": { target: "core", params: IdParams, result: Empty },
   "memory.list": { target: "core", params: MemoryListParams, result: MemoryList },
+  "mcp.status": { target: "core", params: Empty, result: McpStatusList },
+  "mcp.reconnect": { target: "core", params: McpServerId, result: McpServerStatus },
   "memory.save": { target: "core", params: MemorySaveParams, result: MemoryItem },
   "memory.delete": { target: "core", params: IdParams, result: Empty },
   "memory.clear": { target: "core", params: Empty, result: MemoryCleared },
@@ -1832,6 +1923,7 @@ export const methods = {
 export const events = {
   "core.ready": AppInfo,
   "settings.changed": AppSettings,
+  "mcp.statusChanged": McpServerStatus,
   "invocation.started": InvocationStarted,
   "invocation.ended": InvocationEnded,
   "invocation.statusChanged": InvocationStatus,

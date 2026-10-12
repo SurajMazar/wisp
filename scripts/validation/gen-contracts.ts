@@ -16,6 +16,13 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+/** Any JSON value: `true`, `{}`, or a schema with only annotations (e.g. `{"default": null}`). */
+function isAnySchema(s: unknown): boolean {
+  if (s === true) return true;
+  if (typeof s !== "object" || s === null) return false;
+  return Object.keys(s).every((k) => ["default", "description", "title"].includes(k));
+}
+
 type Schema = boolean | { [k: string]: unknown };
 type Obj = Record<string, unknown>;
 
@@ -148,7 +155,7 @@ const camel = (s: string) => s.replace(/[._-](\w)/g, (_, c: string) => c.toUpper
 // ─── TypeScript / Zod ──────────────────────────────────────────────────────
 
 function zod(s: Schema): string {
-  if (s === true || (typeof s === "object" && Object.keys(s).length === 0)) return "z.unknown()";
+  if (isAnySchema(s)) return "z.unknown()";
   if (s === false) fail("`false` schema not supported");
   const { inner, nullable } = unwrapNullable(s);
   const base = zodInner(inner);
@@ -289,7 +296,7 @@ const SWIFT_KEYWORDS = new Set([
 const swiftIdent = (s: string) => (SWIFT_KEYWORDS.has(s) ? `\`${s}\`` : s);
 
 function swiftType(s: Schema): string {
-  if (s === true || (typeof s === "object" && Object.keys(s).length === 0)) return "JSONValue";
+  if (isAnySchema(s)) return "JSONValue";
   if (s === false) fail("`false` schema not supported");
   const { inner, nullable } = unwrapNullable(s);
   const base = swiftInner(inner);

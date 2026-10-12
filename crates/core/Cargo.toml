@@ -29,6 +29,7 @@ wisp-computer.workspace = true
 wisp-agents.workspace = true
 wisp-memory.workspace = true
 wisp-files.workspace = true
+wisp-mcp.workspace = true
 sha2 = "0.10"
 hex = "0.4"
 reqwest.workspace = true

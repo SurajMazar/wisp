@@ -10,6 +10,7 @@ members = [
     "crates/agents",
     "crates/memory",
     "crates/files",
+    "crates/mcp",
     "crates/database",
     "crates/permissions",
     "crates/ipc",
@@ -40,6 +41,7 @@ wisp-computer = { path = "crates/computer" }
 wisp-agents = { path = "crates/agents" }
 wisp-memory = { path = "crates/memory" }
 wisp-files = { path = "crates/files" }
+wisp-mcp = { path = "crates/mcp" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

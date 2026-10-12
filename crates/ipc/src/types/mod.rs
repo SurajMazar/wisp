@@ -3,6 +3,7 @@
 pub mod accessibility;
 pub mod agents;
 pub mod app;
+pub mod connections;
 pub mod conversations;
 pub mod cursor;
 pub mod files;

@@ -2425,6 +2425,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "chrono-tz",
+ "serde_json",
  "wisp-common",
  "wisp-ipc",
  "wisp-screen",
@@ -2493,6 +2494,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.22.1",
+ "chrono",
  "futures",
  "hex",
  "reqwest",
@@ -2515,6 +2517,7 @@ dependencies = [
  "wisp-database",
  "wisp-files",
  "wisp-ipc",
+ "wisp-mcp",
  "wisp-memory",
  "wisp-permissions",
  "wisp-providers",
@@ -2556,6 +2559,19 @@ dependencies = [
  "serde_json",
  "thiserror",
  "wisp-common",
+]
+
+[[package]]
+name = "wisp-mcp"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

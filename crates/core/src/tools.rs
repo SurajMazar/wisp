@@ -133,15 +133,45 @@ impl Core {
         wisp_computer::validate(&p.call).map_err(|e| IpcError::invalid_params(e.to_string()))?;
         let mut p = p;
         let (expected_pid, app_name) = self.inspect_target(&mut p.call).await;
-        let tool = wisp_computer::name(&p.call);
-        let (risk, risk_reason) = wisp_computer::assess(&p.call);
+        let base_tool = wisp_computer::name(&p.call);
+        let (mut risk, mut risk_reason) = wisp_computer::assess(&p.call);
         let settings = self.blocking(|db| db.load_settings()).await?;
         let grants = self.blocking(|db| db.list_tool_grants()).await?;
         let (always, never): (Vec<_>, Vec<_>) = grants
             .into_iter()
             .partition(|g| g.decision == ApprovalDecision::AlwaysAllow);
-        let always: Vec<String> = always.into_iter().map(|g| g.tool).collect();
-        let never: Vec<String> = never.into_iter().map(|g| g.tool).collect();
+        let mut always: Vec<String> = always.into_iter().map(|g| g.tool).collect();
+        let mut never: Vec<String> = never.into_iter().map(|g| g.tool).collect();
+        // Each tool of a connected service is its own tool: its risk comes from what the service
+        // says about it, and the user's Ask / Allow / Block rule for it applies.
+        let mut always_grantable = wisp_computer::always_grantable(base_tool);
+        let tool_key = match &p.call {
+            ToolCall::Mcp(m) => {
+                let key = format!("mcp:{}/{}", m.server, m.tool);
+                match self.mcp_tool(&m.server, &m.tool) {
+                    Some(t) if t.destructive => {
+                        risk = wisp_ipc::types::tools::RiskLevel::High;
+                        risk_reason =
+                            Some("the service says this may delete or overwrite things".into());
+                    }
+                    Some(t) if t.read_only => {
+                        risk = wisp_ipc::types::tools::RiskLevel::Low;
+                        risk_reason = None;
+                    }
+                    _ => {}
+                }
+                let rule = Self::mcp_rule(&settings, &m.server, &m.tool);
+                always_grantable = rule == wisp_ipc::types::connections::McpRule::Allow;
+                match rule {
+                    wisp_ipc::types::connections::McpRule::Allow => always.push(key.clone()),
+                    wisp_ipc::types::connections::McpRule::Block => never.push(key.clone()),
+                    wisp_ipc::types::connections::McpRule::Ask => {}
+                }
+                key
+            }
+            _ => base_tool.to_owned(),
+        };
+        let tool = tool_key.as_str();
         let session = self.tool_service().session();
 
         let mut record = ToolCallRecord {
@@ -162,7 +192,7 @@ impl Core {
             // Background tools (reminders, files, …) never touch the mouse or keyboard, so they
             // don't need "control this Mac"; anything that changes something still asks.
             enabled: settings.computer.enabled || p.call.is_background(),
-            always_grantable: wisp_computer::always_grantable(tool),
+            always_grantable,
             confirm_every_action: settings.computer.confirm_every_action,
             tool,
             risk,
@@ -381,6 +411,7 @@ impl Core {
             ToolCall::ListFiles(a) => self.list_files(a).await,
             ToolCall::MoveFile(a) => self.move_file(a).await,
             ToolCall::FetchPage(a) => self.fetch_page(a).await,
+            ToolCall::Mcp(a) => self.mcp_call(a).await,
             c if c.is_background() => serde_json::from_value(
                 host.call(
                     "host.apps.perform",

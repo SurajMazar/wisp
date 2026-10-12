@@ -11,6 +11,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+serde_json.workspace = true
 wisp-common.workspace = true
 wisp-ipc.workspace = true
 wisp-screen.workspace = true

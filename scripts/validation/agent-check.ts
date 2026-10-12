@@ -26,7 +26,7 @@ type Env = {
   error?: { message: string };
 };
 
-const tasks = [
+const tasks: string[] = [
   "remind me tomorrow at 9 to call Sam",
   "what's on my calendar today?",
   "pause the music",
@@ -104,8 +104,50 @@ async function main() {
   const general = arg("--general");
   if (general) models.general = models.vision = { providerId: "ollama", model: general };
   await call("settings.update", { update: { section: "models", value: models } });
+  if (process.argv.includes("--mcp")) {
+    // Connect the test MCP server and give tasks that need it.
+    await call("settings.update", { update: { section: "privacy", value: { mode: "cloudAllowed" } } });
+    await call("settings.update", {
+      update: {
+        section: "connections",
+        value: {
+          servers: [
+            {
+              id: "notes",
+              name: "Notes service",
+              enabled: true,
+              localOnly: true,
+              tools: [],
+              transport: {
+                kind: "stdio",
+                config: {
+                  command: "/opt/homebrew/bin/node",
+                  args: [join(root, "crates/mcp/tests/fixtures/test-server.mjs")],
+                  env: [],
+                },
+              },
+            },
+          ],
+        },
+      },
+    });
+    for (let i = 0; i < 50; i++) {
+      const s = await call<{ servers: { state: string }[] }>("mcp.status");
+      if (s.servers[0]?.state === "ready") break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    tasks.splice(
+      0,
+      tasks.length,
+      "save a note called Groceries with milk and eggs in my notes service",
+      "echo hello world using the notes service",
+    );
+  }
 
-  for (const goal of tasks) {
+  const repeat = Number(arg("--repeat") ?? 1);
+  const only = arg("--only");
+  const chosen = only ? tasks.filter((t) => t.includes(only)) : tasks;
+  for (const goal of chosen.flatMap((t) => Array<string>(repeat).fill(t))) {
     performed.length = 0;
     const t0 = Date.now();
     const done = new Promise<Record<string, unknown>>((resolve) =>

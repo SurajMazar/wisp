@@ -78,6 +78,7 @@ pub fn name(call: &ToolCall) -> &'static str {
         ToolCall::MoveFile(_) => "moveFile",
         ToolCall::TrashFile(_) => "trashFile",
         ToolCall::FetchPage(_) => "fetchPage",
+        ToolCall::Mcp(_) => "mcp",
     }
 }
 
@@ -234,6 +235,12 @@ const DEFINITIONS: &[(&str, &str, &str, RiskLevel)] = &[
         "fetchPage",
         "Read a web page",
         "Download a web page's text",
+        RiskLevel::Medium,
+    ),
+    (
+        "mcp",
+        "Use a connected service",
+        "Call a tool from a service you connected (MCP)",
         RiskLevel::Medium,
     ),
     (
@@ -417,6 +424,23 @@ pub fn validate(call: &ToolCall) -> Result<(), ToolError> {
         ToolCall::MoveFile(m) => {
             home_path(&m.from)?;
             home_path(&m.to)
+        }
+        ToolCall::Mcp(m) => {
+            let id_ok = !m.server.is_empty()
+                && m.server.len() <= 32
+                && m.server
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+            if !id_ok || m.tool.is_empty() || m.tool.len() > 128 {
+                return Err(invalid("unknown connection or tool"));
+            }
+            if !(m.arguments.is_object() || m.arguments.is_null()) {
+                return Err(invalid("tool arguments must be a JSON object"));
+            }
+            if m.arguments.to_string().len() > 100_000 {
+                return Err(invalid("tool arguments are too large"));
+            }
+            Ok(())
         }
         ToolCall::FetchPage(u) => {
             let ok = u.url.to_ascii_lowercase().starts_with("https://")
@@ -728,6 +752,7 @@ pub fn title(call: &ToolCall) -> String {
         ToolCall::MoveFile(m) => format!("Move {} into {}", m.from, m.to),
         ToolCall::TrashFile(p) => format!("Move {} to the Trash", p.path),
         ToolCall::FetchPage(u) => format!("Read {}", u.url.chars().take(80).collect::<String>()),
+        ToolCall::Mcp(m) => format!("Use {} in {}", quote(&m.tool), m.server),
     }
 }
 
@@ -735,6 +760,14 @@ pub fn title(call: &ToolCall) -> String {
 pub fn redacted_args(call: &ToolCall) -> serde_json::Value {
     let mut v = serde_json::to_value(call).unwrap_or_default();
     if let Some(args) = v.get_mut("args").and_then(|a| a.as_object_mut()) {
+        // A connected service's arguments may be anything private: keep only their names.
+        if let Some(fields) = args
+            .get("arguments")
+            .and_then(|a| a.as_object())
+            .map(|o| o.keys().cloned().collect::<Vec<_>>())
+        {
+            args.insert("arguments".into(), serde_json::json!({ "fields": fields }));
+        }
         // Typed text and note bodies are private; keep only their length.
         for key in ["text", "body"] {
             if let Some(text) = args.get(key).and_then(|t| t.as_str()) {
@@ -781,7 +814,7 @@ mod tests {
                 name(&call)
             );
         }
-        assert_eq!(defs.len(), 29);
+        assert_eq!(defs.len(), 30);
         assert!(
             defs.iter()
                 .filter(|d| d.risk == RiskLevel::Safe)

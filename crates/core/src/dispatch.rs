@@ -6,8 +6,8 @@ use serde_json::Value;
 use wisp_common::paths::DataPaths;
 use wisp_database::Database;
 use wisp_ipc::methods::{
-    VoiceCancel, VoiceFinish, VoiceModelCancel, VoiceModelDownload, VoiceModelRemove, VoiceSpeak,
-    VoiceStatusMethod, VoiceStopSpeaking,
+    McpReconnect, McpStatus, VoiceCancel, VoiceFinish, VoiceModelCancel, VoiceModelDownload,
+    VoiceModelRemove, VoiceSpeak, VoiceStatusMethod, VoiceStopSpeaking,
 };
 use wisp_ipc::{
     IpcError, Method,
@@ -48,6 +48,7 @@ struct Inner {
     search_index: crate::files::SearchIndex,
     embed_cache: crate::memory::EmbedCache,
     prefill: crate::prefill::Prefiller,
+    connections: crate::connections::Connections,
 }
 
 impl Core {
@@ -91,6 +92,7 @@ impl Core {
                 search_index: Default::default(),
                 embed_cache: Default::default(),
                 prefill: Default::default(),
+                connections: Default::default(),
             }),
         };
         core.startup_skills();
@@ -139,11 +141,15 @@ impl Core {
             SettingsUpdate::NAME => {
                 self.call::<SettingsUpdate, _, _>(params, |c, p| async move {
                     p.update.validate().map_err(IpcError::invalid_params)?;
+                    let p_key = p.update.key().to_owned();
                     let settings = c
                         .blocking(move |db| db.save_settings_section(&p.update))
                         .await?;
                     c.inner.ai.set_privacy(settings.privacy.mode);
                     c.inner.events.publish::<SettingsChanged>(&settings);
+                    if matches!(p_key.as_str(), "connections" | "privacy") {
+                        c.sync_connections();
+                    }
                     Ok(settings)
                 })
                 .await
@@ -583,6 +589,16 @@ impl Core {
                 })
                 .await
             }
+            McpStatus::NAME => {
+                self.call::<McpStatus, _, _>(params, |c, _| async move { Ok(c.mcp_status().await) })
+                    .await
+            }
+            McpReconnect::NAME => {
+                self.call::<McpReconnect, _, _>(params, |c, p| async move {
+                    c.mcp_reconnect(&p.id).await
+                })
+                .await
+            }
             VoiceStatusMethod::NAME => {
                 self.call::<VoiceStatusMethod, _, _>(params, |c, _| async move {
                     c.voice_status().await
@@ -665,6 +681,8 @@ impl Core {
     pub fn attach_host(&self, host: Arc<dyn wisp_providers::HostBridge>) {
         self.inner.ai.attach_host(host);
         self.resume_indexing();
+        // Secrets for connections come from the Keychain, through the host.
+        self.sync_connections();
     }
 
     pub fn detach_host(&self) {
@@ -724,6 +742,10 @@ impl Core {
 
     pub(crate) fn prefiller(&self) -> &crate::prefill::Prefiller {
         &self.inner.prefill
+    }
+
+    pub(crate) fn connections_state(&self) -> &crate::connections::Connections {
+        &self.inner.connections
     }
 
     pub fn latest_focus(&self) -> Option<FocusRegion> {

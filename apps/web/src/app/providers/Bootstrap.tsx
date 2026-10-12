@@ -5,6 +5,7 @@ import { useConnectionStore } from "../../stores/connectionStore";
 import { useAgentStore } from "../../stores/agentStore";
 import { useFileStore } from "../../stores/fileStore";
 import { useRoutineStore } from "../../stores/routineStore";
+import { useServiceStore } from "../../stores/serviceStore";
 import { useTeachStore } from "../../stores/teachStore";
 import { useToolStore } from "../../stores/toolStore";
 import { useConversationStore } from "../../stores/conversationStore";
@@ -23,6 +24,7 @@ export function Bootstrap({ children }: { children: ReactNode }) {
     const client = ipc();
     const offs = [
       client.on("settings.changed", (s) => useSettingsStore.getState().receive(s)),
+      client.on("mcp.statusChanged", (s) => useServiceStore.getState().receive(s)),
       client.on("invocation.statusChanged", (st) => useInvocationStore.getState().receiveStatus(st)),
       client.on("invocation.started", (e) => useAssistantStore.getState().invoked(e.source, e.behavior)),
       client.on("assistant.stateChanged", (e) => useAssistantStore.getState().receive(e.state, e.expanded)),

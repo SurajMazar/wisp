@@ -188,6 +188,17 @@ pub struct MoveArgs {
     pub to: String,
 }
 
+/// Call a tool on a connected MCP server.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct McpCallArgs {
+    /// Connection id.
+    pub server: String,
+    pub tool: String,
+    #[serde(default)]
+    pub arguments: serde_json::Value,
+}
+
 /// Every action Wisp can take on the computer.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "tool", content = "args", rename_all = "camelCase")]
@@ -225,6 +236,8 @@ pub enum ToolCall {
     TrashFile(PathArgs),
     /// Read a web page as text.
     FetchPage(UrlArgs),
+    /// A tool from a connected service (MCP).
+    Mcp(McpCallArgs),
 }
 
 impl ToolCall {
@@ -242,6 +255,7 @@ impl ToolCall {
                 | Self::MoveFile(_)
                 | Self::TrashFile(_)
                 | Self::FetchPage(_)
+                | Self::Mcp(_)
         )
     }
 }

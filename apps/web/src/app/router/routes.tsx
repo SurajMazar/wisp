@@ -19,6 +19,10 @@ const PermissionsPage = lazyPage(
   "PermissionsPage",
 );
 const ModelsPage = lazyPage(() => import("../../features/models/ModelsPage"), "ModelsPage");
+const ConnectionsPage = lazyPage(
+  () => import("../../features/connections/ConnectionsPage"),
+  "ConnectionsPage",
+);
 const VoicePage = lazyPage(() => import("../../features/voice/VoicePage"), "VoicePage");
 const ActivityPage = lazyPage(() => import("../../features/activity/ActivityPage"), "ActivityPage");
 const AgentsPage = lazyPage(() => import("../../features/agents/AgentsPage"), "AgentsPage");
@@ -46,6 +50,7 @@ const built: Record<string, React.ReactNode> = {
   "/settings": <Lazy page={SettingsPage} />,
   "/permissions": <Lazy page={PermissionsPage} />,
   "/models": <Lazy page={ModelsPage} />,
+  "/connections": <Lazy page={ConnectionsPage} />,
   "/conversations": <ConversationsPage />,
   "/voice": <Lazy page={VoicePage} />,
   "/activity": <Lazy page={ActivityPage} />,

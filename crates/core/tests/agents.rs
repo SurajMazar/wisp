@@ -320,3 +320,138 @@ async fn a_spoken_background_task_works_through_apps_without_the_screen() {
         .expect("tells the user when it's done");
     assert_eq!(note.1["title"], "Wisp · Done");
 }
+
+fn node() -> Option<String> {
+    [
+        "/opt/homebrew/bin/node",
+        "/usr/local/bin/node",
+        "/usr/bin/node",
+    ]
+    .iter()
+    .find(|p| std::path::Path::new(p).exists())
+    .map(|p| (*p).to_owned())
+}
+
+#[tokio::test]
+async fn an_agent_uses_a_connected_service_with_approval_and_respects_blocks() {
+    let Some(node) = node() else {
+        eprintln!("skipped: node not installed");
+        return;
+    };
+    let fixture = format!(
+        "{}/../mcp/tests/fixtures/test-server.mjs",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let dir = tempfile::tempdir().expect("tmp");
+    let paths = DataPaths::new(dir.path());
+    paths.ensure().expect("dirs");
+    let db = Database::open(&paths.database_file()).expect("db");
+    let core = Core::new(db, &paths, EventBus::new()).expect("core");
+    let model = Arc::new(MockProvider {
+        id: "mock-local".into(),
+        locality: Locality::Local,
+        vision: false,
+        reply: "ACTION: use \"notes/add_note\" {\"title\": \"Plan\", \"body\": \"Ship it\"}|||ACTION: use \"notes/wipe\" {}|||ACTION: done \"Saved your note.\"".into(),
+        calls: Default::default(),
+        requests: Default::default(),
+    });
+    core.ai()
+        .set_overrides(vec![model.clone() as Arc<dyn wisp_ai::AiProvider>]);
+    let host = Arc::new(AppsHost::default());
+    core.attach_host(host.clone());
+    let mut rx = core.events().subscribe();
+    // Privacy allows it; the user blocks "wipe".
+    core.dispatch(
+        "settings.update",
+        json!({"update": {"section": "privacy", "value": {"mode": "cloudAllowed"}}}),
+    )
+    .await
+    .expect("privacy");
+    core.dispatch(
+        "settings.update",
+        json!({"update": {"section": "connections", "value": {"servers": [{
+            "id": "notes", "name": "Notes server", "enabled": true,
+            "transport": {"kind": "stdio", "config": {"command": node, "args": [fixture]}},
+            "tools": [{"tool": "wipe", "rule": "block"}]
+        }]}}}),
+    )
+    .await
+    .expect("connect");
+    // Wait until it's connected and its tools are known.
+    let mut ready = false;
+    for _ in 0..100 {
+        let s = core
+            .dispatch("mcp.status", Value::Null)
+            .await
+            .expect("status");
+        if s["servers"][0]["state"] == "ready" {
+            assert_eq!(s["servers"][0]["tools"].as_array().expect("tools").len(), 4);
+            ready = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    assert!(ready, "server connected");
+
+    let approvals = Arc::new(Mutex::new(vec![]));
+    {
+        let (c, seen) = (core.clone(), approvals.clone());
+        let mut rx = core.events().subscribe();
+        tokio::spawn(async move {
+            while let Ok(env) = rx.recv().await {
+                if let Envelope::Event { event, payload, .. } = env
+                    && event == "tool.approvalRequested"
+                {
+                    seen.lock().expect("lock").push(payload["title"].clone());
+                    let _ = c
+                        .dispatch(
+                            "tool.respond",
+                            json!({"id": payload["id"], "decision": "allowOnce"}),
+                        )
+                        .await;
+                }
+            }
+        });
+    }
+    core.dispatch(
+        "agent.run",
+        json!({"goal": "save a note called Plan", "background": true}),
+    )
+    .await
+    .expect("run");
+    let done = wait_run(&mut rx, |r| {
+        ["completed", "failed", "cancelled", "stuck"].contains(&r["status"].as_str().unwrap_or(""))
+    })
+    .await;
+    // The note was saved through the service (after one approval); "wipe" was blocked, which
+    // ends the run as a refusal, never a workaround.
+    let steps = done["steps"].as_array().expect("steps").clone();
+    let saved = steps
+        .iter()
+        .find(|s| s["title"] == "Use “add_note” in notes")
+        .expect("used the service");
+    assert_eq!(saved["status"], "succeeded", "{done}");
+    assert_eq!(
+        approvals.lock().expect("lock").as_slice(),
+        [json!("Use “add_note” in notes")],
+        "asked once, for the save only"
+    );
+    assert_eq!(done["status"], "cancelled");
+    assert!(
+        done["note"]
+            .as_str()
+            .expect("note")
+            .contains("wasn't allowed")
+    );
+
+    // The agent was told which tools exist (blocked ones left out).
+    let prompt = model.requests.lock().expect("lock")[0]
+        .system
+        .clone()
+        .expect("system");
+    assert!(prompt.contains("notes/add_note") && prompt.contains("title (string, required)"));
+    assert!(
+        !prompt.contains("notes/wipe"),
+        "blocked tools aren't offered"
+    );
+}

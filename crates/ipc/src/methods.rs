@@ -9,9 +9,9 @@ use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::types::{
-    accessibility::*, agents::*, app::*, conversations::*, cursor::*, files::*, focus::*,
-    guidance::*, invocation::*, memory::*, models::*, release::*, routines::*, settings::*,
-    skills::*, teacher::*, tools::*, voice::*,
+    accessibility::*, agents::*, app::*, connections::*, conversations::*, cursor::*, files::*,
+    focus::*, guidance::*, invocation::*, memory::*, models::*, release::*, routines::*,
+    settings::*, skills::*, teacher::*, tools::*, voice::*,
 };
 
 /// Which side implements a method.
@@ -202,6 +202,10 @@ define_methods! {
     FileOpen = "file.open", Core, IdParams => Empty;
     /// Saved memories, newest first.
     MemoryListMethod = "memory.list", Core, MemoryListParams => MemoryList;
+    /// Connected services (MCP servers): state and tools of each.
+    McpStatus = "mcp.status", Core, Empty => McpStatusList;
+    /// Reconnect one server (after changing its settings or signing in).
+    McpReconnect = "mcp.reconnect", Core, McpServerId => McpServerStatus;
     /// Add or edit a memory.
     MemorySave = "memory.save", Core, MemorySaveParams => MemoryItem;
     MemoryDelete = "memory.delete", Core, IdParams => Empty;
@@ -308,6 +312,8 @@ define_events! {
     CoreReady = "core.ready", AppInfo;
     /// Emitted after any settings section changes.
     SettingsChanged = "settings.changed", AppSettings;
+    /// A connected service changed state (connecting, ready, error).
+    McpStatusChanged = "mcp.statusChanged", McpServerStatus;
     /// The user summoned the assistant.
     InvocationStartedEvent = "invocation.started", InvocationStarted;
     /// The invocation finished (released, toggled off, dismissed, cancelled).
