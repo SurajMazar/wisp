@@ -248,6 +248,10 @@ export type AskContext = z.output<typeof AskContext>;
 export const DrawStyle = z.enum(["rectangle","lasso","circle"]);
 export type DrawStyle = z.output<typeof DrawStyle>;
 
+/** Pictures make local models much slower (~10 s), so by default they're sent only when needed. */
+export const ScreenshotMode = z.enum(["always","auto"]);
+export type ScreenshotMode = z.output<typeof ScreenshotMode>;
+
 export const FocusSettings = z.strictObject({
   "askContext": AskContext.default(() => AskContext.parse("window")),
   "dimSurroundings": z.boolean().default(true),
@@ -255,6 +259,7 @@ export const FocusSettings = z.strictObject({
   "excludedApps": z.array(z.string()).default(["com.1password.1password","com.agilebits.onepassword7","com.bitwarden.desktop","com.lastpass.LastPass","com.dashlane.dashlanephonefinal","com.apple.keychainaccess","com.apple.Passwords","com.keepassxc.keepassxc"]),
   "margin": z.number().int().nonnegative().default(24),
   "pointSize": z.number().int().nonnegative().default(480),
+  "screenshots": ScreenshotMode.default(() => ScreenshotMode.parse("auto")),
 });
 export type FocusSettings = z.output<typeof FocusSettings>;
 
@@ -365,7 +370,7 @@ export const AppSettings = z.strictObject({
   "appearance": AppearanceSettings.default(() => AppearanceSettings.parse({"accent":"default","theme":"system"})),
   "computer": ComputerSettings.default(() => ComputerSettings.parse({"confirmEveryAction":false,"enabled":false})),
   "cursor": CursorSettings.default(() => CursorSettings.parse({"animation":"normal","enabled":true,"glow":0.6,"glowFrom":"#8B7CF6","glowMode":"gradient","glowTo":"#5EC8F2","label":"Wisp","opacity":0.95,"shape":"wisp","showLabel":false,"size":1,"theme":"default","visibility":"always"})),
-  "focus": FocusSettings.default(() => FocusSettings.parse({"askContext":"window","dimSurroundings":true,"drawStyle":"rectangle","excludedApps":["com.1password.1password","com.agilebits.onepassword7","com.bitwarden.desktop","com.lastpass.LastPass","com.dashlane.dashlanephonefinal","com.apple.keychainaccess","com.apple.Passwords","com.keepassxc.keepassxc"],"margin":24,"pointSize":480})),
+  "focus": FocusSettings.default(() => FocusSettings.parse({"askContext":"window","dimSurroundings":true,"drawStyle":"rectangle","excludedApps":["com.1password.1password","com.agilebits.onepassword7","com.bitwarden.desktop","com.lastpass.LastPass","com.dashlane.dashlanephonefinal","com.apple.keychainaccess","com.apple.Passwords","com.keepassxc.keepassxc"],"margin":24,"pointSize":480,"screenshots":"auto"})),
   "general": GeneralSettings.default(() => GeneralSettings.parse({"launchAtLogin":false,"showMenuBarIcon":true})),
   "invocation": InvocationSettings.default(() => InvocationSettings.parse({"behavior":"hold","holdDelayMs":150,"mouseAction":"focusCursor","mouseButton":"none","shortcut":{"modifiers":["option","command"]}})),
   "memory": MemorySettings.default(() => MemorySettings.parse({"enabled":true,"learnFromChats":true})),

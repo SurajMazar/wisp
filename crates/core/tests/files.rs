@@ -35,6 +35,7 @@ fn mock(locality: Locality, reply: &str) -> Arc<MockProvider> {
         vision: false,
         reply: reply.into(),
         calls: Default::default(),
+        requests: Default::default(),
     })
 }
 
@@ -91,7 +92,7 @@ async fn ask(c: &Core, text: &str) -> Value {
 #[tokio::test]
 async fn finds_the_right_document_grounds_and_cites_the_answer() {
     let dir = tempfile::tempdir().expect("tmp");
-    let c = core(dir.path(), mock(Locality::Local, "<echo-system>"));
+    let c = core(dir.path(), mock(Locality::Local, "<echo>"));
     let handbook = import(&c, "../../Acme handbook.md", HANDBOOK).await;
     assert_eq!(handbook["status"], "indexed");
     assert_eq!(handbook["name"], "Acme handbook.md", "name sanitized");

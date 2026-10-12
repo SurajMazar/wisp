@@ -57,6 +57,18 @@ pub struct FocusSettings {
     pub ask_context: AskContext,
     /// Apps never captured unless you draw on them (bundle identifiers).
     pub excluded_apps: Vec<String>,
+    /// When the picture itself is sent to the model, not just the text read from it.
+    pub screenshots: ScreenshotMode,
+}
+
+/// Pictures make local models much slower (~10 s), so by default they're sent only when needed.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum ScreenshotMode {
+    /// When there's little readable text, or the question is about how something looks.
+    #[default]
+    Auto,
+    Always,
 }
 
 /// What a spoken question includes when nothing was drawn.
@@ -96,6 +108,7 @@ impl Default for FocusSettings {
                 .iter()
                 .map(|s| (*s).to_owned())
                 .collect(),
+            screenshots: ScreenshotMode::Auto,
         }
     }
 }

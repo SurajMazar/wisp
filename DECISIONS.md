@@ -331,3 +331,26 @@ Accessibility and OCR as before and drawn with the existing overlay shapes. Ever
 first shows a labelled circle on its target with the buddy pointing there: during the approval, or for 650 ms before
 acting when no approval is needed. The preview is cleared before acting so the overlay is never what the action lands
 on.
+
+## D-041 — Voice latency: prepare the screen while the user talks; text first; short first spoken piece
+**Status** accepted (2026-10-12)
+Measured on an M1 Pro with `qwen3-vl:8b-instruct` (`scripts/validation/voice-latency.ts`, real capture, 3 s hold):
+speech-to-text took ~0.35 s; nearly all the delay was the model reading the prompt — ~10.6 s for a screenshot
+(Ollama resizes images itself, so smaller captures don't help) and ~5 s for uncached text. Release → first word
+was 13.4 s. Changes:
+- **Prompt layout for reuse.** System prompt and history, then the screen, then what the question pulls in
+  (files, memories, skills), then the question. The start no longer depends on the question.
+- **Prefill.** When a capture arrives (the hold just started), the engine sends that question-independent start to
+  the local model with one-token generation; Ollama keeps the work, and the question reuses it (verified: a request
+  sharing the prefix starts in ~0.26 s). Questions wait for an in-flight prefill (≤12 s). Never for cloud models
+  (cost, different caching) or Apple's model.
+- **Text first.** The picture is attached only when there's little readable text (< 80 OCR characters) or the
+  question is about appearance; Wisp always sends the text and controls it read. Setting: "Send the picture —
+  When needed / Always".
+- **Spoken follow-ups** continue the conversation from the last 10 minutes (and the prefill uses its history).
+- **Speech.** Kokoro synthesizes at ~0.7× real time with ~1 s minimum per piece on this Mac (Core ML was slower);
+  the first spoken piece is cut at a clause break or after six words so speech starts sooner, and Kokoro uses one
+  thread per performance core (~20% faster than 4).
+Result: release → first word 13.4 s → ~0.6 s (text questions); → first spoken word ~2.7–3.3 s. Questions that need
+the picture still take ~13–15 s. Live transcription was not added: speech-to-text is already ~0.35 s, and running
+it continuously would compete with the prefill for the GPU.

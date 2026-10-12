@@ -40,6 +40,7 @@ fn setup(reply: &str, locality: Locality) -> (tempfile::TempDir, Core, Arc<Notif
         vision: false,
         reply: reply.into(),
         calls: Default::default(),
+        requests: Default::default(),
     }) as Arc<dyn wisp_ai::AiProvider>]);
     let host = Arc::new(NotifyHost::default());
     core.attach_host(host.clone());

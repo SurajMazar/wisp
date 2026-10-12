@@ -71,6 +71,7 @@ fn setup(reply: &str, change_after: usize) -> (tempfile::TempDir, Core, Arc<Fake
         vision: false,
         reply: reply.into(),
         calls: Default::default(),
+        requests: Default::default(),
     }) as Arc<dyn wisp_ai::AiProvider>]);
     let host = Arc::new(FakeHost {
         change_after,

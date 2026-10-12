@@ -55,7 +55,13 @@ pub struct VoiceService {
     generation: Mutex<u64>,
     /// When the speech models were last used (for unloading them when idle).
     last_used: Mutex<Option<Instant>>,
+    /// The conversation spoken questions continue, and when the last one was asked.
+    conversation: Mutex<Option<(String, Instant)>>,
 }
+
+/// A spoken question this soon after the last one continues that conversation (so "what about
+/// the other one?" works); after that, a new conversation starts.
+pub const FOLLOW_UP_WINDOW: std::time::Duration = std::time::Duration::from_secs(10 * 60);
 
 /// Speech models (~400 MB) are released after this long unused and reloaded on the next hold.
 pub const VOICE_IDLE: std::time::Duration = std::time::Duration::from_secs(15 * 60);
@@ -110,6 +116,20 @@ fn models_root(core: &Core) -> PathBuf {
 impl Core {
     fn voice(&self) -> &VoiceService {
         self.inner_voice()
+    }
+
+    /// The conversation a spoken question asked now would continue, if any.
+    pub(crate) async fn voice_conversation(&self) -> Option<String> {
+        let (id, at) = self.voice().conversation.lock().ok()?.clone()?;
+        if at.elapsed() > FOLLOW_UP_WINDOW {
+            return None;
+        }
+        let check = id.clone();
+        self.blocking(move |db| db.conversation_exists(&check))
+            .await
+            .ok()
+            .filter(|exists| *exists)
+            .map(|_| id)
     }
 
     fn touch_voice(&self) {
@@ -360,17 +380,24 @@ impl Core {
                 stt_ms,
             });
         }
+        let conversation_id = match p.conversation_id {
+            Some(id) => Some(id),
+            None => self.voice_conversation().await,
+        };
         let sent = self
             .send(SendParams {
                 teach: false,
                 act: false,
-                conversation_id: p.conversation_id,
+                conversation_id,
                 text: text.clone(),
                 include_focus: p.include_focus,
                 allow_cloud: false,
                 model: None,
             })
             .await?;
+        if let Ok(mut c) = self.voice().conversation.lock() {
+            *c = Some((sent.conversation_id.clone(), Instant::now()));
+        }
         if settings.voice.speak_answers != wisp_ipc::types::voice::SpeakAnswers::Never {
             self.speak_message(&sent.assistant_message.id);
         }

@@ -33,6 +33,7 @@ fn local(reply: &str) -> MockProvider {
         vision: true,
         reply: reply.into(),
         calls: Default::default(),
+        requests: Default::default(),
     }
 }
 
@@ -150,6 +151,7 @@ async fn local_only_refuses_cloud_and_says_why() {
         vision: true,
         reply: "leaked".into(),
         calls: Default::default(),
+        requests: Default::default(),
     };
     let core = core(dir.path(), vec![cloud]);
     let mut rx = core.events().subscribe();
@@ -518,4 +520,81 @@ async fn answers_point_at_resolved_targets_and_hide_the_markers() {
         .await
         .expect("get");
     assert_eq!(conv["messages"][1]["guidance"][0]["label"], "Save");
+}
+
+#[tokio::test]
+async fn prepares_the_screen_while_the_user_talks_and_the_question_reuses_it() {
+    let dir = tempfile::tempdir().expect("tmp");
+    let paths = DataPaths::new(dir.path());
+    paths.ensure().expect("dirs");
+    let db = Database::open(&paths.database_file()).expect("db");
+    let core = Core::new(db, &paths, EventBus::new()).expect("core");
+    let model = Arc::new(local("<echo>"));
+    core.ai()
+        .set_overrides(vec![model.clone() as Arc<dyn wisp_ai::AiProvider>]);
+    let mut rx = core.events().subscribe();
+
+    let id = "0199c2a8-0000-7000-8000-0000000000f7";
+    let line = |t: &str, y: f64| json!({"text": t, "frame": {"x": 80, "y": y, "width": 300, "height": 18}, "confidence": 0.98});
+    // The capture taken when the hold starts.
+    core.record_host_event(
+        "focus.completed",
+        json!({
+            "id": id, "kind": "window",
+            "display": {"id": 1, "name": "Built-in", "frame": {"x":0,"y":0,"width":1512,"height":982}, "scale": 2.0},
+            "selection": {"x":0,"y":0,"width":900,"height":600},
+            "crop": {"x":0,"y":0,"width":900,"height":600},
+            "cursor": {"x":300,"y":200},
+            "image": {"url": format!("wisp://focus/{id}.png"), "widthPx": 1800, "heightPx": 1200},
+            "application": {"name": "Numbers", "pid": 1},
+            "text": {"lines": [
+                line("Quarterly report — revenue by region", 40.0),
+                line("North 1,240 · South 980 · East 1,105 · West 870", 70.0),
+                line("Export… Share Format Organize", 100.0)
+            ], "elapsedMs": 30},
+            "createdAtMs": 1
+        }),
+    )
+    .await;
+
+    // A few seconds later the user lets go and the question is sent.
+    let r = core
+        .dispatch(
+            "conversation.send",
+            json!({ "text": "Where do I export this?", "includeFocus": true }),
+        )
+        .await
+        .expect("send");
+    let aid = r["assistantMessage"]["id"]
+        .as_str()
+        .expect("aid")
+        .to_owned();
+    wait_done(&mut rx, &aid).await;
+
+    let reqs = model.requests.lock().expect("lock").clone();
+    assert_eq!(reqs.len(), 2, "one preparation, then the answer");
+    let (prep, answer) = (&reqs[0], &reqs[1]);
+    assert_eq!(prep.max_tokens, 1, "preparing generates nothing");
+    assert_eq!(prep.model, answer.model);
+    assert_eq!(prep.system, answer.system, "same system prompt");
+    let (p, a) = (
+        &prep.messages.last().expect("prep").content,
+        &answer.messages.last().expect("answer").content,
+    );
+    assert!(
+        p.contains("<screen>") && p.contains("Quarterly report"),
+        "{p}"
+    );
+    assert!(
+        a.starts_with(p.as_str()),
+        "the question's prompt must begin with exactly what was prepared:\n{p}\n---\n{a}"
+    );
+    assert!(
+        a.trim_end().ends_with("Where do I export this?"),
+        "question last: {a}"
+    );
+    assert!(
+        prep.messages.iter().all(|m| m.images.is_empty()),
+        "plenty of readable text and not a visual question: no picture"
+    );
 }

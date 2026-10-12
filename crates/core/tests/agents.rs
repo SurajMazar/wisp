@@ -58,6 +58,7 @@ async fn setup(reply: &str) -> (tempfile::TempDir, Core, Arc<FakeHost>) {
         vision: false,
         reply: reply.into(),
         calls: Default::default(),
+        requests: Default::default(),
     }) as Arc<dyn wisp_ai::AiProvider>]);
     let host = Arc::new(FakeHost::default());
     core.attach_host(host.clone());

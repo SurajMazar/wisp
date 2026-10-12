@@ -14,6 +14,8 @@ pub struct MockProvider {
     /// The reply. "a|||b|||c" replies a, then b, then c (the last repeats).
     pub reply: String,
     pub calls: std::sync::atomic::AtomicUsize,
+    /// Every request received, for tests that inspect prompts.
+    pub requests: std::sync::Mutex<Vec<GenerateRequest>>,
 }
 
 #[async_trait]
@@ -62,6 +64,9 @@ impl AiProvider for MockProvider {
     ) -> Result<ChunkStream, AiError> {
         // "<echo>" replies with the prompt's last message, so tests can inspect the context.
         let n = self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if let Ok(mut r) = self.requests.lock() {
+            r.push(req.clone());
+        }
         let parts: Vec<&str> = self.reply.split("|||").collect();
         let reply = parts
             .get(n)

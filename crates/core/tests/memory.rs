@@ -52,8 +52,9 @@ fn core(dir: &std::path::Path, host: bool) -> Core {
         id: "mock-local".into(),
         locality: Locality::Local,
         vision: false,
-        reply: "<echo-system>".into(),
+        reply: "<echo>".into(),
         calls: Default::default(),
+        requests: Default::default(),
     }) as Arc<dyn wisp_ai::AiProvider>]);
     if host {
         core.attach_host(Arc::new(EmbedHost));

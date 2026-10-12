@@ -610,7 +610,8 @@
               "com.keepassxc.keepassxc"
             ],
             "margin": 24,
-            "pointSize": 480
+            "pointSize": 480,
+            "screenshots": "auto"
           }
         },
         "general": {
@@ -2470,6 +2471,11 @@
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
+        },
+        "screenshots": {
+          "$ref": "#/definitions/ScreenshotMode",
+          "default": "auto",
+          "description": "When the picture itself is sent to the model, not just the text read from it."
         }
       },
       "type": "object"
@@ -4786,6 +4792,22 @@
         "elapsedMs"
       ],
       "type": "object"
+    },
+    "ScreenshotMode": {
+      "description": "Pictures make local models much slower (~10 s), so by default they're sent only when needed.",
+      "oneOf": [
+        {
+          "enum": [
+            "always"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "auto",
+          "description": "When there's little readable text, or the question is about how something looks.",
+          "type": "string"
+        }
+      ]
     },
     "ScrollArgs": {
       "additionalProperties": false,

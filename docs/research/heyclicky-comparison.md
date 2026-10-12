@@ -82,7 +82,7 @@ it work on every answer, and extends it:
 - Acceptance: "what's this button do?" with no drawing answers about the window under the pointer, and points at the
   right control.
 
-### Step 2 — A faster voice loop (≈1 week)
+### Step 2 — A faster voice loop (≈1 week) ✅ done 2026-10-12 (see D-041 for measurements)
 
 - **Live transcription:**
   - Transcribe 100 ms chunks while the user talks (Whisper with a sliding window, or the Apple Speech framework on

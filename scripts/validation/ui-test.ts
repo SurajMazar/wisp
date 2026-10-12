@@ -13,7 +13,7 @@ const shotsArg = process.argv.indexOf("--shots");
 const shots = shotsArg > -1 ? process.argv[shotsArg + 1] : undefined;
 
 type Settings = {
-  focus: { askContext: string; excludedApps: string[] };
+  focus: { askContext: string; excludedApps: string[]; screenshots: string };
   models: { deepThinking: boolean };
   privacy: { mode: string };
 };
@@ -100,6 +100,16 @@ async function main() {
     check(true, "choosing “Nothing” saves it");
     await ask.getByRole("radio", { name: "Window" }).click();
     await until(async () => (await settings()).focus.askContext === "window", "window saved");
+    const pic = page.getByRole("radiogroup", { name: "When to send the screenshot to the model" });
+    check(
+      (await pic.getByRole("radio", { name: "When needed" }).getAttribute("aria-checked")) === "true",
+      "the picture is sent only when needed by default",
+    );
+    await pic.getByRole("radio", { name: "Always" }).click();
+    await until(async () => (await settings()).focus.screenshots === "always", "screenshots saved");
+    check(true, "choosing “Always” saves it");
+    await pic.getByRole("radio", { name: "When needed" }).click();
+    await until(async () => (await settings()).focus.screenshots === "auto", "screenshots auto saved");
     check((await settings()).focus.excludedApps.length > 0, "changing it keeps the excluded apps");
 
     console.log("Settings → Models");

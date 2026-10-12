@@ -504,6 +504,12 @@ public enum DrawStyle: String, Codable, Sendable, Equatable, CaseIterable {
     case circle = "circle"
 }
 
+/// Pictures make local models much slower (~10 s), so by default they're sent only when needed.
+public enum ScreenshotMode: String, Codable, Sendable, Equatable, CaseIterable {
+    case always = "always"
+    case auto = "auto"
+}
+
 public struct FocusSettings: Codable, Sendable, Equatable {
     public var askContext: AskContext
     public var dimSurroundings: Bool
@@ -511,14 +517,16 @@ public struct FocusSettings: Codable, Sendable, Equatable {
     public var excludedApps: [String]
     public var margin: UInt32
     public var pointSize: UInt32
+    public var screenshots: ScreenshotMode
 
-    public init(askContext: AskContext, dimSurroundings: Bool, drawStyle: DrawStyle, excludedApps: [String], margin: UInt32, pointSize: UInt32) {
+    public init(askContext: AskContext, dimSurroundings: Bool, drawStyle: DrawStyle, excludedApps: [String], margin: UInt32, pointSize: UInt32, screenshots: ScreenshotMode) {
         self.askContext = askContext
         self.dimSurroundings = dimSurroundings
         self.drawStyle = drawStyle
         self.excludedApps = excludedApps
         self.margin = margin
         self.pointSize = pointSize
+        self.screenshots = screenshots
     }
 }
 

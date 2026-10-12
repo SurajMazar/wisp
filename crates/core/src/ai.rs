@@ -247,6 +247,44 @@ impl AiServices {
         }
     }
 
+    /// Process the start of a prompt so a request that begins the same way is answered sooner:
+    /// local models keep that work and reuse it. Returns whether anything was prepared. Never used
+    /// with cloud models (it would cost money and they cache differently) or Apple's model.
+    pub async fn prefill(
+        &self,
+        settings: &ModelSettings,
+        privacy: PrivacyMode,
+        system: Option<String>,
+        messages: Vec<ChatMessage>,
+        cancel: CancellationToken,
+    ) -> Result<bool, IpcError> {
+        let needs_vision = messages.iter().any(|m| !m.images.is_empty());
+        let tokens = estimate_tokens(system.as_deref(), &messages);
+        let (mut route, provider) = self
+            .route(settings, privacy, needs_vision, false, tokens, None)
+            .await?;
+        if route.locality != wisp_ipc::types::models::Locality::Local
+            || provider.kind() == wisp_ipc::types::models::ProviderKind::Apple
+        {
+            return Ok(false);
+        }
+        swap_for_twin(settings, &mut route, provider.as_ref()).await;
+        let req = GenerateRequest {
+            model: route.model.model.clone(),
+            system,
+            messages,
+            temperature: settings.temperature,
+            max_tokens: 1,
+            context_length: settings.context_length,
+            think: settings.deep_thinking,
+        };
+        let mut stream = provider.generate(req, cancel).await?;
+        while let Some(item) = stream.next().await {
+            item?;
+        }
+        Ok(true)
+    }
+
     /// Route and start generating.
     #[allow(clippy::too_many_arguments)]
     pub async fn generate(
@@ -281,18 +319,7 @@ impl AiServices {
                 Err(e) => return Err(last_err.unwrap_or(e)),
             };
             let mut route = route;
-            if !settings.deep_thinking
-                && let Some(twin) = non_thinking_twin(&route.model.model)
-                && provider
-                    .models()
-                    .await
-                    .is_ok_and(|ms| ms.iter().any(|m| m.id == twin))
-            {
-                // Some models (e.g. `qwen3-vl:8b`) think even when asked not to; their instruct
-                // twin answers directly.
-                route.model_name = twin.clone();
-                route.model.model = twin;
-            }
+            swap_for_twin(settings, &mut route, provider.as_ref()).await;
             // Report the choice before the (possibly long) model load so the UI can explain the wait.
             on_route(&route, provider.is_loaded(&route.model.model).await);
             let req = GenerateRequest {
@@ -479,6 +506,25 @@ pub fn estimate_tokens(system: Option<&str>, messages: &[ChatMessage]) -> u32 {
         system.map(str::len).unwrap_or(0) + messages.iter().map(|m| m.content.len()).sum::<usize>();
     let images: usize = messages.iter().map(|m| m.images.len()).sum();
     (chars / 4 + images * 1000) as u32
+}
+
+/// With deep thinking off, use a model's non-thinking twin when it's installed: some models
+/// (e.g. `qwen3-vl:8b`) think even when asked not to, and their instruct twin answers directly.
+async fn swap_for_twin(settings: &ModelSettings, route: &mut RouteInfo, provider: &dyn AiProvider) {
+    if settings.deep_thinking {
+        return;
+    }
+    let Some(twin) = non_thinking_twin(&route.model.model) else {
+        return;
+    };
+    if provider
+        .models()
+        .await
+        .is_ok_and(|ms| ms.iter().any(|m| m.id == twin))
+    {
+        route.model_name = twin.clone();
+        route.model.model = twin;
+    }
 }
 
 /// The non-thinking sibling of a model that reasons by default, as Ollama names them:

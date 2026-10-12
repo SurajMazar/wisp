@@ -40,6 +40,17 @@ pub fn find_espeak() -> Option<PathBuf> {
     .find(|p| p.exists())
 }
 
+/// Performance cores on Apple Silicon (falls back to 4).
+fn performance_cores() -> usize {
+    std::process::Command::new("/usr/sbin/sysctl")
+        .args(["-n", "hw.perflevel0.physicalcpu"])
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8_lossy(&o.stdout).trim().parse().ok())
+        .filter(|n: &usize| (1..=16).contains(n))
+        .unwrap_or(4)
+}
+
 pub struct KokoroTts {
     session: Mutex<Session>,
     vocab: HashMap<char, i64>,
@@ -65,7 +76,11 @@ impl KokoroTts {
             .collect();
         let load = |e: &dyn std::fmt::Display| TtsError::Load(e.to_string());
         let builder = Session::builder().map_err(|e| load(&e))?;
-        let mut builder = builder.with_intra_threads(4).map_err(|e| load(&e))?;
+        // One thread per performance core: measured ~20% faster than 4 on an M1 Pro (6 P-cores);
+        // more threads (efficiency cores) don't help, and Core ML was slower for this model.
+        let mut builder = builder
+            .with_intra_threads(performance_cores())
+            .map_err(|e| load(&e))?;
         let session = builder
             .commit_from_file(dir.join("model_quantized.onnx"))
             .map_err(|e| load(&e))?;

@@ -14,7 +14,7 @@ final class FocusCoordinator {
     private let router: IPCRouter
     private let assistant: AssistantCoordinator
     private let overlay = FocusOverlayController()
-    private var settings = FocusSettings(askContext: .window, dimSurroundings: true, drawStyle: .rectangle, excludedApps: [], margin: 24, pointSize: 480)
+    private var settings = FocusSettings(askContext: .window, dimSurroundings: true, drawStyle: .rectangle, excludedApps: [], margin: 24, pointSize: 480, screenshots: .auto)
     private var accent = BuddyTheme.color(for: .default, custom: nil)
     private(set) var latest: FocusRegion?
     private var holdSession = false

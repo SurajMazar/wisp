@@ -1,4 +1,4 @@
-import type { AskContext, DrawStyle, FocusSettings } from "@wisp/contracts";
+import type { AskContext, DrawStyle, FocusSettings, ScreenshotMode } from "@wisp/contracts";
 import { Segmented, SettingsGroup, SettingsRow, Slider, Switch } from "@wisp/ui";
 import { useState } from "react";
 import { useSettingsStore } from "../../stores/settingsStore";
@@ -55,6 +55,21 @@ export function FocusSettingsGroup({ focus }: { focus: FocusSettings }) {
               { value: "window", label: "Window" },
               { value: "display", label: "Whole screen" },
               { value: "off", label: "Nothing" },
+            ]}
+          />
+        }
+      />
+      <SettingsRow
+        label="Send the picture"
+        hint="Wisp always reads the text and buttons on screen. The picture itself makes local models much slower (about 10 seconds), so by default it's sent only when there's little text or you ask how something looks."
+        control={
+          <Segmented<ScreenshotMode>
+            label="When to send the screenshot to the model"
+            value={draft.screenshots}
+            onValueChange={(screenshots) => save({ screenshots })}
+            options={[
+              { value: "auto", label: "When needed" },
+              { value: "always", label: "Always" },
             ]}
           />
         }

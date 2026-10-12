@@ -47,6 +47,7 @@ struct Inner {
     routine_clock: crate::routines::RoutineClock,
     search_index: crate::files::SearchIndex,
     embed_cache: crate::memory::EmbedCache,
+    prefill: crate::prefill::Prefiller,
 }
 
 impl Core {
@@ -89,6 +90,7 @@ impl Core {
                 routine_clock: Default::default(),
                 search_index: Default::default(),
                 embed_cache: Default::default(),
+                prefill: Default::default(),
             }),
         };
         core.startup_skills();
@@ -720,6 +722,10 @@ impl Core {
         &self.inner.tools
     }
 
+    pub(crate) fn prefiller(&self) -> &crate::prefill::Prefiller {
+        &self.inner.prefill
+    }
+
     pub fn latest_focus(&self) -> Option<FocusRegion> {
         self.inner.latest_focus.lock().ok().and_then(|g| g.clone())
     }
@@ -775,8 +781,10 @@ impl Core {
                             "hasImage": region.image.is_some(),
                         });
                         if let Ok(mut g) = self.inner.latest_focus.lock() {
-                            *g = Some(region);
+                            *g = Some(region.clone());
                         }
+                        // The user is probably about to ask about it: start reading it now.
+                        self.start_prefill(region);
                         Some(meta)
                     }
                     Err(e) => {
