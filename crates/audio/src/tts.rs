@@ -1,8 +1,8 @@
 //! Text-to-speech with Kokoro-82M via ONNX Runtime (spec §45–48).
 //!
 //! Phonemes come from espeak-ng, run as a separate process (GPL-3.0 — invoked, never linked;
-//! DECISIONS.md D-021). Kokoro's tokenizer maps IPA symbols to ids; each voice is a style table
-//! indexed by token count.
+//! DECISIONS.md D-021), converted to the misaki phoneme set Kokoro v1.0 was trained on. Kokoro's
+//! tokenizer maps those symbols to ids; each voice is a style table indexed by token count.
 
 use std::{
     collections::HashMap,
@@ -137,26 +137,7 @@ impl KokoroTts {
         let flush = |clause: &mut String, out: &mut String| -> Result<(), TtsError> {
             let c = clause.trim();
             if !c.is_empty() {
-                let mut child = Command::new(&self.espeak)
-                    .args(["-q", "--ipa", "-v", "en-us", "--stdin"])
-                    .stdin(Stdio::piped())
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::null())
-                    .spawn()
-                    .map_err(|e| TtsError::Run(e.to_string()))?;
-                if let Some(mut stdin) = child.stdin.take() {
-                    use std::io::Write;
-                    stdin
-                        .write_all(c.as_bytes())
-                        .map_err(|e| TtsError::Run(e.to_string()))?;
-                }
-                let o = child
-                    .wait_with_output()
-                    .map_err(|e| TtsError::Run(e.to_string()))?;
-                let ps = String::from_utf8_lossy(&o.stdout)
-                    .split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ");
+                let ps = espeak_ipa(&self.espeak, c)?;
                 if !out.is_empty() && !out.ends_with(' ') {
                     out.push(' ');
                 }
@@ -174,7 +155,7 @@ impl KokoroTts {
             }
         }
         flush(&mut clause, &mut out)?;
-        Ok(normalize(&out))
+        Ok(normalize(&misaki_us(&out)))
     }
 
     pub fn tokenize(&self, phonemes: &str) -> Vec<i64> {
@@ -220,7 +201,76 @@ impl KokoroTts {
     }
 }
 
-/// espeak IPA → Kokoro's phoneme set (ported from Kokoro's reference phonemizer).
+/// IPA for one clause from espeak-ng, with `^` tying multi-letter phonemes.
+pub fn espeak_ipa(espeak: &Path, text: &str) -> Result<String, TtsError> {
+    use std::io::Write;
+    let run = |e: std::io::Error| TtsError::Run(e.to_string());
+    let mut child = Command::new(espeak)
+        .args(["-q", "--ipa", "--tie=^", "-v", "en-us", "--stdin"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(run)?;
+    if let Some(mut stdin) = child.stdin.take() {
+        // The newline matters: without it espeak-ng drops the last letter ("Mac" → "Ma").
+        stdin.write_all(text.as_bytes()).map_err(run)?;
+        stdin.write_all(b"\n").map_err(run)?;
+    }
+    let o = child.wait_with_output().map_err(run)?;
+    Ok(String::from_utf8_lossy(&o.stdout)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" "))
+}
+
+/// espeak-ng IPA (with `^` ties) → the misaki phonemes Kokoro v1.0 was trained on, following
+/// misaki's own espeak fallback for American English: one symbol per diphthong and affricate
+/// (`O` for oʊ, `A` for eɪ, `I`, `W`, `Y`, `ʤ`, `ʧ`), `əɹ` for ɚ, and no length marks.
+pub fn misaki_us(ps: &str) -> String {
+    const MAP: [(&str, &str); 23] = [
+        ("ʔˌn\u{329}", "tᵊn"),
+        ("ʔn\u{329}", "tᵊn"),
+        ("ʔn", "tᵊn"),
+        ("ʔ", "t"),
+        ("a^ɪ", "I"),
+        ("a^ʊ", "W"),
+        ("d^ʒ", "ʤ"),
+        ("e^ɪ", "A"),
+        ("t^ʃ", "ʧ"),
+        ("ɔ^ɪ", "Y"),
+        ("ə^l", "ᵊl"),
+        ("o^ʊ", "O"),
+        ("ɪ^ə", "iə"),
+        ("ʲo", "jo"),
+        ("ʲə", "jə"),
+        ("ʲ", ""),
+        ("e", "A"),
+        ("x", "k"),
+        ("ç", "k"),
+        ("ɐ", "ə"),
+        ("ɚ", "əɹ"),
+        ("ɜːɹ", "ɜɹ"),
+        ("ɜː", "ɜɹ"),
+    ];
+    let mut s = ps.to_owned();
+    for (from, to) in MAP {
+        s = s.replace(from, to);
+    }
+    // Syllabic consonants (n̩) become ᵊn.
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if chars.peek() == Some(&'\u{329}') {
+            chars.next();
+            out.push('ᵊ');
+        }
+        out.push(c);
+    }
+    out.replace(['^', 'ː'], "").replace("ɹɹ", "ɹ")
+}
+
+/// Kokoro's own fixes on top (ported from Kokoro's reference phonemizer).
 pub fn normalize(ps: &str) -> String {
     ps.replace("kəkˈoːɹoʊ", "kˈoʊkəɹoʊ")
         .replace('ʲ', "j")
@@ -250,6 +300,27 @@ pub fn write_wav(path: &Path, samples: &[f32], sample_rate: u32) -> Result<(), T
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn espeak_keeps_the_last_letter() {
+        let Some(espeak) = find_espeak() else {
+            eprintln!("skipping: espeak-ng isn't installed");
+            return;
+        };
+        assert_eq!(espeak_ipa(&espeak, "your Mac").unwrap(), "jʊ^ɹ mˈæk");
+        assert!(espeak_ipa(&espeak, "a task").unwrap().ends_with("tˈæsk"));
+    }
+
+    #[test]
+    fn maps_espeak_to_misaki() {
+        // "Hold Control and Option, and just ask", "cursor is", "bottle", "Gemini"
+        assert_eq!(misaki_us("hˈo^ʊld kəntɹˈo^ʊl"), "hˈOld kəntɹˈOl");
+        assert_eq!(misaki_us("d^ʒˈʌst ˈæsk"), "ʤˈʌst ˈæsk");
+        assert_eq!(misaki_us("kˈɜːsɚɹ ɪz"), "kˈɜɹsəɹ ɪz");
+        assert_eq!(misaki_us("bˈɑːɾə^l"), "bˈɑɾᵊl");
+        assert_eq!(misaki_us("d^ʒˈɛmᵻnˌa^ɪ"), "ʤˈɛmᵻnˌI");
+        assert_eq!(misaki_us("bˈʌʔn\u{329}"), "bˈʌtᵊn");
+    }
 
     #[test]
     fn normalizes_espeak_symbols() {
