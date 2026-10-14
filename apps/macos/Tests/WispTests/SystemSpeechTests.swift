@@ -16,7 +16,10 @@ import Testing
         let seconds = Double(file.length) / file.fileFormat.sampleRate
         print("system voice \(english.name) (\(english.quality)): \(elapsed) for \(String(format: "%.1f", seconds)) s of audio")
         #expect(seconds > 1, "real speech was written")
-        #expect(elapsed < .seconds(3), "fast (well under real time), even with other tests running")
+        // CI's virtual Macs are much slower; there the check is only that speech is written.
+        if ProcessInfo.processInfo.environment["CI"] == nil {
+            #expect(elapsed < .seconds(3), "fast (well under real time), even with other tests running")
+        }
         await #expect(throws: SystemSpeech.Failure.self) {
             try await SystemSpeech.synthesize(text: "Hi", voice: "com.example.nope", speed: 1, to: url)
         }

@@ -37,7 +37,8 @@ public enum SystemSpeech {
     /// Speak `text` into a WAV file at `url`. `speed`: 0.5–2 (1 = normal).
     /// Nonisolated: the synthesizer calls back on its own thread (a main-actor closure would trap).
     public nonisolated static func synthesize(text: String, voice: String, speed: Double, to url: URL) async throws {
-        guard let v = AVSpeechSynthesisVoice(identifier: voice) else { throw Failure.unknownVoice }
+        // Some macOS versions hand back a different voice for an unknown identifier.
+        guard let v = AVSpeechSynthesisVoice(identifier: voice), v.identifier == voice else { throw Failure.unknownVoice }
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = v
         let rate = AVSpeechUtteranceDefaultSpeechRate * Float(min(max(speed, 0.5), 2))
