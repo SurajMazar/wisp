@@ -1,26 +1,80 @@
 name: CI
 
+# Every push to main and every pull request: validate everything, build Wisp.app, and keep the
+# DMG and ZIP as a downloadable artifact (Actions → this run → Artifacts). Tagged releases are
+# published by release.yml.
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request replaces the older run; main builds every commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  validate:
+  build:
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # build number = commit count
+
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
-      - name: Rust toolchain
+
+      - name: Rust toolchain (from rust-toolchain.toml)
         run: rustup show
+
       - uses: Swatinem/rust-cache@v2
+
       - run: pnpm install --frozen-lockfile
-      - run: cargo build -p wisp-core
-      - run: pnpm validate
-      - name: Build app bundle (ad-hoc signed)
+
+      - name: Validate (lint, typecheck, Rust/TS/Swift tests)
+        run: |
+          cargo build -p wisp-core
+          pnpm validate
+
+      - name: Build Wisp.app (release, ad-hoc signed)
         run: scripts/build/build-macos.sh
+
+      - name: Package DMG and ZIP
+        id: package
+        run: |
+          label="$(git rev-list --count HEAD)-$(git rev-parse --short HEAD)"
+          scripts/release/package.sh "$label"
+          echo "label=$label" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Wisp-${{ steps.package.outputs.label }}-macos
+          path: |
+            build/release/*.dmg
+            build/release/*.zip
+            build/release/SHA256SUMS.txt
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Summary
+        run: |
+          {
+            echo "### Wisp build ${{ steps.package.outputs.label }}"
+            echo
+            echo "Download **Wisp-${{ steps.package.outputs.label }}-macos** under *Artifacts* below (kept 14 days)."
+            echo
+            echo '```'
+            cat build/release/SHA256SUMS.txt
+            echo '```'
+            echo
+            echo "Ad-hoc signed and not notarized: after installing, run"
+            echo '`xattr -dr com.apple.quarantine /Applications/Wisp.app` or allow it in Privacy & Security.'
+          } >> "$GITHUB_STEP_SUMMARY"

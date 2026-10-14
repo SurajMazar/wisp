@@ -69,7 +69,7 @@ import Testing
     @Test func answerMarksAppearWhereAsked() throws {
         let save = buttons[0].1, export = buttons[1].1, total = buttons[2].1, settings = buttons[3].1
         let image = try render([
-            .circle(CircleAnnotation(center: Point(x: save.midX, y: save.midY), label: "Save", radius: hypot(save.width, save.height) / 2 + 8)),
+            .circle(CircleAnnotation(center: Point(x: save.midX, y: save.midY), label: "Save", radius: Double(hypot(save.width, save.height)) / 2 + 8)),
             .arrow(ArrowAnnotation(from: Point(x: export.minX - 110, y: export.minY - 82), label: "Export…", to: Point(x: export.minX - 2, y: export.minY - 2))),
             .highlight(RectAnnotation(label: nil, rect: Rect(height: 3, width: total.width, x: total.minX, y: total.maxY + 1))),
             .highlight(RectAnnotation(label: "Settings", rect: rect(settings, pad: 4))),
