@@ -1054,6 +1054,7 @@ export const FocusRegion = z.strictObject({
   "display": DisplayInfo,
   "id": z.string(),
   "image": FocusImage.nullable().optional(),
+  "ink": z.boolean().optional(),
   "kind": FocusKind,
   "path": z.array(Point).optional(),
   "selection": Rect,

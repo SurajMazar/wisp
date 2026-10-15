@@ -2503,6 +2503,10 @@
             }
           ]
         },
+        "ink": {
+          "description": "The user drew on the screen with the pen; their marks are drawn into the image.",
+          "type": "boolean"
+        },
         "kind": {
           "$ref": "#/definitions/FocusKind"
         },

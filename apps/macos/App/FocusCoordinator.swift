@@ -204,7 +204,15 @@ final class FocusCoordinator {
             _ = try ScreenCapturer.save(image, id: id, directory: AppPaths.focusCacheDirectory)
             // Read the text and the UI elements concurrently.
             async let recognized = TextRecognizer.recognize(image, crop: crop)
-            let accessibility = await accessibilityContext(selection: selection, cursor: r.kind == .point ? path.first ?? cursor : cursor)
+            // What's "pointed at": the clicked spot, the pointer for a window or screen, and the middle
+            // of a drawn or dragged area. Where the pen or drag ended is usually on its edge, often
+            // over a neighbouring control.
+            let target: CGPoint = switch r.kind {
+            case .point: path.first ?? cursor
+            case .window, .screen: cursor
+            default: CGPoint(x: selection.midX, y: selection.midY)
+            }
+            let accessibility = await accessibilityContext(selection: selection, cursor: target)
             let text = await recognized
             let region = FocusRegion(
                 accessibility: accessibility,
@@ -215,6 +223,7 @@ final class FocusCoordinator {
                 display: display,
                 id: id,
                 image: FocusImage(heightPx: UInt32(image.height), url: "wisp://focus/\(id).png", widthPx: UInt32(image.width)),
+                ink: r.strokes.isEmpty ? nil : true,
                 kind: r.kind,
                 path: path.map(Point.init),
                 selection: Rect(selection),

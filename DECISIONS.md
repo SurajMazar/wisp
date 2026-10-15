@@ -446,3 +446,22 @@ follow-up), and the island stays open saying "Talking" between turns.
 - **Polish:** Settings switches for the notch island and for opt-in tips (after 10 minutes in an app, once per app,
   using only which app is in front, never screenshots; skips password managers and system apps); a finished
   background task shows its summary in the island; OpenAI voices with the user's key (never in Local Only).
+
+## D-048 — What you draw is what the model looks at
+
+**Problem:** circling something and asking "What is this?" got answers about the whole window. Text-first (D-041)
+dropped the screenshot whenever a capture had 80+ characters of text, so the model never saw the pen marks; the
+text it got had no notion of what was circled (the capture includes a margin), and the "under pointer" element was
+wherever the pen stopped, usually on the loop's edge over a neighbouring control.
+
+**Decision:**
+- The app flags regions drawn with the pen (`FocusRegion.ink`); drawn regions, lassos and circles always send the
+  image, as do "what is this / that / these" questions about anything smaller than the whole screen.
+- The description says the purple marks show what the user means, and splits on-screen text into "inside what
+  they marked" (tested against the drawn loop itself, or the ellipse or rectangle) and "around it, for context
+  only"; with no text inside, it says so (likely an icon) instead of offering the neighbours.
+- For drawn and dragged areas, the element "pointed at" is the middle of the area, not where the pen or drag ended.
+
+**Evidence:** scripts/validation/circle-check.ts (a report window with labelled buttons, unlabelled icons and
+body text; a pen loop around one target; "What is this?"), qwen3-vl:4b-instruct: previous engine 0/10 (picture
+never sent; every answer described the document), now 10/10.

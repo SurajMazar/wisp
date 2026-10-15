@@ -187,6 +187,9 @@ pub struct FocusRegion {
     /// Lasso path or clicked point, global points.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub path: Vec<Point>,
+    /// The user drew on the screen with the pen; their marks are drawn into the image.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ink: bool,
     pub cursor: Point,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<FocusImage>,

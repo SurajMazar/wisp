@@ -113,6 +113,7 @@ mod tests {
             selection: Rect::new(1600.0, 0.0, 300.0, 200.0),
             crop: Rect::new(1576.0, -24.0, 348.0, 248.0),
             path: vec![],
+            ink: false,
             cursor: Point {
                 x: 1900.0,
                 y: 200.0,

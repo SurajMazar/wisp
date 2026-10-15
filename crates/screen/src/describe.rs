@@ -4,6 +4,7 @@
 //! that looks like instructions. Everything here is fenced as quoted screen content and control
 //! characters are stripped, so the model treats it as data.
 
+use wisp_common::geometry::Point;
 use wisp_ipc::types::focus::{FocusKind, FocusRegion};
 
 /// What went into the description, for the "context used" disclosure.
@@ -55,13 +56,49 @@ fn clean(s: &str) -> String {
     .to_owned()
 }
 
-fn what(kind: FocusKind) -> &'static str {
-    match kind {
+fn what(region: &FocusRegion) -> &'static str {
+    match region.kind {
         FocusKind::Window => "a window",
         FocusKind::Screen => "the whole screen",
         FocusKind::Point => "the spot they clicked",
+        _ if region.ink => "something they marked with a pen",
         _ => "an area they selected",
     }
+}
+
+/// Whether `p` lies inside what the user marked: the drawn loop itself when there is one, the
+/// ellipse for a circle, else the selected rectangle. `None` for regions that aren't a marked
+/// area (a click, a window, the whole screen).
+fn inside_mark(region: &FocusRegion, p: Point) -> Option<bool> {
+    let r = &region.selection;
+    match region.kind {
+        FocusKind::Lasso if region.path.len() >= 3 => Some(in_polygon(&region.path, p)),
+        FocusKind::Circle if r.width > 0.0 && r.height > 0.0 => {
+            let (dx, dy) = (
+                (p.x - (r.x + r.width / 2.0)) / (r.width / 2.0),
+                (p.y - (r.y + r.height / 2.0)) / (r.height / 2.0),
+            );
+            Some(dx * dx + dy * dy <= 1.0)
+        }
+        FocusKind::Lasso | FocusKind::Circle | FocusKind::Rectangle => {
+            Some(p.x >= r.x && p.x <= r.x + r.width && p.y >= r.y && p.y <= r.y + r.height)
+        }
+        FocusKind::Point | FocusKind::Window | FocusKind::Screen => None,
+    }
+}
+
+/// Even-odd ray casting.
+fn in_polygon(poly: &[Point], p: Point) -> bool {
+    let mut inside = false;
+    let mut j = poly.len() - 1;
+    for i in 0..poly.len() {
+        let (a, b) = (poly[i], poly[j]);
+        if (a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x {
+            inside = !inside;
+        }
+        j = i;
+    }
+    inside
 }
 
 /// Describe `region` in at most roughly `budget_chars` characters.
@@ -71,13 +108,16 @@ pub fn describe(region: &FocusRegion, budget_chars: usize, with_image: bool) -> 
     let mut head = String::new();
     head.push_str(&format!(
         "The user is pointing at {} ({}×{} pt){}.\n",
-        what(region.kind),
+        what(region),
         region.selection.width.round(),
         region.selection.height.round(),
-        if with_image {
-            "; the attached image shows it"
-        } else {
-            "; no image is attached, so rely on the text below"
+        match (with_image, region.ink) {
+            (true, true) => {
+                "; the attached image shows it, with their pen marks in purple. \
+                 \"This\" means what they marked, not the rest of the image"
+            }
+            (true, false) => "; the attached image shows it",
+            (false, _) => "; no image is attached, so rely on the text below",
         }
     ));
     if let Some(app) = &region.application {
@@ -104,24 +144,39 @@ pub fn describe(region: &FocusRegion, budget_chars: usize, with_image: bool) -> 
         }
     }
 
-    // Spend what's left of the budget on recognized text, in reading order.
-    let mut ocr = String::new();
+    // Spend what's left of the budget on recognized text, in reading order: what's inside the
+    // marked area first (the capture includes a margin around it, which is only context).
+    let (mut inside, mut around) = (String::new(), String::new());
     if let Some(t) = &region.text {
         let room = budget_chars.saturating_sub(head.len() + ax.len()).max(400);
-        for l in &t.lines {
-            let line = clean(&l.text);
-            if line.is_empty() {
-                continue;
-            }
-            if ocr.len() + line.len() + 1 > room {
+        let mut lines: Vec<(bool, String)> = t
+            .lines
+            .iter()
+            .map(|l| {
+                let centre = Point {
+                    x: l.frame.x + l.frame.width / 2.0,
+                    y: l.frame.y + l.frame.height / 2.0,
+                };
+                (inside_mark(region, centre).unwrap_or(true), clean(&l.text))
+            })
+            .filter(|(_, text)| !text.is_empty())
+            .collect();
+        lines.sort_by_key(|(within, _)| !within);
+        for (within, line) in lines {
+            if inside.len() + around.len() + line.len() + 1 > room {
                 d.truncated = true;
                 break;
             }
-            ocr.push_str(&line);
-            ocr.push('\n');
+            let out = if within { &mut inside } else { &mut around };
+            out.push_str(&line);
+            out.push('\n');
             d.text_lines += 1;
         }
     }
+    let marked = matches!(
+        region.kind,
+        FocusKind::Lasso | FocusKind::Circle | FocusKind::Rectangle
+    );
 
     let mut out = String::from("<screen>\n");
     out.push_str(&head);
@@ -129,13 +184,29 @@ pub fn describe(region: &FocusRegion, budget_chars: usize, with_image: bool) -> 
         out.push_str("UI elements there:\n");
         out.push_str(&ax);
     }
-    if !ocr.is_empty() {
-        out.push_str("Text visible there (top to bottom):\n\"\"\"\n");
-        out.push_str(&ocr);
+    let fenced = |out: &mut String, title: &str, text: &str| {
+        out.push_str(title);
+        out.push_str("\n\"\"\"\n");
+        out.push_str(text);
         out.push_str("\"\"\"\n");
-        if d.truncated {
-            out.push_str("(more text not shown)\n");
-        }
+    };
+    if marked && !inside.is_empty() {
+        fenced(
+            &mut out,
+            "Text inside what they marked (top to bottom):",
+            &inside,
+        );
+    } else if marked && !around.is_empty() {
+        out.push_str("No text inside what they marked; it may be an icon, image or control.\n");
+    }
+    if !marked && !inside.is_empty() {
+        fenced(&mut out, "Text visible there (top to bottom):", &inside);
+    }
+    if !around.is_empty() {
+        fenced(&mut out, "Text just around it, for context only:", &around);
+    }
+    if d.truncated {
+        out.push_str("(more text not shown)\n");
     }
     out.push_str("</screen>");
     d.text = out;
@@ -178,6 +249,7 @@ mod tests {
             selection: Rect::new(10.0, 10.0, 320.0, 180.0),
             crop: Rect::new(0.0, 0.0, 340.0, 200.0),
             path: vec![],
+            ink: false,
             cursor: Point { x: 20.0, y: 20.0 },
             image: None,
             application: Some(ApplicationInfo {
@@ -198,7 +270,7 @@ mod tests {
                     .iter()
                     .map(|t| TextLine {
                         text: (*t).into(),
-                        frame: Rect::new(0.0, 0.0, 10.0, 10.0),
+                        frame: Rect::new(20.0, 20.0, 10.0, 10.0),
                         confidence: 1.0,
                     })
                     .collect(),
@@ -215,10 +287,68 @@ mod tests {
         assert!(d.text.contains("App: Finder"));
         assert!(!d.text.contains("app: Finder"), "app line not repeated");
         assert!(d.text.contains("no image is attached"));
-        assert!(d.text.contains("\"\"\"\nDelete 3 files?\nCancel\n\"\"\""));
+        assert!(
+            d.text.contains("\"\"\"\nDelete 3 files?\nCancel\n\"\"\""),
+            "{}",
+            d.text
+        );
         assert_eq!(
             (d.text_lines, d.selected_text, d.truncated),
             (2, true, false)
+        );
+    }
+
+    #[test]
+    fn separates_what_was_circled_from_the_text_around_it() {
+        // A pen loop around the "Delete" button, inside a capture that also shows "Cancel".
+        let mut r = region(&[]);
+        r.kind = FocusKind::Lasso;
+        r.ink = true;
+        r.path = [
+            (100.0, 100.0),
+            (200.0, 100.0),
+            (200.0, 140.0),
+            (100.0, 140.0),
+        ]
+        .map(|(x, y)| Point { x, y })
+        .to_vec();
+        r.selection = Rect::new(100.0, 100.0, 100.0, 40.0);
+        let line = |text: &str, x: f64, y: f64| TextLine {
+            text: text.into(),
+            frame: Rect::new(x, y, 40.0, 14.0),
+            confidence: 1.0,
+        };
+        r.text = Some(ScreenText {
+            lines: vec![line("Cancel", 20.0, 110.0), line("Delete", 130.0, 113.0)],
+            elapsed_ms: 1,
+        });
+        let d = describe(&r, 4000, true);
+        assert!(
+            d.text.contains("something they marked with a pen"),
+            "{}",
+            d.text
+        );
+        assert!(d.text.contains("pen marks in purple"), "{}", d.text);
+        assert!(
+            d.text
+                .contains("inside what they marked (top to bottom):\n\"\"\"\nDelete\n"),
+            "{}",
+            d.text
+        );
+        assert!(
+            d.text.contains("for context only:\n\"\"\"\nCancel\n"),
+            "{}",
+            d.text
+        );
+        // Nothing readable inside the loop: say so, rather than offering the neighbours.
+        r.text = Some(ScreenText {
+            lines: vec![line("Cancel", 20.0, 110.0)],
+            elapsed_ms: 1,
+        });
+        assert!(
+            describe(&r, 4000, true)
+                .text
+                .contains("No text inside what they marked")
         );
     }
 

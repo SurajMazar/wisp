@@ -2120,13 +2120,14 @@ public struct FocusRegion: Codable, Sendable, Equatable {
     public var display: DisplayInfo
     public var id: String
     public var image: FocusImage?
+    public var ink: Bool?
     public var kind: FocusKind
     public var path: [Point]?
     public var selection: Rect
     public var text: ScreenText?
     public var window: WindowInfo?
 
-    public init(accessibility: AxContext? = nil, application: ApplicationInfo? = nil, createdAtMs: Int64, crop: Rect, cursor: Point, display: DisplayInfo, id: String, image: FocusImage? = nil, kind: FocusKind, path: [Point]? = nil, selection: Rect, text: ScreenText? = nil, window: WindowInfo? = nil) {
+    public init(accessibility: AxContext? = nil, application: ApplicationInfo? = nil, createdAtMs: Int64, crop: Rect, cursor: Point, display: DisplayInfo, id: String, image: FocusImage? = nil, ink: Bool? = nil, kind: FocusKind, path: [Point]? = nil, selection: Rect, text: ScreenText? = nil, window: WindowInfo? = nil) {
         self.accessibility = accessibility
         self.application = application
         self.createdAtMs = createdAtMs
@@ -2135,6 +2136,7 @@ public struct FocusRegion: Codable, Sendable, Equatable {
         self.display = display
         self.id = id
         self.image = image
+        self.ink = ink
         self.kind = kind
         self.path = path
         self.selection = selection

@@ -1021,10 +1021,47 @@ fn wants_image(
             .filter(|n| n.title.is_some() || n.description.is_some())
             .count()
     });
+    use wisp_ipc::types::focus::FocusKind;
+    // A drawn mark (a loop, or pen strokes burned into the picture) only exists in the image:
+    // the text alone can't say which part of the screen was meant.
+    let drawn = f.ink || matches!(f.kind, FocusKind::Lasso | FocusKind::Circle);
     mode == wisp_ipc::types::focus::ScreenshotMode::Always
+        || drawn
         || ocr_chars < 80
         || question.is_some_and(is_visual_question)
+        || (f.kind != FocusKind::Screen && question.is_some_and(is_identify_question))
         || (labelled < 5 && question.is_some_and(is_pointing_question))
+}
+
+/// "What is this?", "what's that", "what does this do": naming the thing pointed at needs to
+/// see it.
+fn is_identify_question(q: &str) -> bool {
+    let q: String = q
+        .to_lowercase()
+        .replace(['’', '\''], "")
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { ' ' })
+        .collect();
+    let q = format!(" {} ", q.split_whitespace().collect::<Vec<_>>().join(" "));
+    [
+        " what is this ",
+        " what is that ",
+        " whats this ",
+        " whats that ",
+        " what are these ",
+        " what are those ",
+        " what is it ",
+        " whats it ",
+        " what does this do ",
+        " what does that do ",
+        " what does this mean ",
+        " what am i looking at ",
+        " who is this ",
+        " who is that ",
+        " identify ",
+    ]
+    .iter()
+    .any(|p| q.contains(p))
 }
 
 /// "Where is…", "how do I…", "show me…", "which button…": the answer should point at something.
@@ -1093,6 +1130,27 @@ fn is_visual_question(q: &str) -> bool {
 #[cfg(test)]
 mod image_tests {
     use super::is_visual_question;
+
+    #[test]
+    fn identify_questions_are_recognized() {
+        use super::is_identify_question;
+        for q in [
+            "What is this?",
+            "what's this",
+            "What’s that thing",
+            "What does this do?",
+            "Hey, what are these",
+        ] {
+            assert!(is_identify_question(q), "{q}");
+        }
+        for q in [
+            "Summarize this page",
+            "What is the total?",
+            "Where is this setting?",
+        ] {
+            assert!(!is_identify_question(q), "{q}");
+        }
+    }
 
     #[test]
     fn pointing_questions_are_recognized() {

@@ -385,6 +385,7 @@ mod tests {
             selection: Rect::new(100.0, 100.0, 600.0, 400.0),
             crop: Rect::new(100.0, 100.0, 600.0, 400.0),
             path: vec![],
+            ink: false,
             cursor: Point { x: 0.0, y: 0.0 },
             image: None,
             application: None,
