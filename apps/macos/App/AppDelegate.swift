@@ -16,6 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// A single tap waits briefly in case a second one follows (double tap = talk mode).
     private var pendingTap: Task<Void, Never>?
     private var lastTapAt = Date.distantPast
+    /// The shortcut is held right now, and which hold this is (to drop setup for a finished one).
+    private var holding = false
+    private var holdCount = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let deps = DependencyContainer()
@@ -141,15 +144,30 @@ extension AppDelegate: InvocationDelegate {
     func invocationStarted(source: InvocationSource, behavior: InvocationBehavior) {
         // Holding the shortcut during talk mode ends it and asks the usual way.
         if voice?.talking == true { voice?.endTalk() }
+        let started = ContinuousClock.now
         assistant?.invocationStarted(behavior: behavior)
-        if behavior == .hold { focus?.holdStarted() }
+        // Microphone and "Listening" first, so the first words are heard and the notch answers
+        // at once; the drawing overlay (a window per display) and the screen capture follow.
         if behavior != .toggle { voice?.holdStarted() }
+        let listening = ContinuousClock.now - started
+        holdCount += 1
+        if behavior == .hold {
+            let hold = holdCount
+            Task { @MainActor [weak self] in
+                // Released already (a quick tap): no overlay to open.
+                guard let self, self.holdCount == hold, self.holding else { return }
+                self.focus?.holdStarted()
+                Log.app.notice("hold: listening after \(listening, privacy: .public), pen ready after \(ContinuousClock.now - started, privacy: .public)")
+            }
+        }
+        holding = true
         deps?.router.emit(IPCEvents.invocationStarted, InvocationStarted(
             atMs: Int64(Date().timeIntervalSince1970 * 1000), behavior: behavior, source: source
         ))
     }
 
     func invocationEnded(source: InvocationSource, reason: InvocationEndReason, duration: Duration) {
+        holding = false
         focus?.holdEnded()
         if reason == .tapped {
             // A quick tap: nothing was said or drawn — open/close the panel (or, tapped twice,

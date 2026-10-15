@@ -41,7 +41,9 @@ public final class IslandController {
 
     public func set(state: AssistantState) {
         let wasIdle = !model.isActive
-        if [.listening, .drawing].contains(state) { model.caption = "" }
+        // A caption belongs to one answer: clear it when the island folds away or a new question
+        // starts, so later speech (Test Voice, a background task) never shows an old answer.
+        if [.listening, .drawing, .idle].contains(state) { resetCaption() }
         model.state = state
         guard enabled else { return }
         if model.isActive, wasIdle { place() }
@@ -91,22 +93,46 @@ public final class IslandController {
         if talking { place(); panel.orderFrontRegardless() }
     }
 
+    /// The answer as streamed, pointing markers and all; `model.caption` is what's shown.
+    private var rawCaption = ""
+
     /// Answer text as it streams (shown as a caption while thinking/speaking).
     public func appendCaption(_ text: String) {
-        model.caption += text
-        if model.caption.count > 600 { model.caption = String(model.caption.suffix(400)) }
+        rawCaption += text
+        if rawCaption.count > 600 { rawCaption = String(rawCaption.suffix(400)) }
+        model.caption = Self.visible(rawCaption)
     }
 
-    public func resetCaption() { model.caption = "" }
+    public func resetCaption() {
+        rawCaption = ""
+        model.caption = ""
+    }
+
+    /// The answer without its pointing markers ("Click Save [[point: Save]]" → "Click Save"):
+    /// those are for the on-screen marks. A marker still streaming in is hidden until it closes.
+    static func visible(_ raw: String) -> String {
+        var out = ""
+        var rest = Substring(raw)
+        while let open = rest.range(of: "[[") {
+            out += rest[..<open.lowerBound]
+            guard let close = rest[open.upperBound...].range(of: "]]") else { rest = ""; break }
+            rest = rest[close.upperBound...]
+        }
+        out += rest.hasSuffix("[") ? rest.dropLast() : rest
+        // Markers leave double spaces and a space before punctuation behind.
+        return out
+            .replacingOccurrences(of: #"\s+([.,!?;:])"#, with: "$1", options: .regularExpression)
+            .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+    }
 
     /// Say something short about a problem (e.g. nothing was heard), then fold away.
     public func showProblem(_ text: String, for duration: Duration = .seconds(2.5)) {
+        rawCaption = text
         model.caption = text
         set(state: .error)
         Task { @MainActor in
             try? await Task.sleep(for: duration)
             if self.model.state == .error, self.model.caption == text {
-                self.model.caption = ""
                 self.set(state: .idle)
             }
         }
@@ -173,8 +199,10 @@ struct IslandView: View {
     private var size: CGSize {
         let n = model.notch
         guard model.isActive else { return CGSize(width: max(n.width, 120), height: n.height) }
-        let width = max(n.width + 150, showCaption ? 420 : 300)
-        return CGSize(width: width, height: n.height + (showCaption ? 58 : 34))
+        let width = max(n.width + 180, showCaption ? 460 : 330)
+        // About 60 characters fit on a caption line; the caption shows at most two.
+        let captionHeight: CGFloat = model.caption.count > 60 ? 60 : 44
+        return CGSize(width: width, height: n.height + (showCaption ? captionHeight : 42))
     }
 
     var body: some View {
@@ -212,8 +240,8 @@ struct IslandView: View {
                 trailing
             }
             .frame(height: max(model.notch.height - 8, 16))
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
+            .padding(.horizontal, 22)
+            .padding(.top, 6)
 
             if showCaption {
                 Text(model.caption)
@@ -222,13 +250,16 @@ struct IslandView: View {
                     .lineLimit(2)
                     .truncationMode(.head)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 12)
             } else {
                 Text(model.label)
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(model.state == .error ? Color(red: 1, green: 0.45, blue: 0.45) : .white.opacity(0.9))
                     .modifier(Shimmer(active: model.state == .thinking && !reduceMotion))
                     .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 10)
             }
         }
     }

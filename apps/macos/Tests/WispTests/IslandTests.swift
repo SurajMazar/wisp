@@ -53,4 +53,26 @@ import Testing
             }
         }
     }
+
+    /// Test Voice (or any later speech) must not bring back the previous answer's text.
+    @Test func anOldAnswerIsNotShownAgain() {
+        let island = IslandController()
+        island.enabled = false  // no window on screen during tests
+        island.set(state: .thinking)
+        island.appendCaption("The previous answer.")
+        island.set(state: .idle)
+        island.set(state: .speaking)
+        #expect(island.model.caption.isEmpty)
+    }
+
+    /// Pointing markers are for the on-screen marks, never the caption, even mid-stream.
+    @Test func captionsLeaveOutPointingMarkers() {
+        let island = IslandController()
+        island.enabled = false
+        island.set(state: .speaking)
+        island.appendCaption("Click Save [[point: Sa")
+        #expect(island.model.caption == "Click Save ")
+        island.appendCaption("ve]] to keep it. Or Export [[point: 812,40]].")
+        #expect(island.model.caption == "Click Save to keep it. Or Export.")
+    }
 }

@@ -60,7 +60,7 @@ const scenes: Record<string, Shot[]> = {
       windowSize: MOCK,
       island: n("island-listening"),
       pointer: [0.5, 0.45],
-      caption: "Hold ⌃⌥ and ask: “How do I keep my changes?”",
+      caption: "Hold ⌥⌘ and ask: “How do I keep my changes?”",
     },
     {
       share: 0.14,
