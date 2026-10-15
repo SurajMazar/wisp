@@ -224,11 +224,11 @@ async function main() {
   await shot(page, "dictation");
 
   await page.goto(`http://127.0.0.1:${PORT}/#/models`);
-  await page
-    .getByText("Checking…")
-    .first()
-    .waitFor({ state: "detached", timeout: 30000 })
-    .catch(() => {});
+  // Until the model list and "Who answers" have both loaded (a busy Ollama can take a while).
+  await page.getByText("On this Mac").first().waitFor({ timeout: 90000 });
+  await page.getByText("Runs on this Mac").first().waitFor({ timeout: 90000 });
+  for (let i = 0; i < 120 && (await page.getByText("Checking…", { exact: true }).count()) > 0; i++)
+    await sleep(500);
   await shot(page, "models");
   await section(page, "Cloud API keys");
   await shot(page, "models-cloud");

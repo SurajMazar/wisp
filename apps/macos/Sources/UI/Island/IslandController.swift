@@ -269,7 +269,7 @@ struct IslandView: View {
         case .listening, .dictating:
             Waveform(level: model.level, color: model.accent, animate: !reduceMotion)
         case .thinking, .analyzing, .executing:
-            ProgressView().controlSize(.mini).tint(.white)
+            Spinner(animate: !reduceMotion)
         case .speaking:
             Waveform(level: 0.45, color: .white.opacity(0.85), animate: !reduceMotion)
         case .drawing, .selecting:
@@ -310,6 +310,25 @@ struct IslandShape: Shape {
 }
 
 /// Five bars that follow the microphone level.
+/// A small white arc that turns while Wisp works (drawn in SwiftUI, so it also renders in
+/// snapshots, unlike the system spinner).
+struct Spinner: View {
+    let animate: Bool
+    @State private var turning = false
+
+    var body: some View {
+        Circle()
+            .trim(from: 0.15, to: 0.85)
+            .stroke(.white.opacity(0.9), style: StrokeStyle(lineWidth: 1.8, lineCap: .round))
+            .frame(width: 11, height: 11)
+            .rotationEffect(.degrees(turning ? 360 : 0))
+            .onAppear {
+                guard animate else { return }
+                withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: false)) { turning = true }
+            }
+    }
+}
+
 struct Waveform: View {
     var level: Double
     var color: Color
