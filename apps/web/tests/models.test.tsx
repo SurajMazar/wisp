@@ -107,6 +107,15 @@ describe("Models page", () => {
     await waitFor(() => expect(stored.models.vision).toEqual({ providerId: "ollama", model: "qwen3-vl:8b" }));
   });
 
+  it("searches local models even without any cloud key", async () => {
+    render(<ModelsPage />);
+    await userEvent.type(await screen.findByRole("searchbox", { name: "Search models" }), "qwen");
+    expect(screen.getByText("1 of 2 models")).toBeInTheDocument();
+    // One model row left (each row has a Test button): the Ollama one, which sees images.
+    expect(screen.getAllByRole("button", { name: "Test" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Use for screen" })).toBeInTheDocument();
+  });
+
   it("keeps a cloud key added elsewhere when it saves a choice", async () => {
     render(<ModelsPage />);
     const use = await screen.findByRole("button", { name: "Use for screen" });
@@ -152,8 +161,9 @@ describe("Models page", () => {
     // Local models aren't mixed in with the cloud ones.
     expect(within(cloudGroup).queryByText("qwen3-vl:8b")).not.toBeInTheDocument();
 
-    await userEvent.type(screen.getByRole("searchbox", { name: "Search cloud models" }), "mini");
-    expect(screen.getByText("2 of 3 models")).toBeInTheDocument();
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search models" }), "mini");
+    expect(screen.getByText("2 of 5 models")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Test" })).toHaveLength(2);
     expect(screen.queryByText("gpt-5")).not.toBeInTheDocument();
     expect(screen.getByText("gpt-5-mini")).toBeInTheDocument();
     expect(screen.getByText("o4-mini")).toBeInTheDocument();

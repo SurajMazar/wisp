@@ -179,24 +179,27 @@ function ModelRow({
   );
 }
 
-/** Cloud models, grouped by provider, with a search box: these lists run to dozens of models. */
+const matches = (m: ModelInfo, q: string) => !q || `${m.name} ${m.id}`.toLowerCase().includes(q);
+
+/** Cloud models, grouped by provider: these lists run to dozens of models. */
 function CloudModels({
   providers,
   models,
+  query,
   row,
   chosen,
 }: {
   providers: ProviderInfo[];
   models: ModelInfo[];
+  /** Lower-case search text from the page's search box. */
+  query: string;
   row: (m: ModelInfo) => React.ReactNode;
   chosen: (m: ModelInfo) => boolean;
 }) {
-  const [query, setQuery] = useState("");
-  const q = query.trim().toLowerCase();
   const groups = useMemo(() => {
     const byProvider = new Map<string, ModelInfo[]>();
     for (const m of models) {
-      if (q && !`${m.name} ${m.id}`.toLowerCase().includes(q)) continue;
+      if (!matches(m, query)) continue;
       byProvider.set(m.providerId, [...(byProvider.get(m.providerId) ?? []), m]);
     }
     // The models you use come first, then alphabetical.
@@ -205,29 +208,14 @@ function CloudModels({
       id,
       list: list.sort((a, b) => Number(chosen(b)) - Number(chosen(a)) || a.name.localeCompare(b.name)),
     }));
-  }, [models, providers, q, chosen]);
-  const shown = groups.reduce((n, g) => n + g.list.length, 0);
+  }, [models, providers, query, chosen]);
 
   return (
     <SettingsGroup
       title="Cloud models"
       description="These run on the provider's servers: your question, and any screen area you attach, leave this Mac."
     >
-      <div className="px-3 py-2.5">
-        <input
-          type="search"
-          aria-label="Search cloud models"
-          placeholder={`Search ${models.length} cloud models`}
-          className="h-7 w-full rounded-[var(--radius-sm)] border border-border-strong bg-surface px-2 text-base"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        {q && (
-          <p className="mt-1.5 text-xs text-text-faint" role="status">
-            {shown === 0 ? "No cloud models match." : `${shown} of ${models.length} models`}
-          </p>
-        )}
-      </div>
+      {groups.length === 0 && <p className="px-3 py-2.5 text-sm text-text-muted">No cloud models match.</p>}
       {/* Long provider lists scroll inside the group instead of stretching the page. */}
       <div className="max-h-[32rem] overflow-y-auto">
         {groups.map((g) => (
@@ -258,6 +246,7 @@ export function ModelsPage() {
   const settings = useSettingsStore((s) => s.settings?.models);
   const patch = useSettingsStore((s) => s.patch);
   const [name, setName] = useState("");
+  const [query, setQuery] = useState("");
   const [draft, setDraft] = useState<ModelSettings | null>(settings ?? null);
   const [synced, setSynced] = useState(settings);
   if (synced !== settings) {
@@ -283,8 +272,11 @@ export function ModelsPage() {
     draft?.[slot]?.providerId === m.providerId && draft?.[slot]?.model === m.id;
   const choose = (slot: "general" | "vision", m: ModelInfo | null) =>
     save({ [slot]: m ? ({ providerId: m.providerId, model: m.id } satisfies ModelRef) : null });
+  const q = query.trim().toLowerCase();
   const local = models.filter((m) => m.locality === "local");
   const cloud = models.filter((m) => m.locality !== "local");
+  const shownLocal = local.filter((m) => matches(m, q));
+  const shown = shownLocal.length + cloud.filter((m) => matches(m, q)).length;
   const row = (m: ModelInfo) => (
     <ModelRow
       m={m}
@@ -326,15 +318,35 @@ export function ModelsPage() {
         )}
       </SettingsGroup>
 
+      {models.length > 0 && (
+        <div className="mb-6">
+          <input
+            type="search"
+            aria-label="Search models"
+            placeholder={`Search ${models.length} models, on this Mac and in the cloud`}
+            className="h-8 w-full rounded-[var(--radius-sm)] border border-border-strong bg-surface px-2.5 text-base"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {q && (
+            <p className="mt-1.5 px-1 text-xs text-text-faint" role="status">
+              {shown === 0 ? "No models match." : `${shown} of ${models.length} models`}
+            </p>
+          )}
+        </div>
+      )}
+
       <SettingsGroup
         title="Models on this Mac"
         description={
           local.length === 0 && ollama?.state === "available"
             ? "No models yet — download one below."
-            : undefined
+            : q && shownLocal.length === 0
+              ? "No models on this Mac match."
+              : undefined
         }
       >
-        {local.map((m) => (
+        {shownLocal.map((m) => (
           <div key={`${m.providerId}/${m.id}`}>{row(m)}</div>
         ))}
       </SettingsGroup>
@@ -420,6 +432,7 @@ export function ModelsPage() {
         <CloudModels
           providers={list?.providers ?? []}
           models={cloud}
+          query={q}
           row={row}
           chosen={(m) => isPref(m, "general") || isPref(m, "vision")}
         />
