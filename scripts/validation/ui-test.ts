@@ -155,7 +155,7 @@ async function main() {
 
     for (const name of ["OpenAI", "Anthropic", "Google Gemini"]) {
       const row = page.getByText(name, { exact: true }).first();
-      check(await row.isVisible(), `Cloud models lists ${name}`);
+      check(await row.isVisible(), `Cloud API keys lists ${name}`);
     }
     check((await page.getByText("Not connected").count()) === 3, "all three show “Not connected”");
     check(
@@ -177,7 +177,7 @@ async function main() {
       await page.getByRole("button", { name: "Save" }).isDisabled(),
       "Save is disabled until a key is typed",
     );
-    await page.getByText("Cloud models").scrollIntoViewIfNeeded();
+    await page.getByText("Cloud API keys").scrollIntoViewIfNeeded();
     await shot("3-models-cloud");
     await page.getByRole("button", { name: "Cancel" }).click();
     check(await page.getByRole("button", { name: "Add Key" }).first().isVisible(), "Cancel closes the field");

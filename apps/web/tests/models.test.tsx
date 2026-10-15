@@ -1,6 +1,6 @@
 import { IpcClient, type AppSettings, type ModelsList } from "@wisp/contracts";
 import { MockTransport } from "@wisp/test-utils";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ModelsPage } from "../src/features/models/ModelsPage";
@@ -105,6 +105,58 @@ describe("Models page", () => {
     render(<ModelsPage />);
     await userEvent.click(await screen.findByRole("button", { name: "Use for screen" }));
     await waitFor(() => expect(stored.models.vision).toEqual({ providerId: "ollama", model: "qwen3-vl:8b" }));
+  });
+
+  it("keeps a cloud key added elsewhere when it saves a choice", async () => {
+    render(<ModelsPage />);
+    const use = await screen.findByRole("button", { name: "Use for screen" });
+    // Another window adds an OpenAI key after this page loaded its copy of the settings.
+    const openai = {
+      id: "openai",
+      name: "OpenAI",
+      baseUrl: "https://api.openai.com/v1",
+      keychainAccount: "endpoint:openai",
+      preset: "openai" as const,
+    };
+    stored = { ...stored, models: { ...stored.models, endpoints: [openai] } };
+    await userEvent.click(use);
+    await waitFor(() => expect(stored.models.vision).toEqual({ providerId: "ollama", model: "qwen3-vl:8b" }));
+    expect(stored.models.endpoints).toEqual([openai]);
+  });
+
+  it("lists cloud models apart from local ones, grouped and searchable", async () => {
+    const cloud = (id: string) => ({
+      providerId: "endpoint:openai",
+      id,
+      name: id,
+      locality: "cloud" as const,
+      capabilities: ["text" as const, "streaming" as const],
+    });
+    transport.handle("models.list", () => ({
+      providers: [
+        ...list.providers,
+        {
+          id: "endpoint:openai",
+          kind: "openaiCompatible",
+          name: "OpenAI",
+          locality: "cloud",
+          state: "available",
+        },
+      ],
+      models: [...list.models, cloud("gpt-5"), cloud("gpt-5-mini"), cloud("o4-mini")],
+    }));
+    render(<ModelsPage />);
+    const cloudGroup = (await screen.findByRole("region", { name: "OpenAI" })).closest("section")!;
+    expect(within(cloudGroup).getByText("3 models")).toBeInTheDocument();
+    expect(within(cloudGroup).getByText("gpt-5")).toBeInTheDocument();
+    // Local models aren't mixed in with the cloud ones.
+    expect(within(cloudGroup).queryByText("qwen3-vl:8b")).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search cloud models" }), "mini");
+    expect(screen.getByText("2 of 3 models")).toBeInTheDocument();
+    expect(screen.queryByText("gpt-5")).not.toBeInTheDocument();
+    expect(screen.getByText("gpt-5-mini")).toBeInTheDocument();
+    expect(screen.getByText("o4-mini")).toBeInTheDocument();
   });
 
   it("downloads with progress and can pause and resume", async () => {

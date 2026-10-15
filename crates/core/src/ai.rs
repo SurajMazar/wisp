@@ -46,6 +46,8 @@ pub struct AiServices {
     cloud_permitted: std::sync::atomic::AtomicBool,
     /// Recent first-token latency per model (exponential average, ms), measured on this Mac.
     first_token_ms: Mutex<HashMap<(String, String), f64>>,
+    /// Each provider's last good model list, shown when a refresh fails or times out.
+    last_models: Mutex<HashMap<String, Vec<ModelInfo>>>,
 }
 
 /// A model whose recent first-token average exceeds this is treated as slow by the router.
@@ -165,19 +167,29 @@ impl AiServices {
         let providers = self.providers(settings);
         let probes = providers.iter().map(|p| async move {
             let mut info = p.info().await;
-            if self.cooling_down(&info.id)
-                && info.state == wisp_ipc::types::models::ProviderState::Available
-            {
+            let available = info.state == wisp_ipc::types::models::ProviderState::Available;
+            // A provider that just failed keeps its models on screen; only routing skips it.
+            if self.cooling_down(&info.id) && available {
                 info.state = wisp_ipc::types::models::ProviderState::Unavailable;
                 info.detail =
                     Some("Failed a moment ago; Wisp is using another model for now.".into());
             }
-            let models = if info.state == wisp_ipc::types::models::ProviderState::Available {
-                tokio::time::timeout(Duration::from_secs(6), p.models())
-                    .await
-                    .ok()
-                    .and_then(Result::ok)
-                    .unwrap_or_default()
+            let models = if available {
+                match tokio::time::timeout(Duration::from_secs(6), p.models()).await {
+                    Ok(Ok(models)) => {
+                        if let Ok(mut cache) = self.last_models.lock() {
+                            cache.insert(info.id.clone(), models.clone());
+                        }
+                        models
+                    }
+                    // A slow or failed refresh shouldn't make the list vanish.
+                    _ => self
+                        .last_models
+                        .lock()
+                        .ok()
+                        .and_then(|c| c.get(&info.id).cloned())
+                        .unwrap_or_default(),
+                }
             } else {
                 vec![]
             };

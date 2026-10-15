@@ -8,9 +8,9 @@ import type {
 } from "@wisp/contracts";
 import { WispError } from "@wisp/contracts";
 import { Button, ErrorNotice, SettingsGroup, SettingsRow, Slider, Spinner, Switch, cn } from "@wisp/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { modelKey, useModelsStore } from "../../stores/modelsStore";
-import { useSettingsStore } from "../../stores/settingsStore";
+import { type SettingsPatch, useSettingsStore } from "../../stores/settingsStore";
 import { CloudProvidersGroup } from "./CloudProvidersGroup";
 import { EndpointsGroup } from "./EndpointsGroup";
 
@@ -111,11 +111,152 @@ function ProviderRow({ p, onStartOllama }: { p: ProviderInfo; onStartOllama: () 
   );
 }
 
+function ModelRow({
+  m,
+  isPref,
+  choose,
+  test,
+  remove,
+}: {
+  m: ModelInfo;
+  isPref: (m: ModelInfo, slot: "general" | "vision") => boolean;
+  choose: (slot: "general" | "vision", m: ModelInfo | null) => void;
+  test: (ref: ModelRef) => void;
+  remove: (id: string) => void;
+}) {
+  const t = useModelsStore((s) => s.tests[modelKey({ providerId: m.providerId, model: m.id })]);
+  return (
+    <div className="space-y-1.5 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-base text-text">{m.name}</p>
+          <Chips m={m} />
+        </div>
+        <div className="flex shrink-0 gap-1.5">
+          <Button
+            size="sm"
+            variant={isPref(m, "general") ? "primary" : "secondary"}
+            onClick={() => choose("general", isPref(m, "general") ? null : m)}
+          >
+            {isPref(m, "general") ? "Text ✓" : "Use for text"}
+          </Button>
+          {m.capabilities.includes("vision") && (
+            <Button
+              size="sm"
+              variant={isPref(m, "vision") ? "primary" : "secondary"}
+              onClick={() => choose("vision", isPref(m, "vision") ? null : m)}
+            >
+              {isPref(m, "vision") ? "Screen ✓" : "Use for screen"}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            disabled={t === "running"}
+            onClick={() => void test({ providerId: m.providerId, model: m.id })}
+          >
+            {t === "running" ? "Testing…" : "Test"}
+          </Button>
+          {m.providerId === "ollama" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void remove(m.id)}
+              aria-label={`Delete ${m.name}`}
+            >
+              Delete
+            </Button>
+          )}
+        </div>
+      </div>
+      {t && t !== "running" && (
+        <p className={cn("text-xs", "error" in t ? "text-danger" : "text-text-muted")} role="status">
+          {"error" in t
+            ? t.error
+            : `“${t.text}” · first word in ${t.firstTokenMs} ms · ${(t.totalMs / 1000).toFixed(1)} s total`}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Cloud models, grouped by provider, with a search box: these lists run to dozens of models. */
+function CloudModels({
+  providers,
+  models,
+  row,
+  chosen,
+}: {
+  providers: ProviderInfo[];
+  models: ModelInfo[];
+  row: (m: ModelInfo) => React.ReactNode;
+  chosen: (m: ModelInfo) => boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const groups = useMemo(() => {
+    const byProvider = new Map<string, ModelInfo[]>();
+    for (const m of models) {
+      if (q && !`${m.name} ${m.id}`.toLowerCase().includes(q)) continue;
+      byProvider.set(m.providerId, [...(byProvider.get(m.providerId) ?? []), m]);
+    }
+    // The models you use come first, then alphabetical.
+    return [...byProvider].map(([id, list]) => ({
+      provider: providers.find((p) => p.id === id),
+      id,
+      list: list.sort((a, b) => Number(chosen(b)) - Number(chosen(a)) || a.name.localeCompare(b.name)),
+    }));
+  }, [models, providers, q, chosen]);
+  const shown = groups.reduce((n, g) => n + g.list.length, 0);
+
+  return (
+    <SettingsGroup
+      title="Cloud models"
+      description="These run on the provider's servers: your question, and any screen area you attach, leave this Mac."
+    >
+      <div className="px-3 py-2.5">
+        <input
+          type="search"
+          aria-label="Search cloud models"
+          placeholder={`Search ${models.length} cloud models`}
+          className="h-7 w-full rounded-[var(--radius-sm)] border border-border-strong bg-surface px-2 text-base"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {q && (
+          <p className="mt-1.5 text-xs text-text-faint" role="status">
+            {shown === 0 ? "No cloud models match." : `${shown} of ${models.length} models`}
+          </p>
+        )}
+      </div>
+      {/* Long provider lists scroll inside the group instead of stretching the page. */}
+      <div className="max-h-[32rem] overflow-y-auto">
+        {groups.map((g) => (
+          <section key={g.id} aria-label={g.provider?.name ?? g.id}>
+            <div className="flex items-center justify-between border-t border-border bg-bg-sunken/40 px-3 py-1.5">
+              <h4 className="text-sm font-medium text-text">{g.provider?.name ?? g.id}</h4>
+              <span className="flex items-center gap-2 text-xs text-text-faint">
+                {g.provider && g.provider.state !== "available" && <Badge state={g.provider.state} />}
+                {g.list.length} {g.list.length === 1 ? "model" : "models"}
+              </span>
+            </div>
+            {g.provider?.detail && g.provider.state !== "available" && (
+              <p className="px-3 pt-1.5 text-xs text-text-muted">{g.provider.detail}</p>
+            )}
+            {g.list.map((m) => (
+              <div key={`${m.providerId}/${m.id}`}>{row(m)}</div>
+            ))}
+          </section>
+        ))}
+      </div>
+    </SettingsGroup>
+  );
+}
+
 export function ModelsPage() {
-  const { list, loading, error, pulls, tests, routes, load, pull, cancelPull, remove, test, startOllama } =
+  const { list, loading, error, pulls, routes, load, pull, cancelPull, remove, test, startOllama } =
     useModelsStore();
   const settings = useSettingsStore((s) => s.settings?.models);
-  const update = useSettingsStore((s) => s.update);
+  const patch = useSettingsStore((s) => s.patch);
   const [name, setName] = useState("");
   const [draft, setDraft] = useState<ModelSettings | null>(settings ?? null);
   const [synced, setSynced] = useState(settings);
@@ -128,11 +269,11 @@ export function ModelsPage() {
     void load();
   }, [load]);
 
-  const save = (patch: Partial<ModelSettings>) => {
-    if (!draft) return;
-    const next = { ...draft, ...patch };
-    setDraft(next);
-    void update({ section: "models", value: next }).then(() => useModelsStore.getState().refreshRoutes());
+  // Saves only what changed, on top of the latest settings: saving this page's whole draft
+  // could undo a change made elsewhere since it loaded (it once dropped a cloud key).
+  const save = (change: SettingsPatch<"models">) => {
+    if (draft && typeof change !== "function") setDraft({ ...draft, ...change });
+    void patch("models", change).then(() => useModelsStore.getState().refreshRoutes());
   };
 
   const ollama = list?.providers.find((p) => p.kind === "ollama");
@@ -142,6 +283,17 @@ export function ModelsPage() {
     draft?.[slot]?.providerId === m.providerId && draft?.[slot]?.model === m.id;
   const choose = (slot: "general" | "vision", m: ModelInfo | null) =>
     save({ [slot]: m ? ({ providerId: m.providerId, model: m.id } satisfies ModelRef) : null });
+  const local = models.filter((m) => m.locality === "local");
+  const cloud = models.filter((m) => m.locality !== "local");
+  const row = (m: ModelInfo) => (
+    <ModelRow
+      m={m}
+      isPref={isPref}
+      choose={choose}
+      test={(ref) => void test(ref)}
+      remove={(id) => void remove(id)}
+    />
+  );
 
   return (
     <>
@@ -177,66 +329,14 @@ export function ModelsPage() {
       <SettingsGroup
         title="Models on this Mac"
         description={
-          models.length === 0 && ollama?.state === "available"
+          local.length === 0 && ollama?.state === "available"
             ? "No models yet — download one below."
             : undefined
         }
       >
-        {models.map((m) => {
-          const t = tests[modelKey({ providerId: m.providerId, model: m.id })];
-          return (
-            <div key={`${m.providerId}/${m.id}`} className="space-y-1.5 px-3 py-2.5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-base text-text">{m.name}</p>
-                  <Chips m={m} />
-                </div>
-                <div className="flex shrink-0 gap-1.5">
-                  <Button
-                    size="sm"
-                    variant={isPref(m, "general") ? "primary" : "secondary"}
-                    onClick={() => choose("general", isPref(m, "general") ? null : m)}
-                  >
-                    {isPref(m, "general") ? "Text ✓" : "Use for text"}
-                  </Button>
-                  {m.capabilities.includes("vision") && (
-                    <Button
-                      size="sm"
-                      variant={isPref(m, "vision") ? "primary" : "secondary"}
-                      onClick={() => choose("vision", isPref(m, "vision") ? null : m)}
-                    >
-                      {isPref(m, "vision") ? "Screen ✓" : "Use for screen"}
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    disabled={t === "running"}
-                    onClick={() => void test({ providerId: m.providerId, model: m.id })}
-                  >
-                    {t === "running" ? "Testing…" : "Test"}
-                  </Button>
-                  {m.providerId === "ollama" && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => void remove(m.id)}
-                      aria-label={`Delete ${m.name}`}
-                    >
-                      Delete
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {t && t !== "running" && (
-                <p className={cn("text-xs", "error" in t ? "text-danger" : "text-text-muted")} role="status">
-                  {"error" in t
-                    ? t.error
-                    : `“${t.text}” · first word in ${t.firstTokenMs} ms · ${(t.totalMs / 1000).toFixed(1)} s total`}
-                </p>
-              )}
-            </div>
-          );
-        })}
+        {local.map((m) => (
+          <div key={`${m.providerId}/${m.id}`}>{row(m)}</div>
+        ))}
       </SettingsGroup>
 
       <SettingsGroup
@@ -315,6 +415,17 @@ export function ModelsPage() {
         })}
       </SettingsGroup>
 
+      {draft && <CloudProvidersGroup settings={draft} onSave={save} />}
+      {cloud.length > 0 && (
+        <CloudModels
+          providers={list?.providers ?? []}
+          models={cloud}
+          row={row}
+          chosen={(m) => isPref(m, "general") || isPref(m, "vision")}
+        />
+      )}
+      {draft && <EndpointsGroup settings={draft} onSave={save} />}
+
       {draft && (
         <SettingsGroup title="Generation">
           <SettingsRow
@@ -375,9 +486,6 @@ export function ModelsPage() {
           />
         </SettingsGroup>
       )}
-
-      {draft && <CloudProvidersGroup settings={draft} onSave={save} />}
-      {draft && <EndpointsGroup settings={draft} onSave={save} />}
     </>
   );
 }

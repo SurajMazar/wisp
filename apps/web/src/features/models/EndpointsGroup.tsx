@@ -2,6 +2,7 @@ import type { EndpointConfig, ModelSettings } from "@wisp/contracts";
 import { Button, SettingsGroup, SettingsRow } from "@wisp/ui";
 import { useState } from "react";
 import { ipc } from "../../services/ipc";
+import type { SettingsPatch } from "../../stores/settingsStore";
 
 const isLocal = (url: string) => /^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/.test(url);
 
@@ -11,7 +12,7 @@ export function EndpointsGroup({
   onSave,
 }: {
   settings: ModelSettings;
-  onSave: (p: Partial<ModelSettings>) => void;
+  onSave: (change: SettingsPatch<"models">) => void;
 }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -39,7 +40,7 @@ export function EndpointsGroup({
         baseUrl: url.trim(),
         ...(account && { keychainAccount: account }),
       };
-      onSave({ endpoints: [...settings.endpoints.filter((x) => x.id !== id), e] });
+      onSave((m) => ({ endpoints: [...m.endpoints.filter((x) => x.id !== id), e] }));
       setAdding(false);
       setName("");
       setKey("");
@@ -53,7 +54,7 @@ export function EndpointsGroup({
       await ipc()
         .call("host.keychain.delete", { account: e.keychainAccount })
         .catch(() => {});
-    onSave({ endpoints: settings.endpoints.filter((x) => x.id !== e.id) });
+    onSave((m) => ({ endpoints: m.endpoints.filter((x) => x.id !== e.id) }));
   };
 
   return (

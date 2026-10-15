@@ -300,7 +300,7 @@ export function VoicePage() {
           label="OpenAI voices"
           hint={
             !hasOpenAI
-              ? "Natural cloud voices with your OpenAI key — add one in Models → Cloud models first."
+              ? "Natural cloud voices with your OpenAI key — add one in Models → Cloud API keys first."
               : !cloudOk
                 ? "Off while privacy is Local Only: answers would be sent to OpenAI to be spoken."
                 : "Natural cloud voices. Each answer's text is sent to OpenAI to be spoken (uses your key)."

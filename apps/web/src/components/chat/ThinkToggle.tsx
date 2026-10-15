@@ -5,7 +5,7 @@ import { useSettingsStore } from "../../stores/settingsStore";
 
 /** Turn the model's "deep thinking" on or off (a global setting, also in Settings → Models). */
 export function ThinkToggle({ compact = false }: { compact?: boolean }) {
-  const { settings, update } = useSettingsStore();
+  const { settings, patch } = useSettingsStore();
   const models = settings?.models;
   if (!models) return null;
   const on = models.deepThinking;
@@ -19,9 +19,7 @@ export function ThinkToggle({ compact = false }: { compact?: boolean }) {
           : "Deep thinking is off: faster answers. Click to let the model reason first."
       }
       onClick={() =>
-        void update({ section: "models", value: { ...models, deepThinking: !on } }).then(() =>
-          useModelsStore.getState().refreshRoutes(),
-        )
+        void patch("models", { deepThinking: !on }).then(() => useModelsStore.getState().refreshRoutes())
       }
       className={cn(
         "flex h-7 items-center gap-1 rounded-full px-2 text-sm text-text-muted transition-colors hover:bg-surface-hover hover:text-text",

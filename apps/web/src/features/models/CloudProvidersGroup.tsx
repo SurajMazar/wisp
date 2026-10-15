@@ -2,7 +2,7 @@ import type { CloudPreset, EndpointConfig, ModelSettings } from "@wisp/contracts
 import { Button, SettingsGroup, SettingsRow } from "@wisp/ui";
 import { useState } from "react";
 import { ipc } from "../../services/ipc";
-import { useSettingsStore } from "../../stores/settingsStore";
+import { type SettingsPatch, useSettingsStore } from "../../stores/settingsStore";
 
 const providers: { preset: CloudPreset; name: string; baseUrl: string; keyHint: string; keysUrl: string }[] =
   [
@@ -35,7 +35,7 @@ export function CloudProvidersGroup({
   onSave,
 }: {
   settings: ModelSettings;
-  onSave: (p: Partial<ModelSettings>) => void;
+  onSave: (change: SettingsPatch<"models">) => void;
 }) {
   const privacy = useSettingsStore((s) => s.settings?.privacy);
   const update = useSettingsStore((s) => s.update);
@@ -57,7 +57,7 @@ export function CloudProvidersGroup({
         keychainAccount: account,
         preset: p.preset,
       };
-      onSave({ endpoints: [...settings.endpoints.filter((x) => x.id !== p.preset), e] });
+      onSave((m) => ({ endpoints: [...m.endpoints.filter((x) => x.id !== p.preset), e] }));
       setEditing(null);
       setKey("");
     } catch (err) {
@@ -70,12 +70,12 @@ export function CloudProvidersGroup({
       await ipc()
         .call("host.keychain.delete", { account: e.keychainAccount })
         .catch(() => {});
-    onSave({ endpoints: settings.endpoints.filter((x) => x.id !== e.id) });
+    onSave((m) => ({ endpoints: m.endpoints.filter((x) => x.id !== e.id) }));
   };
 
   return (
     <SettingsGroup
-      title="Cloud models"
+      title="Cloud API keys"
       description="Use OpenAI, Anthropic or Gemini models with your own API key. Keys are stored in your Mac's Keychain. Questions sent to these models (and any screen area you attach) leave this Mac."
     >
       {anyConnected && privacy?.mode === "localOnly" && (

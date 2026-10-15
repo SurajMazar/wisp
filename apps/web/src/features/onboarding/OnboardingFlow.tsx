@@ -396,7 +396,7 @@ export function OnboardingFlow() {
  */
 function BrainStep({ progress, next }: { progress: ReactNode; next: () => void }) {
   const { list, load, pull, pulls, startOllama } = useModelsStore();
-  const { settings, update } = useSettingsStore();
+  const { settings, patch } = useSettingsStore();
   useEffect(() => {
     void load();
   }, [load]);
@@ -405,7 +405,7 @@ function BrainStep({ progress, next }: { progress: ReactNode; next: () => void }
   useEffect(() => {
     if (pulling?.done && !pulling.error && settings) {
       const ref = { providerId: "ollama", model: RECOMMENDED_MODEL };
-      void update({ section: "models", value: { ...settings.models, general: ref, vision: ref } });
+      void patch("models", { general: ref, vision: ref });
       void load();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

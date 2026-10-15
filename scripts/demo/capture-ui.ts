@@ -230,7 +230,7 @@ async function main() {
     .waitFor({ state: "detached", timeout: 30000 })
     .catch(() => {});
   await shot(page, "models");
-  await section(page, "Cloud models");
+  await section(page, "Cloud API keys");
   await shot(page, "models-cloud");
 
   await page.goto(`http://127.0.0.1:${PORT}/#/voice`);

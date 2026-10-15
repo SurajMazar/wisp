@@ -279,6 +279,27 @@ async fn falls_back_to_another_local_model_when_the_first_fails() {
     let (done, _) = wait_done(&mut rx, r["assistantMessage"]["id"].as_str().expect("aid")).await;
     assert_eq!(done["status"], "complete", "{done}");
     assert_eq!(done["content"], "Fallback answer.");
+
+    // The failed provider is paused for routing, but its models stay in the list.
+    let list = core
+        .dispatch("models.list", json!(null))
+        .await
+        .expect("list");
+    let broken = list["providers"]
+        .as_array()
+        .expect("providers")
+        .iter()
+        .find(|p| p["id"] == "broken")
+        .expect("broken provider");
+    assert_eq!(broken["state"], "unavailable", "{broken}");
+    assert!(
+        list["models"]
+            .as_array()
+            .expect("models")
+            .iter()
+            .any(|m| m["providerId"] == "broken"),
+        "{list}"
+    );
 }
 
 #[tokio::test]
