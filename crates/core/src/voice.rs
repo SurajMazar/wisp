@@ -77,9 +77,18 @@ impl VoiceService {
             .iter()
             .map(|b| i16::from_le_bytes(*b));
         if let Ok(mut s) = self.sessions.lock() {
-            // Bound the number of concurrent sessions and their size.
+            // Drop recordings the host never finished (it crashed, or a hold was abandoned)
+            // before checking the limit: otherwise four of them would block every new one.
+            s.retain(|_, v| v.started.elapsed() < Duration::from_secs(120));
+            // Bound the number of concurrent sessions: a new recording replaces the oldest.
             if !s.contains_key(session_id) && s.len() >= 4 {
-                return;
+                let oldest = s
+                    .iter()
+                    .min_by_key(|(_, v)| v.started)
+                    .map(|(k, _)| k.clone());
+                if let Some(k) = oldest {
+                    s.remove(&k);
+                }
             }
             let session = s.entry(session_id.to_owned()).or_insert_with(|| Session {
                 pcm: vec![],
@@ -90,8 +99,6 @@ impl VoiceService {
                     .pcm
                     .extend(samples.take(MAX_SESSION_SAMPLES - session.pcm.len()));
             }
-            // Drop stale sessions (host crashed mid-recording).
-            s.retain(|_, v| v.started.elapsed() < Duration::from_secs(120));
         }
     }
 
@@ -341,6 +348,15 @@ impl Core {
             ..Default::default()
         };
         let detected = vad::detect(&pcm, cfg);
+        // Enough to tell "no audio arrived" from "audio, but silent" from "heard you".
+        let peak = pcm.iter().map(|s| s.unsigned_abs()).max().unwrap_or(0);
+        tracing::info!(
+            audio_ms,
+            speech_ms = detected.speech_ms,
+            peak,
+            heard = detected.range.is_some(),
+            "voice finished"
+        );
         let Some(range) = detected.range else {
             let reason = if detected.speech_ms > 0 {
                 NoSpeechReason::TooShort
@@ -425,6 +441,7 @@ impl Core {
         if goal.is_some() {
             let _ = self.speak_text("On it.").await;
         }
+        tracing::info!(chars = text.chars().count(), stt_ms, "voice transcribed");
         let sent = self
             .send(SendParams {
                 teach: false,
@@ -958,5 +975,25 @@ impl Core {
             .await
             .map_err(|e| IpcError::internal(e.to_string()))?;
         std::fs::write(path, &bytes).map_err(|e| IpcError::internal(e.to_string()))
+    }
+}
+
+#[cfg(test)]
+mod session_tests {
+    use base64::Engine as _;
+
+    use super::VoiceService;
+
+    #[test]
+    fn abandoned_recordings_never_block_a_new_one() {
+        let v = VoiceService::default();
+        let audio = base64::engine::general_purpose::STANDARD.encode([1u8, 0, 2, 0]);
+        // Four holds whose recordings were never finished or cancelled.
+        for i in 0..4 {
+            v.append(&format!("abandoned-{i}"), &audio);
+        }
+        v.append("new", &audio);
+        assert_eq!(v.take("new"), vec![1, 2], "the new recording was kept");
+        assert!(v.take("abandoned-0").is_empty(), "the oldest made room");
     }
 }

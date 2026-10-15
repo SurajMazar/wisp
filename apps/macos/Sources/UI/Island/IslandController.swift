@@ -99,6 +99,19 @@ public final class IslandController {
 
     public func resetCaption() { model.caption = "" }
 
+    /// Say something short about a problem (e.g. nothing was heard), then fold away.
+    public func showProblem(_ text: String, for duration: Duration = .seconds(2.5)) {
+        model.caption = text
+        set(state: .error)
+        Task { @MainActor in
+            try? await Task.sleep(for: duration)
+            if self.model.state == .error, self.model.caption == text {
+                self.model.caption = ""
+                self.set(state: .idle)
+            }
+        }
+    }
+
     /// Hang from the top of the display the pointer is on, measuring its notch.
     private func place() {
         let mouse = NSEvent.mouseLocation
@@ -154,7 +167,7 @@ struct IslandView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var showCaption: Bool {
-        [.thinking, .speaking].contains(model.state) && !model.caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        [.thinking, .speaking, .error].contains(model.state) && !model.caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var size: CGSize {

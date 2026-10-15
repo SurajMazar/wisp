@@ -4,6 +4,7 @@
  * question is sent. Reports time from release to the answer's first word.
  *
  *   pnpm tsx scripts/validation/voice-latency.ts --region <cached region id> [--hold 3000]
+ *       [--question "What is this?"]
  *
  * Uses a capture from Wisp's cache (copied into a throwaway data folder); each trial gets a
  * fresh copy so the model can't reuse work from the previous one.
@@ -125,12 +126,15 @@ async function main() {
   await call("settings.update", { update: { section: "onboarding", value: { completed: true } } });
 
   const base = JSON.parse(readFileSync(join(cache, `${regionId}.region.json`), "utf8"));
-  const questions = [
-    "What is this page about? One sentence.",
-    "Where do I click to see more? Answer briefly.",
-    "Summarize what I'm looking at in one line.",
-    "What colour is the main button?",
-  ];
+  const asked = arg("--question");
+  const questions = asked
+    ? [asked]
+    : [
+        "What is this page about? One sentence.",
+        "Where do I click to see more? Answer briefly.",
+        "Summarize what I'm looking at in one line.",
+        "What colour is the main button?",
+      ];
   const results: { q: string; firstMs: number; totalMs: number; image: boolean }[] = [];
   for (const [i, q] of questions.entries()) {
     // A fresh capture for each trial (new id, slightly different text) so nothing is reused.
@@ -198,8 +202,18 @@ async function main() {
       results.push({ q, firstMs: Date.now() - t0, totalMs: Date.now() - t0, image: false });
       continue;
     }
-    if (voice) await call("voice.finish", { sessionId: session, includeFocus: true });
-    else
+    if (voice) {
+      const r = await call<{ sent?: unknown; transcript?: string; noSpeech?: string }>("voice.finish", {
+        sessionId: session,
+        includeFocus: true,
+      });
+      if (!r.sent) {
+        // What the app would show as "Thinking…" and then nothing.
+        console.log(`not asked: ${JSON.stringify(r)} · ${q}`);
+        listeners.length = 0;
+        continue;
+      }
+    } else
       await call("conversation.send", {
         text: q,
         includeFocus: true,

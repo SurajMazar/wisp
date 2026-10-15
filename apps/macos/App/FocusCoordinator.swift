@@ -82,9 +82,23 @@ final class FocusCoordinator {
     /// Wait for a capture that releasing the keys started (bounded, so voice never hangs on it).
     func settle() async {
         guard let pending else { return }
-        let timeout = Task { try? await Task.sleep(for: .seconds(3)); pending.cancel() }
-        await pending.value
-        timeout.cancel()
+        // Whichever comes first. Cancelling a capture is only a request (a slow accessibility
+        // read finishes regardless), so don't wait for the cancelled task itself.
+        let once = Once()
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            Task { @MainActor in
+                await pending.value
+                if once.claim() { c.resume() }
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(3))
+                if once.claim() {
+                    Log.app.notice("screen capture still running after 3 s; asking without waiting")
+                    pending.cancel()
+                    c.resume()
+                }
+            }
+        }
         self.pending = nil
     }
 
@@ -324,5 +338,14 @@ extension FocusKind {
         case .lasso: .lasso
         case .circle: .circle
         }
+    }
+}
+
+/// Lets exactly one of several racing tasks go ahead.
+@MainActor private final class Once {
+    private var done = false
+    func claim() -> Bool {
+        defer { done = true }
+        return !done
     }
 }

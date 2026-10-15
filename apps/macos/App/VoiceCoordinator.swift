@@ -314,6 +314,8 @@ final class VoiceCoordinator {
                 VoiceFinishParams(conversationId: nil, dictation: false, includeFocus: includeFocus, sessionId: session, transcribeOnly: testOnly),
                 timeout: .seconds(120)
             )
+            // Kept by macOS (notice level): enough to see where a question went without the answer.
+            Log.app.notice("voice finished: audio \(result.audioMs) ms, heard \(result.transcript != nil), asked \(result.sent != nil), no speech \(result.noSpeech.map { "\($0)" } ?? "-", privacy: .public), focus \(includeFocus)")
             if let transcript = result.transcript, let sent = result.sent {
                 router.broadcast(event: IPCEvents.voiceAsked.name, payload: try? JSONValue.from(VoiceAsked(conversationId: sent.conversationId, transcript: transcript)))
                 // Answer out loud beside the pointer; the panel opens only when the user opens it
@@ -323,7 +325,15 @@ final class VoiceCoordinator {
                 assistant.island.resetCaption()
                 if settings.speakAnswers == .never { assistant.expand() }
             } else if result.transcript == nil {
-                assistant.set(state: .idle)
+                // Say so, rather than folding away as if nothing happened. Talk mode just listens
+                // again (a quiet turn is normal there).
+                if talking {
+                    assistant.set(state: .idle)
+                } else {
+                    assistant.island.showProblem(result.audioMs < 300
+                        ? "I didn't get any audio. Check the microphone in Settings → Voice."
+                        : "I didn't catch that. Hold the keys and try again.")
+                }
             }
             if testOnly { assistant.set(state: .idle) }
             return result
